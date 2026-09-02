@@ -14,3 +14,12 @@ Deliverables:
 
 - `docs/DATABASE_DESIGN.md`
 - `docs/database_schema.sql`
+
+### US-00.4 — Initialize the layered Backend skeleton
+
+Status: **Done on `TSM-20/init-backend-skeleton`**
+
+- [x] `T-00.4.1` Initialize Spring Boot, MySQL datasource and dev/test/prod profiles.
+- [x] `T-00.4.2` Establish controller/service/repository/entity/dto/mapper layers.
+- [x] `T-00.4.3` Add centralized exception handling and the standard `ApiResponse` envelope.
+- [x] `T-00.4.4` Integrate OpenAPI and Swagger UI.
