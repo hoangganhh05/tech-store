@@ -4,7 +4,7 @@
 
 CREATE DATABASE IF NOT EXISTS techstore
     CHARACTER SET utf8mb4
-    COLLATE utf8mb4_0900_ai_ci;
+    COLLATE utf8mb4_unicode_ci;
 USE techstore;
 
 SET NAMES utf8mb4;
@@ -33,14 +33,16 @@ CREATE TABLE users (
 );
 
 CREATE TABLE user_roles (
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id         BIGINT NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
-    PRIMARY KEY (user_id, role_id)
+    user_id         BIGINT NOT NULL,
+    role_id         BIGINT NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_roles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_roles_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE addresses (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL,
     recipient_name  VARCHAR(150) NOT NULL,
     recipient_phone VARCHAR(20) NOT NULL,
     line1           VARCHAR(255) NOT NULL,
@@ -54,19 +56,21 @@ CREATE TABLE addresses (
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     default_user_id BIGINT GENERATED ALWAYS AS
                     (CASE WHEN is_default = TRUE THEN user_id ELSE NULL END) STORED,
-    CONSTRAINT uq_addresses_one_default_per_user UNIQUE (default_user_id)
+    CONSTRAINT uq_addresses_one_default_per_user UNIQUE (default_user_id),
+    CONSTRAINT fk_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE categories (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    parent_id       BIGINT REFERENCES categories(id) ON DELETE RESTRICT,
+    parent_id       BIGINT,
     name            VARCHAR(150) NOT NULL,
     slug            VARCHAR(180) NOT NULL UNIQUE,
     display_order   INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
     is_visible      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_categories_not_self_parent CHECK (parent_id IS NULL OR parent_id <> id)
+    CONSTRAINT ck_categories_not_self_parent CHECK (parent_id IS NULL OR parent_id <> id),
+    CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE brands (
@@ -81,8 +85,8 @@ CREATE TABLE brands (
 
 CREATE TABLE products (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    category_id     BIGINT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
-    brand_id        BIGINT NOT NULL REFERENCES brands(id) ON DELETE RESTRICT,
+    category_id     BIGINT NOT NULL,
+    brand_id        BIGINT NOT NULL,
     name            VARCHAR(255) NOT NULL,
     slug            VARCHAR(280) NOT NULL UNIQUE,
     description     TEXT,
@@ -90,12 +94,14 @@ CREATE TABLE products (
                     CHECK (status IN ('DRAFT', 'ACTIVE', 'HIDDEN', 'DISCONTINUED')),
     is_featured     BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE product_variants (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    product_id      BIGINT NOT NULL,
     sku             VARCHAR(80) NOT NULL UNIQUE,
     color           VARCHAR(80),
     storage         VARCHAR(80),
@@ -105,13 +111,14 @@ CREATE TABLE product_variants (
                     CHECK (status IN ('ACTIVE', 'HIDDEN', 'DISCONTINUED')),
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_product_variant_options UNIQUE (product_id, color, storage)
+    CONSTRAINT uq_product_variant_options UNIQUE (product_id, color, storage),
+    CONSTRAINT fk_variants_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE TABLE product_images (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    variant_id      BIGINT REFERENCES product_variants(id) ON DELETE CASCADE,
+    product_id      BIGINT NOT NULL,
+    variant_id      BIGINT,
     image_url       VARCHAR(500) NOT NULL,
     alt_text        VARCHAR(255),
     display_order   INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
@@ -122,61 +129,70 @@ CREATE TABLE product_images (
     primary_variant_id BIGINT GENERATED ALWAYS AS
                     (CASE WHEN is_primary = TRUE AND variant_id IS NOT NULL THEN variant_id ELSE NULL END) STORED,
     CONSTRAINT uq_product_primary_image UNIQUE (primary_product_id),
-    CONSTRAINT uq_variant_primary_image UNIQUE (primary_variant_id)
+    CONSTRAINT uq_variant_primary_image UNIQUE (primary_variant_id),
+    CONSTRAINT fk_images_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_images_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
 );
 
 CREATE TABLE product_specifications (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    product_id      BIGINT NOT NULL,
     spec_key        VARCHAR(100) NOT NULL,
     spec_value      VARCHAR(500) NOT NULL,
     display_order   INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
-    CONSTRAINT uq_product_spec_key UNIQUE (product_id, spec_key)
+    CONSTRAINT uq_product_spec_key UNIQUE (product_id, spec_key),
+    CONSTRAINT fk_specifications_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE TABLE inventories (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    variant_id      BIGINT NOT NULL UNIQUE REFERENCES product_variants(id) ON DELETE RESTRICT,
+    variant_id      BIGINT NOT NULL UNIQUE,
     quantity_on_hand INTEGER NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
     quantity_reserved INTEGER NOT NULL DEFAULT 0 CHECK (quantity_reserved >= 0),
     low_stock_threshold INTEGER NOT NULL DEFAULT 5 CHECK (low_stock_threshold >= 0),
     version         BIGINT NOT NULL DEFAULT 0,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_inventory_reservation CHECK (quantity_reserved <= quantity_on_hand)
+    CONSTRAINT ck_inventory_reservation CHECK (quantity_reserved <= quantity_on_hand),
+    CONSTRAINT fk_inventories_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE inventory_transactions (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    inventory_id    BIGINT NOT NULL REFERENCES inventories(id) ON DELETE RESTRICT,
+    inventory_id    BIGINT NOT NULL,
     transaction_type VARCHAR(20) NOT NULL
                     CHECK (transaction_type IN ('IMPORT', 'SALE', 'CANCEL_RETURN', 'ADJUSTMENT', 'RESERVE', 'RELEASE')),
     quantity_change INTEGER NOT NULL CHECK (quantity_change <> 0),
     reference_type  VARCHAR(30),
     reference_id    BIGINT,
     note            VARCHAR(500),
-    created_by      BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_by      BIGINT,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_inventory_transactions_inventory FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inventory_transactions_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE carts (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id         BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    user_id         BIGINT UNIQUE,
     session_key     VARCHAR(100) UNIQUE,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'CONVERTED', 'ABANDONED')),
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_cart_owner CHECK (user_id IS NOT NULL OR session_key IS NOT NULL)
+    CONSTRAINT ck_cart_owner CHECK (user_id IS NOT NULL OR session_key IS NOT NULL),
+    CONSTRAINT fk_carts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE cart_items (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    cart_id         BIGINT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
-    variant_id      BIGINT NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
+    cart_id         BIGINT NOT NULL,
+    variant_id      BIGINT NOT NULL,
     quantity        INTEGER NOT NULL CHECK (quantity > 0),
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_cart_variant UNIQUE (cart_id, variant_id)
+    CONSTRAINT uq_cart_variant UNIQUE (cart_id, variant_id),
+    CONSTRAINT fk_cart_items_cart FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+    CONSTRAINT fk_cart_items_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE vouchers (
@@ -203,8 +219,8 @@ CREATE TABLE vouchers (
 CREATE TABLE orders (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_number    VARCHAR(40) NOT NULL UNIQUE,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    voucher_id      BIGINT REFERENCES vouchers(id) ON DELETE SET NULL,
+    user_id         BIGINT NOT NULL,
+    voucher_id      BIGINT,
     status          VARCHAR(25) NOT NULL DEFAULT 'PENDING'
                     CHECK (status IN ('PENDING', 'CONFIRMED', 'SHIPPING', 'COMPLETED', 'CANCELLED')),
     payment_method  VARCHAR(20) NOT NULL CHECK (payment_method IN ('COD', 'BANK_TRANSFER', 'ONLINE')),
@@ -219,12 +235,14 @@ CREATE TABLE orders (
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     cancelled_at    TIMESTAMP,
     CONSTRAINT ck_order_total CHECK (total_amount = subtotal - discount_amount + shipping_fee),
-    CONSTRAINT ck_order_discount CHECK (discount_amount <= subtotal)
+    CONSTRAINT ck_order_discount CHECK (discount_amount <= subtotal),
+    CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_orders_voucher FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE SET NULL
 );
 
 -- Immutable shipping snapshot: later address edits must not change an existing order.
 CREATE TABLE order_addresses (
-    order_id        BIGINT PRIMARY KEY REFERENCES orders(id) ON DELETE CASCADE,
+    order_id        BIGINT PRIMARY KEY,
     recipient_name  VARCHAR(150) NOT NULL,
     recipient_phone VARCHAR(20) NOT NULL,
     line1           VARCHAR(255) NOT NULL,
@@ -232,13 +250,14 @@ CREATE TABLE order_addresses (
     ward            VARCHAR(120),
     district        VARCHAR(120) NOT NULL,
     province        VARCHAR(120) NOT NULL,
-    postal_code     VARCHAR(20)
+    postal_code     VARCHAR(20),
+    CONSTRAINT fk_order_addresses_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
 CREATE TABLE order_items (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    variant_id      BIGINT NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
+    order_id        BIGINT NOT NULL,
+    variant_id      BIGINT NOT NULL,
     product_name    VARCHAR(255) NOT NULL,
     sku             VARCHAR(80) NOT NULL,
     variant_label   VARCHAR(180),
@@ -246,33 +265,40 @@ CREATE TABLE order_items (
     quantity        INTEGER NOT NULL CHECK (quantity > 0),
     line_total      NUMERIC(15,2) NOT NULL CHECK (line_total >= 0),
     CONSTRAINT uq_order_variant UNIQUE (order_id, variant_id),
-    CONSTRAINT ck_order_item_total CHECK (line_total = unit_price * quantity)
+    CONSTRAINT ck_order_item_total CHECK (line_total = unit_price * quantity),
+    CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_items_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE order_status_history (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    order_id        BIGINT NOT NULL,
     from_status     VARCHAR(25),
     to_status       VARCHAR(25) NOT NULL,
-    changed_by      BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    changed_by      BIGINT,
     note            VARCHAR(500),
-    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_order_history_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_history_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE voucher_usages (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    voucher_id      BIGINT NOT NULL REFERENCES vouchers(id) ON DELETE RESTRICT,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    order_id        BIGINT NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
+    voucher_id      BIGINT NOT NULL,
+    user_id         BIGINT NOT NULL,
+    order_id        BIGINT NOT NULL UNIQUE,
     discount_amount NUMERIC(15,2) NOT NULL CHECK (discount_amount >= 0),
-    used_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    used_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_voucher_usages_voucher FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_voucher_usages_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_voucher_usages_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE reviews (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    order_item_id   BIGINT UNIQUE REFERENCES order_items(id) ON DELETE SET NULL,
+    user_id         BIGINT NOT NULL,
+    product_id      BIGINT NOT NULL,
+    order_item_id   BIGINT UNIQUE,
     rating          SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
     title           VARCHAR(150),
     content         TEXT,
@@ -280,15 +306,20 @@ CREATE TABLE reviews (
                     CHECK (status IN ('PENDING', 'PUBLISHED', 'HIDDEN')),
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_review_user_product UNIQUE (user_id, product_id)
+    CONSTRAINT uq_review_user_product UNIQUE (user_id, product_id),
+    CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reviews_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reviews_order_item FOREIGN KEY (order_item_id) REFERENCES order_items(id) ON DELETE SET NULL
 );
 
 CREATE TABLE wishlists (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    user_id         BIGINT NOT NULL,
+    product_id      BIGINT NOT NULL,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_wishlist_user_product UNIQUE (user_id, product_id)
+    CONSTRAINT uq_wishlist_user_product UNIQUE (user_id, product_id),
+    CONSTRAINT fk_wishlists_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_wishlists_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_addresses_user ON addresses(user_id);
