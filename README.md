@@ -29,3 +29,24 @@ cd backend
 ```
 
 Các profile được tách tại `application-dev.yml`, `application-test.yml` và `application-prod.yml`. Profile mặc định là `dev`; production bắt buộc cung cấp `DB_URL`, `DB_USERNAME` và `DB_PASSWORD` qua biến môi trường.
+
+## Frontend
+
+Yêu cầu: Node.js 20.19+ và npm 10+.
+
+```powershell
+cd frontend
+Copy-Item .env.example .env
+npm install
+npm run dev
+```
+
+Ứng dụng chạy tại `http://localhost:5173`. Biến `VITE_API_BASE_URL` trong `.env` xác định địa chỉ Backend API.
+
+Các lệnh kiểm tra:
+
+```powershell
+npm run typecheck
+npm test
+npm run build
+```

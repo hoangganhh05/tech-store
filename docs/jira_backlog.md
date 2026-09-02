@@ -23,3 +23,18 @@ Status: **Done on `TSM-20/init-backend-skeleton`**
 - [x] `T-00.4.2` Establish controller/service/repository/entity/dto/mapper layers.
 - [x] `T-00.4.3` Add centralized exception handling and the standard `ApiResponse` envelope.
 - [x] `T-00.4.4` Integrate OpenAPI and Swagger UI.
+
+### US-00.5 — Initialize the Frontend skeleton
+
+Status: **Done on `TSM-21/init-frontend-skeleton`**
+
+- [x] `T-00.5.1` Initialize React, TypeScript and Vite with development and production scripts.
+- [x] `T-00.5.2` Establish storefront and admin layouts with the main application routes.
+- [x] `T-00.5.3` Add a shared Axios client with token and 401/403 interceptors.
+- [x] `T-00.5.4` Integrate Material UI and a shared responsive theme.
+
+Deliverables:
+
+- Storefront routes: home, product list/detail, cart, checkout and login.
+- Admin routes: dashboard, products and orders.
+- Frontend type-check, routing tests, HTTP client tests and production build.
