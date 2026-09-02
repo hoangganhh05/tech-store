@@ -1,18 +1,25 @@
--- TechStore database schema
+﻿-- TechStore database schema
 -- Story: US-00.3 / Tasks: T-00.3.1, T-00.3.2, T-00.3.3
--- Target database: PostgreSQL 15+
+-- Target database: MySQL 8.0+ (tested for MySQL 8.4 syntax)
 
-BEGIN;
+CREATE DATABASE IF NOT EXISTS techstore
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_0900_ai_ci;
+USE techstore;
+
+SET NAMES utf8mb4;
+SET default_storage_engine = InnoDB;
+START TRANSACTION;
 
 CREATE TABLE roles (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     code            VARCHAR(30) NOT NULL UNIQUE,
     name            VARCHAR(100) NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE users (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     email           VARCHAR(255) NOT NULL,
     password_hash   VARCHAR(255) NOT NULL,
     full_name       VARCHAR(150) NOT NULL,
@@ -20,8 +27,8 @@ CREATE TABLE users (
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'LOCKED', 'DISABLED')),
     email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_users_email UNIQUE (email)
 );
 
@@ -32,7 +39,7 @@ CREATE TABLE user_roles (
 );
 
 CREATE TABLE addresses (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     recipient_name  VARCHAR(150) NOT NULL,
     recipient_phone VARCHAR(20) NOT NULL,
@@ -43,37 +50,37 @@ CREATE TABLE addresses (
     province        VARCHAR(120) NOT NULL,
     postal_code     VARCHAR(20),
     is_default      BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    default_user_id BIGINT GENERATED ALWAYS AS
+                    (CASE WHEN is_default = TRUE THEN user_id ELSE NULL END) STORED,
+    CONSTRAINT uq_addresses_one_default_per_user UNIQUE (default_user_id)
 );
 
-CREATE UNIQUE INDEX uq_addresses_one_default_per_user
-    ON addresses(user_id) WHERE is_default = TRUE;
-
 CREATE TABLE categories (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     parent_id       BIGINT REFERENCES categories(id) ON DELETE RESTRICT,
     name            VARCHAR(150) NOT NULL,
     slug            VARCHAR(180) NOT NULL UNIQUE,
     display_order   INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
     is_visible      BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_categories_not_self_parent CHECK (parent_id IS NULL OR parent_id <> id)
 );
 
 CREATE TABLE brands (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(150) NOT NULL UNIQUE,
     slug            VARCHAR(180) NOT NULL UNIQUE,
     logo_url        VARCHAR(500),
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE products (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     category_id     BIGINT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
     brand_id        BIGINT NOT NULL REFERENCES brands(id) ON DELETE RESTRICT,
     name            VARCHAR(255) NOT NULL,
@@ -82,12 +89,12 @@ CREATE TABLE products (
     status          VARCHAR(20) NOT NULL DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT', 'ACTIVE', 'HIDDEN', 'DISCONTINUED')),
     is_featured     BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE product_variants (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     sku             VARCHAR(80) NOT NULL UNIQUE,
     color           VARCHAR(80),
@@ -96,29 +103,30 @@ CREATE TABLE product_variants (
     compare_at_price NUMERIC(15,2) CHECK (compare_at_price IS NULL OR compare_at_price >= price),
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'HIDDEN', 'DISCONTINUED')),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_product_variant_options UNIQUE (product_id, color, storage)
 );
 
 CREATE TABLE product_images (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     variant_id      BIGINT REFERENCES product_variants(id) ON DELETE CASCADE,
     image_url       VARCHAR(500) NOT NULL,
     alt_text        VARCHAR(255),
     display_order   INTEGER NOT NULL DEFAULT 0 CHECK (display_order >= 0),
     is_primary      BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    primary_product_id BIGINT GENERATED ALWAYS AS
+                    (CASE WHEN is_primary = TRUE AND variant_id IS NULL THEN product_id ELSE NULL END) STORED,
+    primary_variant_id BIGINT GENERATED ALWAYS AS
+                    (CASE WHEN is_primary = TRUE AND variant_id IS NOT NULL THEN variant_id ELSE NULL END) STORED,
+    CONSTRAINT uq_product_primary_image UNIQUE (primary_product_id),
+    CONSTRAINT uq_variant_primary_image UNIQUE (primary_variant_id)
 );
 
-CREATE UNIQUE INDEX uq_product_primary_image
-    ON product_images(product_id) WHERE is_primary = TRUE AND variant_id IS NULL;
-CREATE UNIQUE INDEX uq_variant_primary_image
-    ON product_images(variant_id) WHERE is_primary = TRUE AND variant_id IS NOT NULL;
-
 CREATE TABLE product_specifications (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     spec_key        VARCHAR(100) NOT NULL,
     spec_value      VARCHAR(500) NOT NULL,
@@ -127,18 +135,18 @@ CREATE TABLE product_specifications (
 );
 
 CREATE TABLE inventories (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     variant_id      BIGINT NOT NULL UNIQUE REFERENCES product_variants(id) ON DELETE RESTRICT,
     quantity_on_hand INTEGER NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
     quantity_reserved INTEGER NOT NULL DEFAULT 0 CHECK (quantity_reserved >= 0),
     low_stock_threshold INTEGER NOT NULL DEFAULT 5 CHECK (low_stock_threshold >= 0),
     version         BIGINT NOT NULL DEFAULT 0,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_inventory_reservation CHECK (quantity_reserved <= quantity_on_hand)
 );
 
 CREATE TABLE inventory_transactions (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     inventory_id    BIGINT NOT NULL REFERENCES inventories(id) ON DELETE RESTRICT,
     transaction_type VARCHAR(20) NOT NULL
                     CHECK (transaction_type IN ('IMPORT', 'SALE', 'CANCEL_RETURN', 'ADJUSTMENT', 'RESERVE', 'RELEASE')),
@@ -147,32 +155,32 @@ CREATE TABLE inventory_transactions (
     reference_id    BIGINT,
     note            VARCHAR(500),
     created_by      BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE carts (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     session_key     VARCHAR(100) UNIQUE,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'CONVERTED', 'ABANDONED')),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_cart_owner CHECK (user_id IS NOT NULL OR session_key IS NOT NULL)
 );
 
 CREATE TABLE cart_items (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     cart_id         BIGINT NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
     variant_id      BIGINT NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
     quantity        INTEGER NOT NULL CHECK (quantity > 0),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_cart_variant UNIQUE (cart_id, variant_id)
 );
 
 CREATE TABLE vouchers (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     code            VARCHAR(50) NOT NULL UNIQUE,
     name            VARCHAR(150) NOT NULL,
     discount_type   VARCHAR(15) NOT NULL CHECK (discount_type IN ('PERCENT', 'FIXED')),
@@ -182,18 +190,18 @@ CREATE TABLE vouchers (
     usage_limit     INTEGER CHECK (usage_limit IS NULL OR usage_limit > 0),
     per_user_limit  INTEGER NOT NULL DEFAULT 1 CHECK (per_user_limit > 0),
     used_count      INTEGER NOT NULL DEFAULT 0 CHECK (used_count >= 0),
-    starts_at       TIMESTAMPTZ NOT NULL,
-    ends_at         TIMESTAMPTZ NOT NULL,
+    starts_at       TIMESTAMP NOT NULL,
+    ends_at         TIMESTAMP NOT NULL,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT ck_voucher_period CHECK (ends_at > starts_at),
     CONSTRAINT ck_percent_discount CHECK (discount_type <> 'PERCENT' OR discount_value <= 100),
     CONSTRAINT ck_voucher_usage CHECK (usage_limit IS NULL OR used_count <= usage_limit)
 );
 
 CREATE TABLE orders (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_number    VARCHAR(40) NOT NULL UNIQUE,
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     voucher_id      BIGINT REFERENCES vouchers(id) ON DELETE SET NULL,
@@ -207,9 +215,9 @@ CREATE TABLE orders (
     shipping_fee    NUMERIC(15,2) NOT NULL DEFAULT 0 CHECK (shipping_fee >= 0),
     total_amount    NUMERIC(15,2) NOT NULL CHECK (total_amount >= 0),
     note            VARCHAR(500),
-    placed_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    cancelled_at    TIMESTAMPTZ,
+    placed_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cancelled_at    TIMESTAMP,
     CONSTRAINT ck_order_total CHECK (total_amount = subtotal - discount_amount + shipping_fee),
     CONSTRAINT ck_order_discount CHECK (discount_amount <= subtotal)
 );
@@ -228,7 +236,7 @@ CREATE TABLE order_addresses (
 );
 
 CREATE TABLE order_items (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     variant_id      BIGINT NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
     product_name    VARCHAR(255) NOT NULL,
@@ -242,26 +250,26 @@ CREATE TABLE order_items (
 );
 
 CREATE TABLE order_status_history (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_id        BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     from_status     VARCHAR(25),
     to_status       VARCHAR(25) NOT NULL,
     changed_by      BIGINT REFERENCES users(id) ON DELETE SET NULL,
     note            VARCHAR(500),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE voucher_usages (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     voucher_id      BIGINT NOT NULL REFERENCES vouchers(id) ON DELETE RESTRICT,
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     order_id        BIGINT NOT NULL UNIQUE REFERENCES orders(id) ON DELETE RESTRICT,
     discount_amount NUMERIC(15,2) NOT NULL CHECK (discount_amount >= 0),
-    used_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    used_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE reviews (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     order_item_id   BIGINT UNIQUE REFERENCES order_items(id) ON DELETE SET NULL,
@@ -270,16 +278,16 @@ CREATE TABLE reviews (
     content         TEXT,
     status          VARCHAR(20) NOT NULL DEFAULT 'PENDING'
                     CHECK (status IN ('PENDING', 'PUBLISHED', 'HIDDEN')),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_review_user_product UNIQUE (user_id, product_id)
 );
 
 CREATE TABLE wishlists (
-    id              BIGSERIAL PRIMARY KEY,
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id         BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     product_id      BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_wishlist_user_product UNIQUE (user_id, product_id)
 );
 
@@ -300,19 +308,16 @@ CREATE INDEX idx_reviews_product_status ON reviews(product_id, status);
 CREATE INDEX idx_wishlists_user ON wishlists(user_id);
 
 -- Idempotent reference/sample data.
-INSERT INTO roles (code, name) VALUES
+INSERT IGNORE INTO roles (code, name) VALUES
     ('CUSTOMER', 'Customer'),
-    ('ADMIN', 'Administrator')
-ON CONFLICT (code) DO NOTHING;
+    ('ADMIN', 'Administrator');
 
-INSERT INTO categories (name, slug, display_order) VALUES
+INSERT IGNORE INTO categories (name, slug, display_order) VALUES
     ('Điện thoại', 'dien-thoai', 1),
-    ('Phụ kiện', 'phu-kien', 2)
-ON CONFLICT (slug) DO NOTHING;
+    ('Phụ kiện', 'phu-kien', 2);
 
-INSERT INTO brands (name, slug) VALUES
+INSERT IGNORE INTO brands (name, slug) VALUES
     ('Apple', 'apple'),
-    ('Samsung', 'samsung')
-ON CONFLICT (slug) DO NOTHING;
+    ('Samsung', 'samsung');
 
 COMMIT;

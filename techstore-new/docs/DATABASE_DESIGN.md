@@ -2,7 +2,7 @@
 
 **Story:** `US-00.3`  
 **Tasks:** `T-00.3.1`, `T-00.3.2`, `T-00.3.3`  
-**Database:** PostgreSQL 15+
+**Database:** MySQL 8.0+ (MySQL Server 8.4 supported)
 
 ## 1. Domain model
 
@@ -55,7 +55,7 @@ erDiagram
 - Every table has a primary key. Pure many-to-many relation `user_roles` uses the composite key `(user_id, role_id)`.
 - Foreign keys use `CASCADE` only for owned child data. Historical commerce data uses `RESTRICT` or `SET NULL` to prevent accidental loss.
 - Business identifiers `users.email`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
-- Partial unique indexes enforce one default address per user and one primary image per product or variant.
+- Generated helper columns with unique constraints enforce one default address per user and one primary image per product or variant. This is the MySQL-compatible equivalent of a partial unique index.
 - Junction tables resolve the many-to-many relationships between users and roles, users and wishlist products, and voucher redemption records.
 
 ## 4. Third normal form (3NF)
@@ -79,17 +79,19 @@ The operational model is in 3NF:
 
 ## 6. Initialization
 
-Run the schema against an empty PostgreSQL database:
+Run the schema with MySQL 8.0+ from PowerShell:
 
-```bash
-psql -v ON_ERROR_STOP=1 -U postgres -d techstore -f docs/database_schema.sql
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
+  --user=root --password `
+  --execute="source techstore-new/docs/database_schema.sql"
 ```
 
-The script creates all tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database; use versioned migrations for later schema changes.
+The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database; use versioned migrations for later schema changes.
 
 ## 7. Naming conventions
 
 - SQL identifiers use lowercase `snake_case` and plural table names.
 - Primary keys use `id`; foreign keys use `<entity>_id`.
-- Timestamps are stored as `TIMESTAMPTZ` in UTC.
+- Timestamps use MySQL `TIMESTAMP`; the application and database connection must use UTC (`time_zone='+00:00'`).
 - Passwords are never stored as plain text; only `password_hash` is persisted.
