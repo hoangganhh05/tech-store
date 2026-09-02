@@ -3,6 +3,12 @@ backend/target/
 *.class
 *.log
 
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+*.tsbuildinfo
+
 # IDEs
 .idea/
 *.iml
