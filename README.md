@@ -4,15 +4,28 @@ Website thương mại điện tử bán điện thoại và phụ kiện công 
 
 ## Backend
 
-Yêu cầu: Java 21+ và MySQL 5.7+.
+Yêu cầu: Java 21+ và MySQL 8.0.16+ (khuyến nghị MySQL 8.4).
 
-1. Tạo schema bằng `docs/database_schema.sql`.
-2. Sao chép `.env.example` và cung cấp thông tin kết nối qua biến môi trường.
+1. Khởi động MySQL và tạo schema bằng `docs/database_schema.sql` theo hướng dẫn
+   trong `docs/DATABASE_DESIGN.md`.
+2. Mở PowerShell tại thư mục gốc và cung cấp thông tin kết nối cho phiên terminal
+   hiện tại. Thay giá trị mật khẩu bằng mật khẩu MySQL trên máy của bạn:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "dev"
+$env:DB_URL = "jdbc:mysql://localhost:3306/techstore?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC"
+$env:DB_USERNAME = "root"
+$env:DB_PASSWORD = "<your-mysql-password>"
+```
+
+File `.env.example` chỉ là danh sách biến mẫu; Spring Boot không tự động đọc file
+`.env`. Không commit mật khẩu thật vào repository.
+
 3. Chạy ứng dụng:
 
 ```powershell
 cd backend
-./mvnw.cmd spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 Các địa chỉ phát triển:
@@ -25,7 +38,7 @@ Chạy test:
 
 ```powershell
 cd backend
-./mvnw.cmd test
+.\mvnw.cmd test
 ```
 
 Các profile được tách tại `application-dev.yml`, `application-test.yml` và `application-prod.yml`. Profile mặc định là `dev`; production bắt buộc cung cấp `DB_URL`, `DB_USERNAME` và `DB_PASSWORD` qua biến môi trường.
