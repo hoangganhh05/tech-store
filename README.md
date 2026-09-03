@@ -47,6 +47,13 @@ Các lệnh kiểm tra:
 
 ```powershell
 npm run typecheck
+npm run lint
 npm test
 npm run build
 ```
+
+## Continuous Integration
+
+Pull requests targeting `develop` or `main` automatically run the Backend and
+Frontend CI checks. See `docs/CI.md` for the checks, test reports, and required
+branch-protection settings.
