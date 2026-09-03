@@ -16,15 +16,20 @@ available directly in the job logs.
 
 ## Required checks for `main`
 
-After the workflows have run once on GitHub, configure a branch protection rule
-or repository ruleset for `main` with these settings:
+The `main` branch is protected on GitHub. The active rule uses these settings:
 
 1. Require a pull request before merging.
 2. Require status checks to pass before merging.
 3. Require branches to be up to date before merging.
 4. Select `Backend CI` and `Frontend CI` as required checks.
-5. Do not allow bypassing these requirements unless an emergency policy is
-   explicitly defined for repository administrators.
+5. Apply the rule to administrators; do not allow force-pushes or deletion.
+6. Require pull-request conversations to be resolved before merging.
 
-The repository owner needs administration permission to apply this protection.
-Workflow files alone cannot change repository branch protection.
+No approving reviewer is required because this is currently a single-developer
+repository, but changes must still be delivered by Pull Request and pass both CI
+checks. Increase the approval count when another reviewer joins the project.
+
+The repository owner needs administration permission to change this protection.
+Workflow files alone cannot change repository branch protection. Audit the live
+setting under **Settings → Rules → Rulesets** or **Settings → Branches** after
+changing repository ownership, plan, or CI job names.
