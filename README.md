@@ -2,6 +2,35 @@
 
 Website thương mại điện tử bán điện thoại và phụ kiện công nghệ.
 
+## Cấu trúc dự án
+
+```text
+tech-store/
+├── .github/workflows/       # Pipeline CI Backend và Frontend
+├── backend/                 # REST API Spring Boot
+│   └── src/
+│       ├── main/            # Mã nguồn và cấu hình ứng dụng
+│       └── test/            # Unit, controller và integration test
+├── frontend/                # Ứng dụng React + TypeScript + Vite
+│   └── src/
+│       ├── modules/         # Chức năng theo module nghiệp vụ
+│       ├── components/      # Component dùng chung
+│       ├── layouts/         # Storefront và Admin layout
+│       ├── routers/         # Routing của ứng dụng
+│       └── services/        # HTTP client và tích hợp API
+├── docs/                    # Kiến trúc, database, CI và wireframe
+├── .env.example             # Mẫu biến môi trường Backend
+└── README.md
+```
+
+Tài liệu chính:
+
+- [Kiến trúc hệ thống](docs/ARCHITECTURE.md)
+- [Thiết kế database](docs/DATABASE_DESIGN.md)
+- [Quy ước Git](docs/git-conventions.md)
+- [Continuous Integration](docs/CI.md)
+- [Wireframe](docs/wireframes/README.md)
+
 ## Backend
 
 Yêu cầu: Java 21+ và MySQL 5.7+.
