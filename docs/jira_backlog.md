@@ -38,3 +38,18 @@ Deliverables:
 - Storefront routes: home, product list/detail, cart, checkout and login.
 - Admin routes: dashboard, products and orders.
 - Frontend type-check, routing tests, HTTP client tests and production build.
+
+### US-00.6 — Set up the basic CI pipeline
+
+Status: **In progress on `TSM-22/setup-ci-pipeline`**
+
+- [x] `T-00.6.1` Build and test the Backend in GitHub Actions.
+- [x] `T-00.6.2` Lint, test and build the Frontend in GitHub Actions.
+- [ ] `T-00.6.3` Require `Backend CI` and `Frontend CI` in the remote `main`
+  branch protection rule after the workflows have run once.
+
+Deliverables:
+
+- `.github/workflows/backend-ci.yml`
+- `.github/workflows/frontend-ci.yml`
+- `docs/CI.md`
