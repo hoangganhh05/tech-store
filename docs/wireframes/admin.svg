@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="2040" viewBox="0 0 2400 2040" role="img" aria-labelledby="title desc">
+  <title id="title">TechStore administration wireframes</title>
+  <desc id="desc">Low-fidelity wireframes for the admin dashboard, product management, order management, and inventory management screens.</desc>
+  <defs>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #172033; }
+      .canvas { fill: #edf1f5; }
+      .screen { fill: #ffffff; stroke: #263349; stroke-width: 3; }
+      .nav { fill: #263349; }
+      .top { fill: #f7f8fa; stroke: #9aa6b6; stroke-width: 2; }
+      .panel { fill: #ffffff; stroke: #8a97a8; stroke-width: 2; }
+      .soft { fill: #eef2f6; stroke: #a3adba; stroke-width: 2; }
+      .accent { fill: #dce8fb; stroke: #255fc2; stroke-width: 2; }
+      .button { fill: #255fc2; }
+      .line { stroke: #748196; stroke-width: 2; }
+      .heading { font-size: 30px; font-weight: 700; }
+      .strong { font-size: 23px; font-weight: 700; }
+      .label { font-size: 19px; font-weight: 700; }
+      .body { font-size: 16px; }
+      .small { font-size: 13px; fill: #526176; }
+      .inverse { fill: #ffffff; font-size: 16px; font-weight: 700; }
+      .nav-text { fill: #ffffff; font-size: 17px; }
+      .screen-title { font-size: 27px; font-weight: 700; fill: #152c52; }
+    </style>
+    <g id="admin-shell">
+      <rect class="nav" x="0" y="0" width="220" height="880" />
+      <text class="inverse" x="30" y="48">TECHSTORE ADMIN</text>
+      <rect x="18" y="92" width="184" height="46" rx="5" fill="#3c5578" />
+      <text class="nav-text" x="42" y="122">▣ Dashboard</text>
+      <text class="nav-text" x="42" y="180">□ Sản phẩm</text>
+      <text class="nav-text" x="42" y="230">□ Đơn hàng</text>
+      <text class="nav-text" x="42" y="280">□ Tồn kho</text>
+      <text class="nav-text" x="42" y="330">□ Danh mục</text>
+      <text class="nav-text" x="42" y="380">□ Người dùng</text>
+      <line x1="26" y1="420" x2="194" y2="420" stroke="#71809a" />
+      <text class="nav-text" x="42" y="465">⚙ Cài đặt</text>
+      <text class="nav-text" x="42" y="820">← Storefront</text>
+      <rect class="top" x="220" y="0" width="900" height="68" />
+      <rect class="soft" x="252" y="16" width="360" height="38" rx="5" />
+      <text class="small" x="270" y="41">Tìm kiếm trong quản trị...</text>
+      <text class="body" x="920" y="40">Admin ▾</text>
+    </g>
+  </defs>
+
+  <rect class="canvas" width="2400" height="2040" />
+  <text x="60" y="42" class="heading">TECHSTORE · WIREFRAME KHU VỰC QUẢN TRỊ</text>
+
+  <!-- Dashboard -->
+  <g transform="translate(60 100)">
+    <text class="screen-title" x="0" y="-18">07 · Dashboard  /admin</text>
+    <rect class="screen" width="1120" height="880" rx="10" />
+    <use href="#admin-shell" />
+    <text class="heading" x="252" y="120">Tổng quan</text>
+    <rect class="soft" x="252" y="145" width="195" height="112" rx="8" /><text class="small" x="270" y="176">DOANH THU HÔM NAY</text><text class="strong" x="270" y="220">00.000.000đ</text>
+    <rect class="soft" x="467" y="145" width="195" height="112" rx="8" /><text class="small" x="485" y="176">ĐƠN MỚI</text><text class="strong" x="485" y="220">24</text>
+    <rect class="soft" x="682" y="145" width="195" height="112" rx="8" /><text class="small" x="700" y="176">KHÁCH HÀNG</text><text class="strong" x="700" y="220">1.204</text>
+    <rect class="soft" x="897" y="145" width="191" height="112" rx="8" /><text class="small" x="915" y="176">SẮP HẾT HÀNG</text><text class="strong" x="915" y="220">12</text>
+    <rect class="panel" x="252" y="285" width="540" height="290" rx="8" />
+    <text class="label" x="274" y="322">Doanh thu 7 ngày</text>
+    <line class="line" x1="290" y1="530" x2="755" y2="530" /><line class="line" x1="290" y1="360" x2="290" y2="530" />
+    <polyline points="300,500 365,450 430,475 495,390 560,420 625,335 700,365 750,310" fill="none" stroke="#255fc2" stroke-width="5" />
+    <rect class="panel" x="812" y="285" width="276" height="290" rx="8" />
+    <text class="label" x="834" y="322">Trạng thái đơn</text>
+    <circle cx="950" cy="420" r="76" fill="none" stroke="#dce3ea" stroke-width="34" /><path d="M950 344 A76 76 0 0 1 1018 454" fill="none" stroke="#255fc2" stroke-width="34" />
+    <text class="small" x="854" y="535">● Mới  ● Xử lý  ● Hoàn tất</text>
+    <rect class="panel" x="252" y="605" width="836" height="220" rx="8" />
+    <text class="label" x="274" y="640">Đơn hàng gần đây</text>
+    <rect class="soft" x="274" y="662" width="792" height="38" /><text class="small" x="290" y="686">MÃ ĐƠN        KHÁCH HÀNG          TỔNG TIỀN       TRẠNG THÁI       THỜI GIAN</text>
+    <text class="body" x="290" y="730">#TS001          Nguyễn Văn A          00.000đ          Chờ xác nhận       5 phút</text>
+    <line class="line" x1="274" y1="748" x2="1066" y2="748" /><text class="body" x="290" y="780">#TS002          Trần Thị B                00.000đ          Đang giao            20 phút</text>
+  </g>
+
+  <!-- Products -->
+  <g transform="translate(1220 100)">
+    <text class="screen-title" x="0" y="-18">08 · Quản lý sản phẩm  /admin/products</text>
+    <rect class="screen" width="1120" height="880" rx="10" />
+    <use href="#admin-shell" />
+    <text class="heading" x="252" y="120">Sản phẩm</text>
+    <rect class="button" x="930" y="86" width="158" height="44" rx="6" /><text class="inverse" x="956" y="114">+ Thêm mới</text>
+    <rect class="panel" x="252" y="155" width="836" height="92" rx="8" />
+    <rect class="soft" x="272" y="178" width="340" height="42" rx="5" /><text class="small" x="290" y="204">Tìm tên, SKU...</text>
+    <rect class="soft" x="632" y="178" width="170" height="42" rx="5" /><text class="small" x="650" y="204">Danh mục ▾</text>
+    <rect class="soft" x="822" y="178" width="150" height="42" rx="5" /><text class="small" x="840" y="204">Trạng thái ▾</text>
+    <rect class="button" x="990" y="178" width="78" height="42" rx="5" /><text class="inverse" x="1004" y="204">Lọc</text>
+    <rect class="panel" x="252" y="275" width="836" height="510" rx="8" />
+    <rect class="soft" x="252" y="275" width="836" height="52" />
+    <text class="small" x="270" y="306">□  SẢN PHẨM / SKU       DANH MỤC       GIÁ       TỒN       TRẠNG THÁI       THAO TÁC</text>
+    <g transform="translate(272 350)"><rect class="soft" width="58" height="58" /><text class="body" x="78" y="25">Điện thoại A</text><text class="small" x="78" y="48">SKU-A-128</text><text class="body" x="292" y="32">Điện thoại</text><text class="body" x="430" y="32">00.000đ</text><text class="body" x="545" y="32">36</text><rect class="accent" x="602" y="8" width="94" height="34" rx="17" /><text class="small" x="620" y="30">Đang bán</text><text class="body" x="740" y="31">Sửa · ⋮</text></g>
+    <line class="line" x1="272" y1="430" x2="1068" y2="430" />
+    <g transform="translate(272 452)"><rect class="soft" width="58" height="58" /><text class="body" x="78" y="25">Laptop B</text><text class="small" x="78" y="48">SKU-B-256</text><text class="body" x="292" y="32">Laptop</text><text class="body" x="430" y="32">00.000đ</text><text class="body" x="545" y="32">8</text><rect class="soft" x="602" y="8" width="94" height="34" rx="17" /><text class="small" x="620" y="30">Tạm ẩn</text><text class="body" x="740" y="31">Sửa · ⋮</text></g>
+    <line class="line" x1="272" y1="532" x2="1068" y2="532" />
+    <g transform="translate(272 554)"><rect class="soft" width="58" height="58" /><text class="body" x="78" y="25">Tai nghe C</text><text class="small" x="78" y="48">SKU-C-WHT</text><text class="body" x="292" y="32">Phụ kiện</text><text class="body" x="430" y="32">00.000đ</text><text class="body" x="545" y="32">0</text><rect class="soft" x="602" y="8" width="94" height="34" rx="17" /><text class="small" x="612" y="30">Hết hàng</text><text class="body" x="740" y="31">Sửa · ⋮</text></g>
+    <text class="small" x="272" y="750">Hiển thị 1–10 / 128</text><text class="body" x="930" y="750">‹  1  2  3  ›</text>
+    <rect class="soft" x="252" y="808" width="836" height="40" rx="5" /><text class="small" x="272" y="833">Thao tác hàng loạt: Ẩn · Hiện · Ngừng kinh doanh</text>
+  </g>
+
+  <!-- Orders -->
+  <g transform="translate(60 1100)">
+    <text class="screen-title" x="0" y="-18">09 · Quản lý đơn hàng  /admin/orders</text>
+    <rect class="screen" width="1120" height="880" rx="10" />
+    <use href="#admin-shell" />
+    <text class="heading" x="252" y="120">Đơn hàng</text>
+    <g transform="translate(252 150)"><rect class="accent" width="130" height="42" rx="6" /><text class="body" x="32" y="27">Tất cả (128)</text><rect class="soft" x="146" width="155" height="42" rx="6" /><text class="body" x="174" y="27">Chờ xác nhận</text><rect class="soft" x="317" width="140" height="42" rx="6" /><text class="body" x="350" y="27">Đang giao</text><rect class="soft" x="473" width="140" height="42" rx="6" /><text class="body" x="507" y="27">Hoàn tất</text><rect class="soft" x="629" width="110" height="42" rx="6" /><text class="body" x="658" y="27">Đã hủy</text></g>
+    <rect class="panel" x="252" y="218" width="836" height="76" rx="7" /><rect class="soft" x="272" y="235" width="300" height="42" rx="5" /><text class="small" x="290" y="261">Tìm mã đơn, khách hàng...</text><rect class="soft" x="592" y="235" width="190" height="42" rx="5" /><text class="small" x="610" y="261">Khoảng ngày ▾</text><rect class="button" x="988" y="235" width="80" height="42" rx="5" /><text class="inverse" x="1003" y="261">Lọc</text>
+    <rect class="panel" x="252" y="320" width="836" height="450" rx="8" />
+    <rect class="soft" x="252" y="320" width="836" height="50" /><text class="small" x="270" y="351">MÃ ĐƠN     KHÁCH HÀNG       NGÀY ĐẶT       TỔNG TIỀN       TRẠNG THÁI       CHI TIẾT</text>
+    <text class="body" x="270" y="410">#TS001       Nguyễn Văn A       03/09/2026      00.000đ          Chờ xác nhận       Xem ›</text><line class="line" x1="270" y1="435" x2="1068" y2="435" />
+    <text class="body" x="270" y="478">#TS002       Trần Thị B             03/09/2026      00.000đ          Đang đóng gói      Xem ›</text><line class="line" x1="270" y1="503" x2="1068" y2="503" />
+    <text class="body" x="270" y="546">#TS003       Lê Văn C                 02/09/2026      00.000đ          Đang giao             Xem ›</text><line class="line" x1="270" y1="571" x2="1068" y2="571" />
+    <text class="body" x="270" y="614">#TS004       Phạm Thị D             02/09/2026      00.000đ          Hoàn tất               Xem ›</text>
+    <rect class="soft" x="252" y="795" width="836" height="52" rx="6" /><text class="small" x="272" y="827">Chọn đơn → cập nhật trạng thái · in phiếu · xuất danh sách</text>
+  </g>
+
+  <!-- Inventory -->
+  <g transform="translate(1220 1100)">
+    <text class="screen-title" x="0" y="-18">10 · Quản lý tồn kho  /admin/inventory</text>
+    <rect class="screen" width="1120" height="880" rx="10" />
+    <use href="#admin-shell" />
+    <text class="heading" x="252" y="120">Tồn kho</text>
+    <rect class="button" x="912" y="86" width="176" height="44" rx="6" /><text class="inverse" x="940" y="114">+ Điều chỉnh kho</text>
+    <rect class="soft" x="252" y="150" width="252" height="90" rx="8" /><text class="small" x="272" y="179">TỔNG BIẾN THỂ</text><text class="strong" x="272" y="216">356</text>
+    <rect class="soft" x="524" y="150" width="252" height="90" rx="8" /><text class="small" x="544" y="179">SẮP HẾT HÀNG</text><text class="strong" x="544" y="216">12</text>
+    <rect class="soft" x="796" y="150" width="292" height="90" rx="8" /><text class="small" x="816" y="179">HẾT HÀNG</text><text class="strong" x="816" y="216">4</text>
+    <rect class="panel" x="252" y="268" width="836" height="78" rx="7" /><rect class="soft" x="272" y="286" width="350" height="42" rx="5" /><text class="small" x="290" y="312">Tìm sản phẩm, SKU...</text><rect class="soft" x="642" y="286" width="180" height="42" rx="5" /><text class="small" x="660" y="312">Mức tồn ▾</text><rect class="button" x="988" y="286" width="80" height="42" rx="5" /><text class="inverse" x="1003" y="312">Lọc</text>
+    <rect class="panel" x="252" y="372" width="836" height="398" rx="8" />
+    <rect class="soft" x="252" y="372" width="836" height="50" /><text class="small" x="270" y="403">SẢN PHẨM / SKU       BIẾN THỂ       KHẢ DỤNG       ĐANG GIỮ       NGƯỠNG       THAO TÁC</text>
+    <text class="body" x="270" y="462">Điện thoại A             Đen · 128GB        36                 2                  10              Điều chỉnh</text><line class="line" x1="270" y1="487" x2="1068" y2="487" />
+    <text class="body" x="270" y="530">Laptop B                    Bạc · 256GB         8                  1                  10              Điều chỉnh</text><line class="line" x1="270" y1="555" x2="1068" y2="555" />
+    <text class="body" x="270" y="598">Tai nghe C                Trắng                    0                  0                    5              Nhập kho</text><line class="line" x1="270" y1="623" x2="1068" y2="623" />
+    <text class="body" x="270" y="666">Điện thoại D             Xanh · 256GB       16                 3                  10              Điều chỉnh</text>
+    <rect class="accent" x="252" y="795" width="836" height="52" rx="6" /><text class="small" x="272" y="827">Cảnh báo: không cho phép tồn khả dụng âm · mọi điều chỉnh phải lưu lịch sử và lý do</text>
+  </g>
+</svg>

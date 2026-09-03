@@ -53,3 +53,18 @@ Deliverables:
 - `.github/workflows/backend-ci.yml`
 - `.github/workflows/frontend-ci.yml`
 - `docs/CI.md`
+
+### US-00.7 — Design wireframes for the main screens
+
+Status: **Done on `TSM-23/design-main-screen-wireframes`**
+
+- [x] `T-00.7.1` Wireframe the main storefront and account screens.
+- [x] `T-00.7.2` Wireframe the dashboard, product, order, and inventory admin
+  screens.
+- [x] `T-00.7.3` Document the end-to-end purchase and admin navigation flows.
+
+Deliverables:
+
+- `docs/wireframes/storefront.svg`
+- `docs/wireframes/admin.svg`
+- `docs/wireframes/README.md`
