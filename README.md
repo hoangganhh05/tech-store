@@ -33,7 +33,7 @@ Tài liệu chính:
 
 ## Backend
 
-Yêu cầu: Java 21+ và MySQL 5.7+.
+Yêu cầu: Java 21+ và MySQL 8.0.16+ (khuyến nghị MySQL 8.4).
 
 1. Tạo schema bằng `docs/database_schema.sql`.
 2. Sao chép `.env.example` và cung cấp thông tin kết nối qua biến môi trường.
