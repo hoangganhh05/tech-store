@@ -1,6 +1,6 @@
 ﻿-- TechStore database schema
 -- Story: US-00.3 / Tasks: T-00.3.1, T-00.3.2, T-00.3.3
--- Target database: MySQL 8.0+ (tested for MySQL 8.4 syntax)
+-- Target database: MySQL 8.0.16+ (validated with MySQL Server 8.4)
 
 CREATE DATABASE IF NOT EXISTS techstore
     CHARACTER SET utf8mb4

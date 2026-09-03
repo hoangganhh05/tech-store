@@ -2,7 +2,7 @@
 
 **Story:** `US-00.3`  
 **Tasks:** `T-00.3.1`, `T-00.3.2`, `T-00.3.3`  
-**Database:** MySQL 5.7+ (MySQL Server 8.4 supported)
+**Database:** MySQL 8.0.16+ (validated with MySQL Server 8.4)
 
 ## 1. Domain model
 
@@ -56,7 +56,7 @@ erDiagram
 - Foreign keys use `CASCADE` only for owned child data. Historical commerce data uses `RESTRICT` or `SET NULL` to prevent accidental loss.
 - Business identifiers `users.email`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
 - Generated helper columns with unique constraints enforce one default address per user and one primary image per product or variant. This is the MySQL-compatible equivalent of a partial unique index.
-- Foreign keys use table-level `FOREIGN KEY (...) REFERENCES ...` constraints so the schema can be imported by MySQL 5.7-compatible modeling tools.
+- Foreign keys use table-level `FOREIGN KEY (...) REFERENCES ...` constraints so the schema can also be parsed by modeling tools using the MySQL 5.7 grammar.
 - Junction tables resolve the many-to-many relationships between users and roles, users and wishlist products, and voucher redemption records.
 
 ## 4. Third normal form (3NF)
@@ -80,12 +80,17 @@ The operational model is in 3NF:
 
 ## 6. Initialization
 
-Run the schema with MySQL 5.7+ from PowerShell:
+MySQL 8.0.16 or newer is required because this schema relies on enforced
+`CHECK` constraints. MySQL 5.7 accepts much of the syntax but ignores those
+constraints and therefore is not a supported runtime database.
+
+Run the schema from the repository root with PowerShell:
 
 ```powershell
 & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
+  --default-character-set=utf8mb4 `
   --user=root --password `
-  --execute="source techstore-new/docs/database_schema.sql"
+  --execute="source docs/database_schema.sql"
 ```
 
 The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database; use versioned migrations for later schema changes.
