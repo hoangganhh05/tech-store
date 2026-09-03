@@ -2,6 +2,41 @@
 
 ## EPIC-00 — Project initialization and preparation
 
+### US-00.1 — Initialize Git repository and conventions
+
+Status: **Done on `TSM-17/setup-git-repository`**
+
+- [x] `T-00.1.1` Create the repository and protect `main` with Pull Request and
+  required CI rules.
+- [x] `T-00.1.2` Document the project, setup steps, and directory structure in
+  `README.md`.
+- [x] `T-00.1.3` Document Git flow, branch naming, Pull Request rules, and
+  Conventional Commits.
+
+Deliverables:
+
+- `README.md`
+- `.gitignore`
+- `docs/git-conventions.md`
+- GitHub branch protection for `main`
+
+### US-00.2 — Define system architecture and technology stack
+
+Status: **Done on `TSM-18/design-system-architecture`**
+
+- [x] `T-00.2.1` Document the high-level Client, API, Database, email, storage,
+  and external-service architecture.
+- [x] `T-00.2.2` Select and document the Backend, Frontend, Database, build, and
+  test stack.
+- [x] `T-00.2.3` Record the main technology and architecture decisions as ADRs.
+
+Deliverables:
+
+- `docs/ARCHITECTURE.md`
+- `docs/adr/README.md`
+- `docs/adr/0001-technology-stack.md`
+- `docs/adr/0002-layered-modular-monolith.md`
+
 ### US-00.3 — Complete database design (ERD)
 
 Status: **Done on `TSM-19/design-database-erd`**
@@ -41,11 +76,11 @@ Deliverables:
 
 ### US-00.6 — Set up the basic CI pipeline
 
-Status: **In progress on `TSM-22/setup-ci-pipeline`**
+Status: **Done on `TSM-22/setup-ci-pipeline`**
 
 - [x] `T-00.6.1` Build and test the Backend in GitHub Actions.
 - [x] `T-00.6.2` Lint, test and build the Frontend in GitHub Actions.
-- [ ] `T-00.6.3` Require `Backend CI` and `Frontend CI` in the remote `main`
+- [x] `T-00.6.3` Require `Backend CI` and `Frontend CI` in the remote `main`
   branch protection rule after the workflows have run once.
 
 Deliverables:
