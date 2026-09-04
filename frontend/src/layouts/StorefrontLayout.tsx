@@ -35,6 +35,7 @@ export function StorefrontLayout() {
                 </Button>
               ))}
             </Stack>
+            <Button component={Link} to={ROUTES.register} color="inherit">Đăng ký</Button>
             <Button component={Link} to={ROUTES.login} color="inherit">Đăng nhập</Button>
             <IconButton component={Link} to={ROUTES.cart} aria-label="Giỏ hàng">
               <Badge badgeContent={0} color="primary"><ShoppingCartOutlinedIcon /></Badge>
