@@ -1,6 +1,8 @@
 package com.techstore.security;
 
 import com.techstore.entity.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -48,19 +50,46 @@ public class JwtTokenIssuer implements TokenIssuer {
         Instant accessExpiresAt = issuedAt.plus(properties.getAccessTokenTtl());
         Instant refreshExpiresAt = issuedAt.plus(properties.getRefreshTokenTtl());
         List<String> roles = user.getRoleCodes().stream().map(Enum::name).sorted().toList();
+        String accessTokenId = UUID.randomUUID().toString();
+        String refreshTokenId = UUID.randomUUID().toString();
 
         return new IssuedTokenPair(
-                createToken(user, roles, "access", issuedAt, accessExpiresAt),
-                createToken(user, roles, "refresh", issuedAt, refreshExpiresAt),
+                createToken(user, roles, "access", accessTokenId, issuedAt, accessExpiresAt),
+                createToken(user, roles, "refresh", refreshTokenId, issuedAt, refreshExpiresAt),
+                refreshTokenId,
                 accessExpiresAt,
                 refreshExpiresAt
         );
+    }
+
+    @Override
+    public String getRefreshTokenId(String refreshToken) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(signingKey)
+                    .build()
+                    .parseSignedClaims(refreshToken)
+                    .getPayload();
+
+            if (!"refresh".equals(claims.get("type", String.class))) {
+                throw new InvalidRefreshTokenException("Refresh token không hợp lệ");
+            }
+
+            String tokenId = claims.getId();
+            if (tokenId == null || tokenId.isBlank()) {
+                throw new InvalidRefreshTokenException("Refresh token không hợp lệ");
+            }
+            return tokenId;
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new InvalidRefreshTokenException("Refresh token không hợp lệ", exception);
+        }
     }
 
     private String createToken(
             User user,
             List<String> roles,
             String tokenType,
+            String tokenId,
             Instant issuedAt,
             Instant expiresAt
     ) {
@@ -69,7 +98,7 @@ public class JwtTokenIssuer implements TokenIssuer {
                 .claim("uid", user.getId())
                 .claim("roles", roles)
                 .claim("type", tokenType)
-                .id(UUID.randomUUID().toString())
+                .id(tokenId)
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey)

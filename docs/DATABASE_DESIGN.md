@@ -8,7 +8,7 @@
 
 | Domain | Entities | Main rules |
 |---|---|---|
-| Identity | `users`, `roles`, `user_roles`, `addresses` | Email is unique; users and roles are many-to-many; one default address per user. |
+| Identity | `users`, `roles`, `user_roles`, `refresh_tokens`, `addresses` | Email is unique; users and roles are many-to-many; a refresh token is revocable by its JWT identifier; one default address per user. |
 | Catalog | `categories`, `brands`, `products`, `product_variants`, `product_images`, `product_specifications` | Categories are hierarchical; SKU and product slug are unique; product specifications are stored as key/value rows. |
 | Inventory | `inventories`, `inventory_transactions` | One inventory row per variant; quantities cannot be negative; every stock change has an auditable transaction. |
 | Cart | `carts`, `cart_items` | A cart belongs to a user or guest session; a variant occurs at most once in a cart. |
@@ -21,6 +21,7 @@
 erDiagram
     USERS ||--o{ USER_ROLES : has
     ROLES ||--o{ USER_ROLES : grants
+    USERS ||--o{ REFRESH_TOKENS : owns_sessions
     USERS ||--o{ ADDRESSES : owns
     CATEGORIES ||--o{ CATEGORIES : contains
     CATEGORIES ||--o{ PRODUCTS : classifies
@@ -54,7 +55,7 @@ erDiagram
 
 - Every table has a primary key. Pure many-to-many relation `user_roles` uses the composite key `(user_id, role_id)`.
 - Foreign keys use `CASCADE` only for owned child data. Historical commerce data uses `RESTRICT` or `SET NULL` to prevent accidental loss.
-- Business identifiers `users.email`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
+- Business identifiers `users.email`, `refresh_tokens.token_id`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
 - Generated helper columns with unique constraints enforce one default address per user and one primary image per product or variant. This is the MySQL-compatible equivalent of a partial unique index.
 - Foreign keys use table-level `FOREIGN KEY (...) REFERENCES ...` constraints so the schema can also be parsed by modeling tools using the MySQL 5.7 grammar.
 - Junction tables resolve the many-to-many relationships between users and roles, users and wishlist products, and voucher redemption records.
@@ -77,6 +78,7 @@ The operational model is in 3NF:
 - Order line totals and order grand totals are checked by constraints.
 - Voucher validity dates, percentage bounds and global usage counts are constrained. Per-user limits are enforced transactionally by the service using `voucher_usages`.
 - Status transition rules are enforced by the service and audited in `order_status_history`.
+- Refresh tokens are represented by their signed JWT `jti`, not the raw JWT. Logout sets `refresh_tokens.revoked_at`; future refresh-token use must reject a revoked record.
 
 ## 6. Initialization
 
@@ -93,7 +95,16 @@ Run the schema from the repository root with PowerShell:
   --execute="source docs/database_schema.sql"
 ```
 
-The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database; use versioned migrations for later schema changes.
+The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database.
+
+For an existing database created before US-01.3, apply the one-time migration `docs/migrations/V20260904_01__add_refresh_tokens.sql` before starting the Backend. The current project does not run migrations automatically:
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
+  --default-character-set=utf8mb4 `
+  --user=root --password techstore `
+  --execute="source docs/migrations/V20260904_01__add_refresh_tokens.sql"
+```
 
 ## 7. Naming conventions
 

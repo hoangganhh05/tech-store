@@ -17,6 +17,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const { signIn } = useAuth()
   const registrationMessage = (location.state as { registrationMessage?: string } | null)?.registrationMessage
+  const redirectAfterLogin = (location.state as { from?: string } | null)?.from ?? ROUTES.home
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState('')
@@ -47,7 +48,7 @@ export function LoginPage() {
     try {
       const result = await loginAccount({ email: values.email.trim(), password: values.password })
       signIn(result)
-      navigate(ROUTES.home, { replace: true })
+      navigate(redirectAfterLogin, { replace: true })
     } catch (error: unknown) {
       const message = isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message

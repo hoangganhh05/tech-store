@@ -33,6 +33,10 @@ export type LoginResult = {
   user: AuthenticatedUser
 }
 
+export type LogoutPayload = {
+  refreshToken: string
+}
+
 type ApiResponse<T> = {
   success: boolean
   code: string
@@ -49,4 +53,8 @@ export async function registerAccount(payload: RegisterPayload) {
 export async function loginAccount(payload: LoginPayload) {
   const response = await httpClient.post<ApiResponse<LoginResult>>('/auth/login', payload)
   return response.data.data
+}
+
+export async function logoutAccount(payload: LogoutPayload): Promise<void> {
+  await httpClient.post('/auth/logout', payload)
 }

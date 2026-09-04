@@ -1,6 +1,7 @@
 package com.techstore.controller;
 
 import com.techstore.dto.request.LoginRequest;
+import com.techstore.dto.request.LogoutRequest;
 import com.techstore.dto.request.RegisterRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.LoginResponse;
@@ -40,5 +41,12 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Log out and revoke the current refresh token")
+    public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng xuất thành công", null));
     }
 }

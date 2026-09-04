@@ -1,7 +1,9 @@
 import { AppBar, Box, Button, Container, Drawer, List, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { useAuthEvents } from '../hooks/useAuthEvents'
+import { useAuth } from '../hooks/useAuth'
 
 const drawerWidth = 240
 const adminItems = [
@@ -12,12 +14,26 @@ const adminItems = [
 
 export function AdminLayout() {
   useAuthEvents()
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    await signOut()
+    setIsLoggingOut(false)
+    navigate(ROUTES.home, { replace: true })
+  }
+
   return (
     <Box minHeight="100vh" bgcolor="background.default">
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           <Typography variant="h6" fontWeight={800} flex={1}>TechStore Admin</Typography>
           <Button component={Link} to={ROUTES.home} color="inherit">Về cửa hàng</Button>
+          <Button color="inherit" onClick={handleLogout} disabled={isLoggingOut}>
+            {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+          </Button>
         </Toolbar>
       </AppBar>
       <Drawer

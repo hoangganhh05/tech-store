@@ -1,6 +1,7 @@
 import { AppBar, Badge, Box, Button, Container, IconButton, Stack, Toolbar, Typography } from '@mui/material'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { env } from '../configs/env'
 import { useAuthEvents } from '../hooks/useAuthEvents'
@@ -13,7 +14,17 @@ const navItems = [
 
 export function StorefrontLayout() {
   useAuthEvents()
-  const { isAuthenticated, user } = useAuth()
+  const navigate = useNavigate()
+  const { isAuthenticated, user, signOut } = useAuth()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    await signOut()
+    setIsLoggingOut(false)
+    navigate(ROUTES.home, { replace: true })
+  }
+
   return (
     <Box minHeight="100vh" display="flex" flexDirection="column">
       <a className="skip-link" href="#main-content">Bỏ qua điều hướng</a>
@@ -38,9 +49,14 @@ export function StorefrontLayout() {
               ))}
             </Stack>
             {isAuthenticated ? (
-              <Typography variant="body2" color="text.secondary" noWrap>
-                Chào, {user?.fullName}
-              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  Chào, {user?.fullName}
+                </Typography>
+                <Button color="inherit" onClick={handleLogout} disabled={isLoggingOut}>
+                  {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
+                </Button>
+              </Stack>
             ) : (
               <>
                 <Button component={Link} to={ROUTES.register} color="inherit">Đăng ký</Button>

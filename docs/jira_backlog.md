@@ -150,3 +150,25 @@ Deliverables:
 - `frontend/src/modules/auth/LoginPage.tsx`
 - `frontend/src/modules/auth/AuthContext.tsx`
 - `docs/api_contract.md`
+
+### US-01.3 — Log out safely
+
+Status: **Done on `TSM-26/logout` (pending commit and Pull Request)**
+
+- [x] `T-01.3.1` Add `POST /api/v1/auth/logout`, persist the signed refresh-token
+  identifier at login, and mark it revoked during logout without storing the raw token.
+- [x] `T-01.3.2` Clear Frontend authentication state and tokens even if the
+  logout request fails, then redirect the user to a public route.
+- [x] `T-01.3.3` Show a logout action in logged-in storefront and admin layouts,
+  and protect the checkout and admin routes.
+- [x] `T-01.3.4` Add service, controller, integration, HTTP client, session,
+  and protected-route tests.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/entity/RefreshToken.java`
+- `backend/src/main/java/com/techstore/controller/AuthController.java`
+- `frontend/src/modules/auth/RequireAuth.tsx`
+- `frontend/src/modules/auth/AuthContext.tsx`
+- `docs/migrations/V20260904_01__add_refresh_tokens.sql`
+- `docs/api_contract.md`

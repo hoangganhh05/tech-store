@@ -7,7 +7,10 @@ import { LoginPage } from '../modules/auth/LoginPage'
 import { loginAccount } from '../services/authService'
 import { tokenStorage } from '../utils/tokenStorage'
 
-vi.mock('../services/authService', () => ({ loginAccount: vi.fn() }))
+vi.mock('../services/authService', () => ({
+  loginAccount: vi.fn(),
+  logoutAccount: vi.fn(),
+}))
 
 const mockedLoginAccount = vi.mocked(loginAccount)
 

@@ -5,6 +5,7 @@ export type AuthContextValue = {
   user: AuthenticatedUser | null
   isAuthenticated: boolean
   signIn: (result: LoginResult) => void
+  signOut: () => Promise<void>
   clearSession: () => void
 }
 
