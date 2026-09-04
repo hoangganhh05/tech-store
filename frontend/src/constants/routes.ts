@@ -5,6 +5,7 @@ export const ROUTES = {
   cart: '/cart',
   checkout: '/checkout',
   login: '/login',
+  register: '/register',
   admin: '/admin',
   adminProducts: '/admin/products',
   adminOrders: '/admin/orders',

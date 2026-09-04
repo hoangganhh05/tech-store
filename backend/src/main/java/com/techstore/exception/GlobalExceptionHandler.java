@@ -3,6 +3,7 @@ package com.techstore.exception;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.enums.ErrorCode;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -27,11 +28,23 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception) {
-        String message = exception.getBindingResult().getFieldErrors().stream()
+        String fieldErrors = exception.getBindingResult().getFieldErrors().stream()
                 .map(this::formatFieldError)
+                .collect(Collectors.joining("; "));
+        String objectErrors = exception.getBindingResult().getGlobalErrors().stream()
+                .map(error -> error.getDefaultMessage() == null ? "Dữ liệu không hợp lệ" : error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
+        String message = java.util.stream.Stream.of(fieldErrors, objectErrors)
+                .filter(value -> !value.isBlank())
                 .collect(Collectors.joining("; "));
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), message));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        return ResponseEntity.status(ErrorCode.EMAIL_ALREADY_EXISTS.status())
+                .body(ApiResponse.error(ErrorCode.EMAIL_ALREADY_EXISTS.name(), "Email đã được đăng ký"));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

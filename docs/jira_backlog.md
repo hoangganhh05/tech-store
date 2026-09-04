@@ -103,3 +103,27 @@ Deliverables:
 - `docs/wireframes/storefront.svg`
 - `docs/wireframes/admin.svg`
 - `docs/wireframes/README.md`
+
+## EPIC-01 — Authentication and account management
+
+### US-01.1 — Register an account with email and password
+
+Status: **Done on `TSM-24/register-account`**
+
+- [x] `T-01.1.1` Add User/Role entities, registration DTO, BCrypt password
+  encoding, and `POST /api/v1/auth/register`.
+- [x] `T-01.1.2` Validate input, reject duplicate emails, assign the CUSTOMER
+  role, and return standardized errors.
+- [x] `T-01.1.3` Build the registration form with client-side field validation.
+- [x] `T-01.1.4` Integrate the registration API, loading/error states, and
+  redirect to login after success.
+- [x] `T-01.1.5` Add service, controller, integration, and Frontend form tests.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/controller/AuthController.java`
+- `backend/src/main/java/com/techstore/service/impl/AuthServiceImpl.java`
+- `backend/src/main/java/com/techstore/entity/User.java`
+- `backend/src/main/java/com/techstore/entity/Role.java`
+- `frontend/src/modules/auth/RegisterPage.tsx`
+- `docs/api_contract.md`

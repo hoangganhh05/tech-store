@@ -7,6 +7,7 @@ import { ProductDetailPage } from '../modules/products/ProductDetailPage'
 import { CartPage } from '../modules/cart/CartPage'
 import { CheckoutPage } from '../modules/checkout/CheckoutPage'
 import { LoginPage } from '../modules/auth/LoginPage'
+import { RegisterPage } from '../modules/auth/RegisterPage'
 import { AdminDashboardPage } from '../modules/admin/AdminDashboardPage'
 import { AdminProductsPage } from '../modules/admin/AdminProductsPage'
 import { AdminOrdersPage } from '../modules/admin/AdminOrdersPage'
@@ -23,6 +24,7 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.cart, element: <CartPage /> },
       { path: ROUTES.checkout, element: <CheckoutPage /> },
       { path: ROUTES.login, element: <LoginPage /> },
+      { path: ROUTES.register, element: <RegisterPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

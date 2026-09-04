@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND),
     DATABASE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
