@@ -1,14 +1,20 @@
 package com.techstore.service;
 
+import com.techstore.dto.request.LoginRequest;
 import com.techstore.dto.request.RegisterRequest;
+import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
 import com.techstore.entity.Role;
 import com.techstore.entity.User;
+import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
+import com.techstore.enums.UserStatus;
 import com.techstore.exception.BusinessException;
 import com.techstore.mapper.UserMapper;
 import com.techstore.repository.RoleRepository;
 import com.techstore.repository.UserRepository;
+import com.techstore.security.IssuedTokenPair;
+import com.techstore.security.TokenIssuer;
 import com.techstore.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,8 +23,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
 import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -37,11 +45,14 @@ class AuthServiceImplTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private TokenIssuer tokenIssuer;
+
     private AuthServiceImpl authService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, new UserMapper());
+        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, new UserMapper(), tokenIssuer);
     }
 
     @Test
@@ -84,6 +95,70 @@ class AuthServiceImplTest {
         verify(userRepository, never()).save(any());
     }
 
+    @Test
+    void loginReturnsTokensAndSafeUserInformationForValidCredentials() {
+        User user = customerUser();
+        IssuedTokenPair tokenPair = new IssuedTokenPair(
+                "access-token",
+                "refresh-token",
+                Instant.parse("2026-09-04T08:15:00Z"),
+                Instant.parse("2026-09-11T08:00:00Z")
+        );
+        when(userRepository.findByEmailIgnoreCase("customer@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("strong-password", "encoded-password")).thenReturn(true);
+        when(tokenIssuer.issue(user)).thenReturn(tokenPair);
+
+        LoginResponse actual = authService.login(loginRequest(" Customer@Example.com ", "strong-password"));
+
+        assertThat(actual.accessToken()).isEqualTo("access-token");
+        assertThat(actual.refreshToken()).isEqualTo("refresh-token");
+        assertThat(actual.tokenType()).isEqualTo("Bearer");
+        assertThat(actual.user().email()).isEqualTo("customer@example.com");
+        assertThat(actual.user().roles()).containsExactly("CUSTOMER");
+        verify(passwordEncoder).matches("strong-password", "encoded-password");
+        verify(tokenIssuer).issue(user);
+    }
+
+    @Test
+    void loginUsesTheSameGenericErrorForUnknownEmailAndWrongPassword() {
+        User user = customerUser();
+        when(userRepository.findByEmailIgnoreCase(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.empty(), Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+        BusinessException unknownEmail = catchThrowableOfType(
+                () -> authService.login(loginRequest("unknown@example.com", "wrong-password")),
+                BusinessException.class
+        );
+        BusinessException wrongPassword = catchThrowableOfType(
+                () -> authService.login(loginRequest("customer@example.com", "wrong-password")),
+                BusinessException.class
+        );
+
+        assertThat(unknownEmail.getErrorCode()).isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+        assertThat(unknownEmail.getMessage()).isEqualTo("Email hoặc mật khẩu không đúng");
+        assertThat(wrongPassword.getErrorCode()).isEqualTo(unknownEmail.getErrorCode());
+        assertThat(wrongPassword.getMessage()).isEqualTo(unknownEmail.getMessage());
+        verify(tokenIssuer, never()).issue(any());
+    }
+
+    @Test
+    void loginRejectsALockedAccountAfterVerifyingThePassword() {
+        User user = customerUser();
+        user.changeStatus(UserStatus.LOCKED);
+        when(userRepository.findByEmailIgnoreCase("customer@example.com")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("strong-password", "encoded-password")).thenReturn(true);
+
+        BusinessException exception = catchThrowableOfType(
+                () -> authService.login(loginRequest("customer@example.com", "strong-password")),
+                BusinessException.class
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ACCOUNT_LOCKED);
+        assertThat(exception.getMessage()).contains("đã bị khóa");
+        verify(tokenIssuer, never()).issue(any());
+    }
+
     private RegisterRequest request(String email) {
         RegisterRequest request = new RegisterRequest();
         request.setFullName("Nguyen Van A");
@@ -92,5 +167,18 @@ class AuthServiceImplTest {
         request.setPassword("strong-password");
         request.setConfirmPassword("strong-password");
         return request;
+    }
+
+    private LoginRequest loginRequest(String email, String password) {
+        LoginRequest request = new LoginRequest();
+        request.setEmail(email);
+        request.setPassword(password);
+        return request;
+    }
+
+    private User customerUser() {
+        User user = new User("customer@example.com", "encoded-password", "Nguyen Van A", "0901234567");
+        user.addRole(new Role(RoleCode.CUSTOMER, "Customer"));
+        return user;
     }
 }

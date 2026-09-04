@@ -127,3 +127,26 @@ Deliverables:
 - `backend/src/main/java/com/techstore/entity/Role.java`
 - `frontend/src/modules/auth/RegisterPage.tsx`
 - `docs/api_contract.md`
+
+### US-01.2 — Log in with email and password
+
+Status: **Done on `TSM-25/login`**
+
+- [x] `T-01.2.1` Add `POST /api/v1/auth/login` and generate signed access and
+  refresh JWTs with safe user information.
+- [x] `T-01.2.2` Validate login input, keep incorrect-email and
+  incorrect-password responses identical, and block locked accounts.
+- [x] `T-01.2.3` Build the login form and persist authenticated user state in
+  the Frontend Auth Context.
+- [x] `T-01.2.4` Integrate login API calls, loading/error states, token storage,
+  and automatic Bearer token attachment through the shared HTTP client.
+- [x] `T-01.2.5` Add service, controller, integration, HTTP client, and
+  Frontend login tests.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/security/JwtTokenIssuer.java`
+- `backend/src/main/java/com/techstore/controller/AuthController.java`
+- `frontend/src/modules/auth/LoginPage.tsx`
+- `frontend/src/modules/auth/AuthContext.tsx`
+- `docs/api_contract.md`

@@ -1,7 +1,9 @@
 package com.techstore.controller;
 
+import com.techstore.dto.request.LoginRequest;
 import com.techstore.dto.request.RegisterRequest;
 import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
 import com.techstore.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,5 +33,12 @@ public class AuthController {
         UserResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Đăng ký tài khoản thành công", response));
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "Log in with email and password")
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
     }
 }

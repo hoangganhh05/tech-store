@@ -8,7 +8,7 @@ export type RegisterPayload = {
   confirmPassword: string
 }
 
-export type RegisteredUser = {
+export type AuthenticatedUser = {
   id: number
   email: string
   fullName: string
@@ -17,6 +17,20 @@ export type RegisteredUser = {
   roles: string[]
   emailVerified: boolean
   createdAt: string
+}
+
+export type LoginPayload = {
+  email: string
+  password: string
+}
+
+export type LoginResult = {
+  accessToken: string
+  refreshToken: string
+  tokenType: 'Bearer'
+  accessTokenExpiresAt: string
+  refreshTokenExpiresAt: string
+  user: AuthenticatedUser
 }
 
 type ApiResponse<T> = {
@@ -28,6 +42,11 @@ type ApiResponse<T> = {
 }
 
 export async function registerAccount(payload: RegisterPayload) {
-  const response = await httpClient.post<ApiResponse<RegisteredUser>>('/auth/register', payload)
+  const response = await httpClient.post<ApiResponse<AuthenticatedUser>>('/auth/register', payload)
   return response.data
+}
+
+export async function loginAccount(payload: LoginPayload) {
+  const response = await httpClient.post<ApiResponse<LoginResult>>('/auth/login', payload)
+  return response.data.data
 }

@@ -16,3 +16,7 @@ logging:
   level:
     root: WARN
     com.techstore: INFO
+
+app:
+  jwt:
+    secret: techstore-test-jwt-secret-for-automated-tests-only-2026
