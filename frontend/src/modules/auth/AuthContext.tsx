@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AUTH_UNAUTHORIZED_EVENT } from '../../services/httpClient'
-import { type AuthenticatedUser, type LoginResult } from '../../services/authService'
+import { logoutAccount, type AuthenticatedUser, type LoginResult } from '../../services/authService'
 import { tokenStorage } from '../../utils/tokenStorage'
 import { AuthContext } from './AuthStore'
 
@@ -34,6 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user)
   }, [])
 
+  const signOut = useCallback(async () => {
+    const refreshToken = tokenStorage.getRefreshToken()
+
+    try {
+      if (refreshToken) await logoutAccount({ refreshToken })
+    } catch {
+      // Kết thúc phiên ở máy người dùng vẫn phải thành công khi mạng hoặc API gặp lỗi.
+    } finally {
+      clearSession()
+    }
+  }, [clearSession])
+
   useEffect(() => {
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, clearSession)
     return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, clearSession)
@@ -43,8 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: user !== null,
     signIn,
+    signOut,
     clearSession,
-  }), [clearSession, signIn, user])
+  }), [clearSession, signIn, signOut, user])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

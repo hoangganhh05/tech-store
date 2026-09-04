@@ -8,6 +8,7 @@ import { CartPage } from '../modules/cart/CartPage'
 import { CheckoutPage } from '../modules/checkout/CheckoutPage'
 import { LoginPage } from '../modules/auth/LoginPage'
 import { RegisterPage } from '../modules/auth/RegisterPage'
+import { RequireAuth } from '../modules/auth/RequireAuth'
 import { AdminDashboardPage } from '../modules/admin/AdminDashboardPage'
 import { AdminProductsPage } from '../modules/admin/AdminProductsPage'
 import { AdminOrdersPage } from '../modules/admin/AdminOrdersPage'
@@ -22,7 +23,7 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.products, element: <ProductListPage /> },
       { path: ROUTES.productDetail, element: <ProductDetailPage /> },
       { path: ROUTES.cart, element: <CartPage /> },
-      { path: ROUTES.checkout, element: <CheckoutPage /> },
+      { path: ROUTES.checkout, element: <RequireAuth><CheckoutPage /></RequireAuth> },
       { path: ROUTES.login, element: <LoginPage /> },
       { path: ROUTES.register, element: <RegisterPage /> },
       { path: '*', element: <NotFoundPage /> },
@@ -30,7 +31,7 @@ export const appRouter = createBrowserRouter([
   },
   {
     path: ROUTES.admin,
-    element: <AdminLayout />,
+    element: <RequireAuth><AdminLayout /></RequireAuth>,
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'products', element: <AdminProductsPage /> },

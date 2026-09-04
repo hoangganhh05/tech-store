@@ -2,6 +2,7 @@ package com.techstore.e2e;
 
 import com.techstore.entity.User;
 import com.techstore.enums.UserStatus;
+import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.JwtProperties;
 import io.jsonwebtoken.Claims;
@@ -35,10 +36,14 @@ class AuthLoginIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private JwtProperties jwtProperties;
 
     @BeforeEach
     void cleanUsers() {
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 

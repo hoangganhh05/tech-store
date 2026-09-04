@@ -2,6 +2,7 @@ package com.techstore.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.LoginRequest;
+import com.techstore.dto.request.LogoutRequest;
 import com.techstore.dto.request.RegisterRequest;
 import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
@@ -129,6 +130,30 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isLocked())
                 .andExpect(jsonPath("$.code").value("ACCOUNT_LOCKED"));
+    }
+
+    @Test
+    void logoutRevokesTheRefreshTokenAndReturnsSuccess() throws Exception {
+        LogoutRequest request = new LogoutRequest();
+        request.setRefreshToken("refresh-token");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đăng xuất thành công"));
+
+        verify(authService).logout(any(LogoutRequest.class));
+    }
+
+    @Test
+    void logoutReturnsValidationErrorWhenRefreshTokenIsBlank() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     private RegisterRequest validRequest() {

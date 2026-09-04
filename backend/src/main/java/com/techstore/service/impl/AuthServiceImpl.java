@@ -1,10 +1,12 @@
 package com.techstore.service.impl;
 
 import com.techstore.dto.request.LoginRequest;
+import com.techstore.dto.request.LogoutRequest;
 import com.techstore.dto.request.RegisterRequest;
 import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
 import com.techstore.entity.Role;
+import com.techstore.entity.RefreshToken;
 import com.techstore.entity.User;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
@@ -12,8 +14,10 @@ import com.techstore.enums.UserStatus;
 import com.techstore.exception.BusinessException;
 import com.techstore.mapper.UserMapper;
 import com.techstore.repository.RoleRepository;
+import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
+import com.techstore.security.InvalidRefreshTokenException;
 import com.techstore.security.TokenIssuer;
 import com.techstore.service.AuthService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final TokenIssuer tokenIssuer;
@@ -32,12 +37,14 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(
             UserRepository userRepository,
             RoleRepository roleRepository,
+            RefreshTokenRepository refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             UserMapper userMapper,
             TokenIssuer tokenIssuer
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.userMapper = userMapper;
         this.tokenIssuer = tokenIssuer;
@@ -66,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmailIgnoreCase(normalizeEmail(request.getEmail()))
                 .orElseThrow(this::invalidCredentials);
@@ -82,6 +89,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         IssuedTokenPair tokens = tokenIssuer.issue(user);
+        refreshTokenRepository.save(new RefreshToken(user, tokens.refreshTokenId(), tokens.refreshTokenExpiresAt()));
         return new LoginResponse(
                 tokens.accessToken(),
                 tokens.refreshToken(),
@@ -90,6 +98,25 @@ public class AuthServiceImpl implements AuthService {
                 tokens.refreshTokenExpiresAt(),
                 userMapper.toResponse(user)
         );
+    }
+
+    @Override
+    @Transactional
+    public void logout(LogoutRequest request) {
+        String tokenId;
+        try {
+            tokenId = tokenIssuer.getRefreshTokenId(request.getRefreshToken());
+        } catch (InvalidRefreshTokenException exception) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn", exception);
+        }
+
+        RefreshToken refreshToken = refreshTokenRepository.findByTokenId(tokenId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.INVALID_REFRESH_TOKEN,
+                        "Phiên đăng nhập không hợp lệ hoặc đã hết hạn"
+                ));
+        refreshToken.revoke();
+        refreshTokenRepository.save(refreshToken);
     }
 
     private BusinessException invalidCredentials() {

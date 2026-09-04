@@ -20,8 +20,10 @@ httpClient.interceptors.request.use((config) => {
 httpClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    const isLoginRequest = error.config?.url?.replace(/\/+$/, '').endsWith('/auth/login')
-    if (error.response?.status === 401 && !isLoginRequest) {
+    const requestUrl = error.config?.url?.replace(/\/+$/, '')
+    const isLoginRequest = requestUrl?.endsWith('/auth/login')
+    const isLogoutRequest = requestUrl?.endsWith('/auth/logout')
+    if (error.response?.status === 401 && !isLoginRequest && !isLogoutRequest) {
       tokenStorage.clear()
       window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT))
     }

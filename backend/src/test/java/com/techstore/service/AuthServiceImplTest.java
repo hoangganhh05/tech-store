@@ -1,10 +1,12 @@
 package com.techstore.service;
 
 import com.techstore.dto.request.LoginRequest;
+import com.techstore.dto.request.LogoutRequest;
 import com.techstore.dto.request.RegisterRequest;
 import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
 import com.techstore.entity.Role;
+import com.techstore.entity.RefreshToken;
 import com.techstore.entity.User;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
@@ -12,8 +14,10 @@ import com.techstore.enums.UserStatus;
 import com.techstore.exception.BusinessException;
 import com.techstore.mapper.UserMapper;
 import com.techstore.repository.RoleRepository;
+import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
+import com.techstore.security.InvalidRefreshTokenException;
 import com.techstore.security.TokenIssuer;
 import com.techstore.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -43,6 +47,9 @@ class AuthServiceImplTest {
     private RoleRepository roleRepository;
 
     @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -52,7 +59,14 @@ class AuthServiceImplTest {
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        authService = new AuthServiceImpl(userRepository, roleRepository, passwordEncoder, new UserMapper(), tokenIssuer);
+        authService = new AuthServiceImpl(
+                userRepository,
+                roleRepository,
+                refreshTokenRepository,
+                passwordEncoder,
+                new UserMapper(),
+                tokenIssuer
+        );
     }
 
     @Test
@@ -101,6 +115,7 @@ class AuthServiceImplTest {
         IssuedTokenPair tokenPair = new IssuedTokenPair(
                 "access-token",
                 "refresh-token",
+                "refresh-token-id",
                 Instant.parse("2026-09-04T08:15:00Z"),
                 Instant.parse("2026-09-11T08:00:00Z")
         );
@@ -117,6 +132,10 @@ class AuthServiceImplTest {
         assertThat(actual.user().roles()).containsExactly("CUSTOMER");
         verify(passwordEncoder).matches("strong-password", "encoded-password");
         verify(tokenIssuer).issue(user);
+        ArgumentCaptor<RefreshToken> tokenCaptor = ArgumentCaptor.forClass(RefreshToken.class);
+        verify(refreshTokenRepository).save(tokenCaptor.capture());
+        assertThat(tokenCaptor.getValue().getTokenId()).isEqualTo("refresh-token-id");
+        assertThat(tokenCaptor.getValue().getExpiresAt()).isEqualTo(Instant.parse("2026-09-11T08:00:00Z"));
     }
 
     @Test
@@ -159,6 +178,36 @@ class AuthServiceImplTest {
         verify(tokenIssuer, never()).issue(any());
     }
 
+    @Test
+    void logoutRevokesTheMatchingRefreshToken() {
+        RefreshToken refreshToken = new RefreshToken(
+                customerUser(),
+                "refresh-token-id",
+                Instant.parse("2026-09-11T08:00:00Z")
+        );
+        when(tokenIssuer.getRefreshTokenId("refresh-token")).thenReturn("refresh-token-id");
+        when(refreshTokenRepository.findByTokenId("refresh-token-id")).thenReturn(Optional.of(refreshToken));
+
+        authService.logout(logoutRequest("refresh-token"));
+
+        assertThat(refreshToken.isRevoked()).isTrue();
+        verify(refreshTokenRepository).save(refreshToken);
+    }
+
+    @Test
+    void logoutRejectsAnInvalidRefreshToken() {
+        when(tokenIssuer.getRefreshTokenId("invalid-token"))
+                .thenThrow(new InvalidRefreshTokenException("Refresh token không hợp lệ"));
+
+        BusinessException exception = catchThrowableOfType(
+                () -> authService.logout(logoutRequest("invalid-token")),
+                BusinessException.class
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+        verify(refreshTokenRepository, never()).findByTokenId(any());
+    }
+
     private RegisterRequest request(String email) {
         RegisterRequest request = new RegisterRequest();
         request.setFullName("Nguyen Van A");
@@ -173,6 +222,12 @@ class AuthServiceImplTest {
         LoginRequest request = new LoginRequest();
         request.setEmail(email);
         request.setPassword(password);
+        return request;
+    }
+
+    private LogoutRequest logoutRequest(String refreshToken) {
+        LogoutRequest request = new LogoutRequest();
+        request.setRefreshToken(refreshToken);
         return request;
     }
 

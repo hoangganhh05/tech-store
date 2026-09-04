@@ -126,3 +126,43 @@ Error responses:
 After a successful login, the Frontend stores the returned token pair and
 attaches the access token as `Authorization: Bearer <token>` to subsequent API
 requests.
+
+## Log out and revoke a refresh token
+
+`POST /api/v1/auth/logout`
+
+Request body:
+
+```json
+{
+  "refreshToken": "<signed-jwt-refresh-token>"
+}
+```
+
+Successful response: `200 OK`
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Đăng xuất thành công",
+  "data": null,
+  "timestamp": "2026-09-04T00:00:00Z"
+}
+```
+
+At login, the server stores only the refresh token's signed JWT identifier
+(`jti`). Logout marks that identifier as revoked, so a future refresh-token
+endpoint can reject the session without storing the raw token. Repeating logout
+with the same valid refresh token is safe and returns success.
+
+Error responses:
+
+- `400 Bad Request`, code `VALIDATION_ERROR`: `refreshToken` is missing or blank.
+- `401 Unauthorized`, code `INVALID_REFRESH_TOKEN`: the token is malformed,
+  expired, signed with a different key, is an access token, or is not known to
+  the server.
+
+The Frontend clears its local access token, refresh token, and authenticated
+user state even when the logout request cannot reach the server; it then sends
+the user to a public route.

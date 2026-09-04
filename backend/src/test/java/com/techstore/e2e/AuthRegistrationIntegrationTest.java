@@ -2,6 +2,7 @@ package com.techstore.e2e;
 
 import com.techstore.entity.User;
 import com.techstore.repository.UserRepository;
+import com.techstore.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +31,14 @@ class AuthRegistrationIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanUsers() {
+        refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }
 

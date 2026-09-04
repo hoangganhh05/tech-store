@@ -5,4 +5,6 @@ import com.techstore.entity.User;
 public interface TokenIssuer {
 
     IssuedTokenPair issue(User user);
+
+    String getRefreshTokenId(String refreshToken);
 }

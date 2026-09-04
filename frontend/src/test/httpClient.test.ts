@@ -1,5 +1,6 @@
 import AxiosMockAdapter from 'axios-mock-adapter'
 import { AUTH_UNAUTHORIZED_EVENT, httpClient } from '../services/httpClient'
+import { logoutAccount } from '../services/authService'
 import { tokenStorage } from '../utils/tokenStorage'
 
 describe('httpClient', () => {
@@ -37,5 +38,27 @@ describe('httpClient', () => {
     await expect(httpClient.post('/auth/login', { email: 'customer@example.com', password: 'wrong-password' })).rejects.toBeTruthy()
     expect(eventHandler).not.toHaveBeenCalled()
     window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
+  })
+
+  it('leaves logout failures to the sign-out flow so it can clear the full client session', async () => {
+    tokenStorage.setTokens('expired-token', 'refresh-token')
+    const eventHandler = vi.fn()
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
+    mock.onPost('/auth/logout').reply(401)
+
+    await expect(httpClient.post('/auth/logout', { refreshToken: 'refresh-token' })).rejects.toBeTruthy()
+    expect(tokenStorage.getAccessToken()).toBe('expired-token')
+    expect(tokenStorage.getRefreshToken()).toBe('refresh-token')
+    expect(eventHandler).not.toHaveBeenCalled()
+    window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
+  })
+
+  it('posts the refresh token to the logout endpoint', async () => {
+    mock.onPost('/auth/logout').reply(204)
+
+    await logoutAccount({ refreshToken: 'refresh-token' })
+
+    expect(mock.history.post).toHaveLength(1)
+    expect(mock.history.post[0].data).toBe(JSON.stringify({ refreshToken: 'refresh-token' }))
   })
 })
