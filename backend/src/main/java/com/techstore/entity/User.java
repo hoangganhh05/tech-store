@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Entity
@@ -65,6 +66,10 @@ public class User extends BaseEntity {
 
     public void addRole(Role role) {
         roles.add(role);
+    }
+
+    public void changeStatus(UserStatus status) {
+        this.status = Objects.requireNonNull(status, "status must not be null");
     }
 
     public Long getId() {

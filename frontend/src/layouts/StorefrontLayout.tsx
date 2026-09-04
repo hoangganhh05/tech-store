@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { ROUTES } from '../constants/routes'
 import { env } from '../configs/env'
 import { useAuthEvents } from '../hooks/useAuthEvents'
+import { useAuth } from '../hooks/useAuth'
 
 const navItems = [
   { label: 'Trang chủ', to: ROUTES.home },
@@ -12,6 +13,7 @@ const navItems = [
 
 export function StorefrontLayout() {
   useAuthEvents()
+  const { isAuthenticated, user } = useAuth()
   return (
     <Box minHeight="100vh" display="flex" flexDirection="column">
       <a className="skip-link" href="#main-content">Bỏ qua điều hướng</a>
@@ -35,8 +37,16 @@ export function StorefrontLayout() {
                 </Button>
               ))}
             </Stack>
-            <Button component={Link} to={ROUTES.register} color="inherit">Đăng ký</Button>
-            <Button component={Link} to={ROUTES.login} color="inherit">Đăng nhập</Button>
+            {isAuthenticated ? (
+              <Typography variant="body2" color="text.secondary" noWrap>
+                Chào, {user?.fullName}
+              </Typography>
+            ) : (
+              <>
+                <Button component={Link} to={ROUTES.register} color="inherit">Đăng ký</Button>
+                <Button component={Link} to={ROUTES.login} color="inherit">Đăng nhập</Button>
+              </>
+            )}
             <IconButton component={Link} to={ROUTES.cart} aria-label="Giỏ hàng">
               <Badge badgeContent={0} color="primary"><ShoppingCartOutlinedIcon /></Badge>
             </IconButton>

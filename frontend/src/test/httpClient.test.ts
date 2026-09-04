@@ -28,4 +28,14 @@ describe('httpClient', () => {
     expect(eventHandler).toHaveBeenCalledOnce()
     window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
   })
+
+  it('does not redirect away from the login form for invalid credentials', async () => {
+    const eventHandler = vi.fn()
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
+    mock.onPost('/auth/login').reply(401, { message: 'Email hoặc mật khẩu không đúng' })
+
+    await expect(httpClient.post('/auth/login', { email: 'customer@example.com', password: 'wrong-password' })).rejects.toBeTruthy()
+    expect(eventHandler).not.toHaveBeenCalled()
+    window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, eventHandler)
+  })
 })
