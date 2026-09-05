@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { getMyProfile, updateMyProfile, type UpdateProfilePayload } from '../../services/userService'
+import { ChangePasswordForm } from './ChangePasswordForm'
 
 type ProfileField = keyof UpdateProfilePayload
 type FieldErrors = Partial<Record<ProfileField, string>>
@@ -112,7 +113,8 @@ export function ProfilePage() {
   }
 
   return (
-    <Card sx={{ maxWidth: 680, mx: 'auto' }}>
+    <Stack spacing={3}>
+    <Card sx={{ maxWidth: 680, width: '100%', mx: 'auto' }}>
       <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
         <Typography component="h1" variant="h2" mb={1}>Thông tin cá nhân</Typography>
         <Typography color="text.secondary" mb={3}>Xem và cập nhật thông tin tài khoản của bạn.</Typography>
@@ -129,5 +131,7 @@ export function ProfilePage() {
         </Stack>
       </CardContent>
     </Card>
+    <ChangePasswordForm />
+    </Stack>
   )
 }

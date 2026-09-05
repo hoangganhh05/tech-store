@@ -11,6 +11,7 @@ type FieldErrors = Partial<Record<LoginField, string>>
 type LoginLocationState = {
   registrationMessage?: string
   passwordResetMessage?: string
+  passwordChangedMessage?: string
   from?: string
 }
 
@@ -22,7 +23,9 @@ export function LoginPage() {
   const navigate = useNavigate()
   const { signIn } = useAuth()
   const locationState = location.state as LoginLocationState | null
-  const confirmationMessage = locationState?.registrationMessage ?? locationState?.passwordResetMessage
+  const confirmationMessage = locationState?.registrationMessage
+    ?? locationState?.passwordResetMessage
+    ?? locationState?.passwordChangedMessage
   const redirectAfterLogin = locationState?.from ?? ROUTES.home
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})

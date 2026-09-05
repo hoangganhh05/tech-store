@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.UpdateProfileRequest;
 import com.techstore.dto.response.UserProfileResponse;
 import com.techstore.security.AccessTokenAuthenticator;
+import com.techstore.service.AccountPasswordService;
 import com.techstore.service.UserProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ class UserControllerTest {
 
     @MockitoBean
     private UserProfileService userProfileService;
+
+    @MockitoBean
+    private AccountPasswordService accountPasswordService;
 
     @Test
     void getMeReturnsTheAuthenticatedUserProfile() throws Exception {
@@ -79,6 +83,34 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.email").value("customer@example.com"));
 
         verify(userProfileService).updateProfile(any(), any(UpdateProfileRequest.class));
+    }
+
+    @Test
+    void changePasswordAuthenticatesAndDelegatesToTheService() throws Exception {
+        when(accessTokenAuthenticator.authenticate("Bearer access-token")).thenReturn(1L);
+
+        mockMvc.perform(put("/api/v1/users/me/password")
+                        .header("Authorization", "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"old-password\",\"newPassword\":\"new-password\",\"confirmPassword\":\"new-password\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Đổi mật khẩu thành công"));
+
+        verify(accountPasswordService).changePassword(any(), any());
+    }
+
+    @Test
+    void changePasswordReturnsFieldErrorsForWeakOrMismatchedPasswords() throws Exception {
+        mockMvc.perform(put("/api/v1/users/me/password")
+                        .header("Authorization", "Bearer access-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\":\"\",\"newPassword\":\"short\",\"confirmPassword\":\"different\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.allOf(
+                        org.hamcrest.Matchers.containsString("currentPassword"),
+                        org.hamcrest.Matchers.containsString("newPassword"),
+                        org.hamcrest.Matchers.containsString("confirmPassword"))));
     }
 
     private UserProfileResponse profile() {

@@ -314,3 +314,51 @@ Error responses for both profile endpoints:
 - `423 Locked`, code `ACCOUNT_LOCKED`, or `403 Forbidden`, code
   `ACCOUNT_DISABLED`: the account is no longer allowed to use authenticated
   features.
+
+## Change the authenticated user's password
+
+`PUT /api/v1/users/me/password`
+
+Header: `Authorization: Bearer <access-token>`
+
+Request body:
+
+```json
+{
+  "currentPassword": "old-password",
+  "newPassword": "new-strong-password",
+  "confirmPassword": "new-strong-password"
+}
+```
+
+The current password must be correct. The new password must contain 8–72
+characters, match `confirmPassword`, and differ from the current password.
+
+Successful response: `200 OK`
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Đổi mật khẩu thành công",
+  "data": null,
+  "timestamp": "2026-09-05T08:00:00Z"
+}
+```
+
+On success, the server BCrypt-encodes the new password and revokes every active
+refresh-token session for the account. The Frontend clears the current local
+session and sends the user to login again.
+
+Error responses:
+
+- `401 Unauthorized`, code `INVALID_ACCESS_TOKEN`: the Bearer access token is
+  missing, invalid, or expired.
+- `400 Bad Request`, code `VALIDATION_ERROR`: required fields are missing, the
+  new password is outside the allowed length, or confirmation does not match.
+- `400 Bad Request`, code `INVALID_CURRENT_PASSWORD`: the current password is
+  incorrect.
+- `400 Bad Request`, code `PASSWORD_MUST_BE_DIFFERENT`: the new password is the
+  same as the current password.
+- `423 Locked`, code `ACCOUNT_LOCKED`, or `403 Forbidden`, code
+  `ACCOUNT_DISABLED`: the account cannot use authenticated features.
