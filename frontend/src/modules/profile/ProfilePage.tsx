@@ -1,7 +1,9 @@
-import { Alert, Button, Card, CardContent, CircularProgress, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Box, Button, Card, CardContent, CircularProgress, Divider, Stack, TextField, Typography } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { ROUTES } from '../../constants/routes'
 import { getMyProfile, updateMyProfile, type UpdateProfilePayload } from '../../services/userService'
 import { ChangePasswordForm } from './ChangePasswordForm'
 
@@ -132,6 +134,20 @@ export function ProfilePage() {
       </CardContent>
     </Card>
     <ChangePasswordForm />
+    <Card sx={{ maxWidth: 680, width: '100%', mx: 'auto' }}>
+      <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Typography variant="h6" component="h2">Địa chỉ giao hàng</Typography>
+            <Typography color="text.secondary" variant="body2">Quản lý danh sách địa chỉ giao hàng của bạn.</Typography>
+          </Box>
+          <Button component={Link} to={ROUTES.addresses} variant="outlined">
+            Quản lý địa chỉ
+          </Button>
+        </Stack>
+      </CardContent>
+    </Card>
     </Stack>
   )
 }
+

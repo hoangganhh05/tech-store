@@ -21,6 +21,27 @@ export type ChangePasswordPayload = {
   confirmPassword: string
 }
 
+export type Address = {
+  id: number
+  recipientName: string
+  phone: string
+  province: string
+  district: string
+  ward: string
+  streetAddress: string
+  isDefault: boolean
+  createdAt: string
+}
+
+export type AddressPayload = {
+  recipientName: string
+  phone: string
+  province: string
+  district: string
+  ward: string
+  streetAddress: string
+}
+
 type ApiResponse<T> = {
   success: boolean
   code: string
@@ -42,3 +63,28 @@ export async function updateMyProfile(payload: UpdateProfilePayload): Promise<Us
 export async function changeMyPassword(payload: ChangePasswordPayload): Promise<void> {
   await httpClient.put('/users/me/password', payload)
 }
+
+export async function getMyAddresses(): Promise<Address[]> {
+  const response = await httpClient.get<ApiResponse<Address[]>>('/users/me/addresses')
+  return response.data.data
+}
+
+export async function addMyAddress(payload: AddressPayload): Promise<Address> {
+  const response = await httpClient.post<ApiResponse<Address>>('/users/me/addresses', payload)
+  return response.data.data
+}
+
+export async function updateMyAddress(id: number, payload: AddressPayload): Promise<Address> {
+  const response = await httpClient.put<ApiResponse<Address>>(`/users/me/addresses/${id}`, payload)
+  return response.data.data
+}
+
+export async function deleteMyAddress(id: number): Promise<void> {
+  await httpClient.delete(`/users/me/addresses/${id}`)
+}
+
+export async function setDefaultAddress(id: number): Promise<Address> {
+  const response = await httpClient.patch<ApiResponse<Address>>(`/users/me/addresses/${id}/default`)
+  return response.data.data
+}
+

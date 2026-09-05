@@ -11,6 +11,7 @@ import { RegisterPage } from '../modules/auth/RegisterPage'
 import { ForgotPasswordPage } from '../modules/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '../modules/auth/ResetPasswordPage'
 import { ProfilePage } from '../modules/profile/ProfilePage'
+import { AddressesPage } from '../modules/profile/AddressesPage'
 import { RequireAuth } from '../modules/auth/RequireAuth'
 import { AdminDashboardPage } from '../modules/admin/AdminDashboardPage'
 import { AdminProductsPage } from '../modules/admin/AdminProductsPage'
@@ -32,6 +33,7 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.forgotPassword, element: <ForgotPasswordPage /> },
       { path: ROUTES.resetPassword, element: <ResetPasswordPage /> },
       { path: ROUTES.profile, element: <RequireAuth><ProfilePage /></RequireAuth> },
+      { path: ROUTES.addresses, element: <RequireAuth><AddressesPage /></RequireAuth> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },
@@ -45,3 +47,4 @@ export const appRouter = createBrowserRouter([
     ],
   },
 ])
+

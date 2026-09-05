@@ -9,7 +9,9 @@ export const ROUTES = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   profile: '/account/profile',
+  addresses: '/account/addresses',
   admin: '/admin',
   adminProducts: '/admin/products',
   adminOrders: '/admin/orders',
 } as const
+
