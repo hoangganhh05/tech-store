@@ -10,6 +10,7 @@ export const ROUTES = {
   resetPassword: '/reset-password',
   profile: '/account/profile',
   addresses: '/account/addresses',
+  forbidden: '/forbidden',
   admin: '/admin',
   adminProducts: '/admin/products',
   adminOrders: '/admin/orders',
