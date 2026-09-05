@@ -20,6 +20,7 @@ const drawerWidth = 240;
 const adminItems = [
   { label: "Tổng quan", to: ROUTES.admin },
   { label: "Người dùng", to: ROUTES.adminUsers },
+  { label: "Danh mục", to: ROUTES.adminCategories },
   { label: "Sản phẩm", to: ROUTES.adminProducts },
   { label: "Đơn hàng", to: ROUTES.adminOrders },
 ];
