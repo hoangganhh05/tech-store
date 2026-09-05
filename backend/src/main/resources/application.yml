@@ -6,6 +6,20 @@ spring:
   jackson:
     default-property-inclusion: non_null
     time-zone: UTC
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:true}
+          connectiontimeout: ${MAIL_CONNECTION_TIMEOUT:5000}
+          timeout: ${MAIL_TIMEOUT:5000}
+          writetimeout: ${MAIL_WRITE_TIMEOUT:5000}
   jpa:
     open-in-view: false
     properties:
@@ -38,3 +52,7 @@ app:
     secret: ${JWT_SECRET:}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P7D}
+  password-reset:
+    token-ttl: ${PASSWORD_RESET_TOKEN_TTL:PT30M}
+    frontend-base-url: ${PASSWORD_RESET_FRONTEND_URL:http://localhost:5173}
+    email-from: ${MAIL_FROM:no-reply@techstore.local}

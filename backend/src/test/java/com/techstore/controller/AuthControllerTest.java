@@ -3,12 +3,15 @@ package com.techstore.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.LoginRequest;
 import com.techstore.dto.request.LogoutRequest;
+import com.techstore.dto.request.ForgotPasswordRequest;
 import com.techstore.dto.request.RegisterRequest;
+import com.techstore.dto.request.ResetPasswordRequest;
 import com.techstore.dto.response.LoginResponse;
 import com.techstore.dto.response.UserResponse;
 import com.techstore.enums.ErrorCode;
 import com.techstore.exception.BusinessException;
 import com.techstore.service.AuthService;
+import com.techstore.service.PasswordResetService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -36,6 +39,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthService authService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @Test
     void registerReturnsCreatedUserWithoutPasswordHash() throws Exception {
@@ -154,6 +160,51 @@ class AuthControllerTest {
                         .content("{\"refreshToken\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void forgotPasswordAlwaysReturnsTheGenericSuccessResponse() throws Exception {
+        ForgotPasswordRequest request = new ForgotPasswordRequest();
+        request.setEmail("customer@example.com");
+
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value(
+                        "Nếu email này thuộc về một tài khoản, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu."
+                ));
+
+        verify(passwordResetService).requestPasswordReset(any(ForgotPasswordRequest.class));
+    }
+
+    @Test
+    void resetPasswordAcceptsAValidRequest() throws Exception {
+        ResetPasswordRequest request = new ResetPasswordRequest();
+        request.setToken("valid-reset-token");
+        request.setPassword("new-strong-password");
+        request.setConfirmPassword("new-strong-password");
+
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Đặt lại mật khẩu thành công"));
+
+        verify(passwordResetService).resetPassword(any(ResetPasswordRequest.class));
+    }
+
+    @Test
+    void resetPasswordRejectsMismatchedPasswordsBeforeCallingTheService() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"valid-reset-token\",\"password\":\"new-strong-password\",\"confirmPassword\":\"different-password\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verify(passwordResetService, org.mockito.Mockito.never()).resetPassword(any(ResetPasswordRequest.class));
     }
 
     private RegisterRequest validRequest() {

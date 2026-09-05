@@ -72,6 +72,10 @@ public class User extends BaseEntity {
         this.status = Objects.requireNonNull(status, "status must not be null");
     }
 
+    public void changePasswordHash(String passwordHash) {
+        this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
+    }
+
     public Long getId() {
         return id;
     }

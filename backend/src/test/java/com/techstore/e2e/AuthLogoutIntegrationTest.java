@@ -1,6 +1,7 @@
 package com.techstore.e2e;
 
 import com.techstore.entity.RefreshToken;
+import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.TokenIssuer;
@@ -34,10 +35,14 @@ class AuthLogoutIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
     private TokenIssuer tokenIssuer;
 
     @BeforeEach
     void cleanData() {
+        passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

@@ -8,6 +8,8 @@ import { CartPage } from '../modules/cart/CartPage'
 import { CheckoutPage } from '../modules/checkout/CheckoutPage'
 import { LoginPage } from '../modules/auth/LoginPage'
 import { RegisterPage } from '../modules/auth/RegisterPage'
+import { ForgotPasswordPage } from '../modules/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '../modules/auth/ResetPasswordPage'
 import { RequireAuth } from '../modules/auth/RequireAuth'
 import { AdminDashboardPage } from '../modules/admin/AdminDashboardPage'
 import { AdminProductsPage } from '../modules/admin/AdminProductsPage'
@@ -26,6 +28,8 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.checkout, element: <RequireAuth><CheckoutPage /></RequireAuth> },
       { path: ROUTES.login, element: <LoginPage /> },
       { path: ROUTES.register, element: <RegisterPage /> },
+      { path: ROUTES.forgotPassword, element: <ForgotPasswordPage /> },
+      { path: ROUTES.resetPassword, element: <ResetPasswordPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

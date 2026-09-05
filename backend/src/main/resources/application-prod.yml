@@ -2,6 +2,9 @@ spring:
   config:
     activate:
       on-profile: prod
+  mail:
+    # No default: production must not pretend to send reset links without SMTP.
+    host: ${MAIL_HOST}
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -24,3 +27,7 @@ logging:
 app:
   jwt:
     secret: ${JWT_SECRET}
+  password-reset:
+    # No defaults: a public reset link and sender address must be explicit in production.
+    frontend-base-url: ${PASSWORD_RESET_FRONTEND_URL}
+    email-from: ${MAIL_FROM}

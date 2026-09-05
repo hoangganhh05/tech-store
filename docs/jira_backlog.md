@@ -153,7 +153,7 @@ Deliverables:
 
 ### US-01.3 — Log out safely
 
-Status: **Done on `TSM-26/logout` (pending commit and Pull Request)**
+Status: **Done on `TSM-26/logout`**
 
 - [x] `T-01.3.1` Add `POST /api/v1/auth/logout`, persist the signed refresh-token
   identifier at login, and mark it revoked during logout without storing the raw token.
@@ -171,4 +171,32 @@ Deliverables:
 - `frontend/src/modules/auth/RequireAuth.tsx`
 - `frontend/src/modules/auth/AuthContext.tsx`
 - `docs/migrations/V20260904_01__add_refresh_tokens.sql`
+- `docs/api_contract.md`
+
+### US-01.4 — Reset password by email
+
+Status: **Done on `TSM-27/reset-password` (pending commit and Pull Request)**
+
+- [x] `T-01.4.1` Add `POST /api/v1/auth/forgot-password`; generate a random,
+  expiring reset token for an existing account and persist only its hash.
+- [x] `T-01.4.2` Send the reset link by SMTP, configure its TTL and Frontend
+  base URL through environment variables, and return the same response for
+  known and unknown emails.
+- [x] `T-01.4.3` Add `POST /api/v1/auth/reset-password`; atomically reject
+  invalid, expired, or used links; encode the new password; and revoke active
+  refresh-token sessions.
+- [x] `T-01.4.4` Build Frontend forgot-password and reset-password forms with
+  validation, generic reset-link errors, loading states, and login redirects.
+- [x] `T-01.4.5` Add service, controller, integration, and Frontend form tests
+  for known/unknown email handling, expiry, one-time use, and old-password
+  invalidation.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/entity/PasswordResetToken.java`
+- `backend/src/main/java/com/techstore/service/impl/PasswordResetServiceImpl.java`
+- `backend/src/main/java/com/techstore/infrastructure/mail/SmtpPasswordResetEmailSender.java`
+- `frontend/src/modules/auth/ForgotPasswordPage.tsx`
+- `frontend/src/modules/auth/ResetPasswordPage.tsx`
+- `docs/migrations/V20260905_02__add_password_reset_tokens.sql`
 - `docs/api_contract.md`
