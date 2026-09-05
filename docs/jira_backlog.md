@@ -203,7 +203,7 @@ Deliverables:
 
 ### US-01.5 — View and update personal profile
 
-Status: **Done on `TSM-28/view-update-profile` (pending commit and Pull Request)**
+Status: **Done on `TSM-28/view-update-profile`**
 
 - [x] `T-01.5.1` Add authenticated `GET /api/v1/users/me` and return full name,
   email, phone, optional date of birth, and update timestamp without sensitive data.
@@ -224,4 +224,27 @@ Deliverables:
 - `frontend/src/modules/profile/ProfilePage.tsx`
 - `frontend/src/services/userService.ts`
 - `docs/migrations/V20260905_03__add_user_date_of_birth.sql`
+- `docs/api_contract.md`
+
+### US-01.6 — Change password
+
+Status: **Done on `TSM-29/change-password` (pending commit and Pull Request)**
+
+- [x] `T-01.6.1` Add authenticated `PUT /api/v1/users/me/password`, verify the
+  current password, BCrypt-encode the new password, and revoke active refresh sessions.
+- [x] `T-01.6.2` Validate required values, enforce the 8–72 character policy,
+  reject mismatched confirmation and password reuse, and return standardized errors.
+- [x] `T-01.6.3` Add the change-password form to the protected account page.
+- [x] `T-01.6.4` Integrate loading and field/server errors, clear the old local
+  session on success, and redirect to login with a confirmation message.
+- [x] `T-01.6.5` Add service, controller, integration, and Frontend tests for
+  successful changes, wrong current passwords, reuse, validation, and authentication.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/controller/UserController.java`
+- `backend/src/main/java/com/techstore/service/impl/AccountPasswordServiceImpl.java`
+- `backend/src/main/java/com/techstore/dto/request/ChangePasswordRequest.java`
+- `frontend/src/modules/profile/ChangePasswordForm.tsx`
+- `frontend/src/services/userService.ts`
 - `docs/api_contract.md`

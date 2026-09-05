@@ -15,6 +15,12 @@ export type UpdateProfilePayload = {
   dateOfBirth: string | null
 }
 
+export type ChangePasswordPayload = {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
 type ApiResponse<T> = {
   success: boolean
   code: string
@@ -31,4 +37,8 @@ export async function getMyProfile(): Promise<UserProfile> {
 export async function updateMyProfile(payload: UpdateProfilePayload): Promise<UserProfile> {
   const response = await httpClient.put<ApiResponse<UserProfile>>('/users/me', payload)
   return response.data.data
+}
+
+export async function changeMyPassword(payload: ChangePasswordPayload): Promise<void> {
+  await httpClient.put('/users/me/password', payload)
 }

@@ -7,7 +7,11 @@ import { ProfilePage } from '../modules/profile/ProfilePage'
 import { getMyProfile, updateMyProfile } from '../services/userService'
 import { tokenStorage } from '../utils/tokenStorage'
 
-vi.mock('../services/userService', () => ({ getMyProfile: vi.fn(), updateMyProfile: vi.fn() }))
+vi.mock('../services/userService', () => ({
+  getMyProfile: vi.fn(),
+  updateMyProfile: vi.fn(),
+  changeMyPassword: vi.fn(),
+}))
 vi.mock('../services/authService', () => ({ logoutAccount: vi.fn() }))
 
 const mockedGetMyProfile = vi.mocked(getMyProfile)

@@ -1,9 +1,11 @@
 package com.techstore.controller;
 
+import com.techstore.dto.request.ChangePasswordRequest;
 import com.techstore.dto.request.UpdateProfileRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.UserProfileResponse;
 import com.techstore.security.AccessTokenAuthenticator;
+import com.techstore.service.AccountPasswordService;
 import com.techstore.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,13 +26,16 @@ public class UserController {
 
     private final AccessTokenAuthenticator accessTokenAuthenticator;
     private final UserProfileService userProfileService;
+    private final AccountPasswordService accountPasswordService;
 
     public UserController(
             AccessTokenAuthenticator accessTokenAuthenticator,
-            UserProfileService userProfileService
+            UserProfileService userProfileService,
+            AccountPasswordService accountPasswordService
     ) {
         this.accessTokenAuthenticator = accessTokenAuthenticator;
         this.userProfileService = userProfileService;
+        this.accountPasswordService = accountPasswordService;
     }
 
     @GetMapping("/me")
@@ -50,5 +55,16 @@ public class UserController {
     ) {
         Long userId = accessTokenAuthenticator.authenticate(authorizationHeader);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin cá nhân thành công", userProfileService.updateProfile(userId, request)));
+    }
+
+    @PutMapping("/me/password")
+    @Operation(summary = "Change the authenticated user's password")
+    public ResponseEntity<ApiResponse<Void>> changeMyPassword(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        Long userId = accessTokenAuthenticator.authenticate(authorizationHeader);
+        accountPasswordService.changePassword(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công", null));
     }
 }
