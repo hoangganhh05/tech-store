@@ -1,6 +1,7 @@
 package com.techstore.security;
 
 import com.techstore.entity.User;
+import com.techstore.enums.RoleCode;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -12,7 +13,9 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -64,6 +67,11 @@ public class JwtTokenIssuer implements TokenIssuer {
 
     @Override
     public Long getAccessTokenUserId(String accessToken) {
+        return getAccessTokenClaims(accessToken).userId();
+    }
+
+    @Override
+    public AccessTokenClaims getAccessTokenClaims(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
             if (!"access".equals(claims.get("type", String.class))) {
@@ -74,7 +82,26 @@ public class JwtTokenIssuer implements TokenIssuer {
             if (!(userId instanceof Number numericUserId) || numericUserId.longValue() <= 0) {
                 throw new InvalidAccessTokenException("Access token không hợp lệ");
             }
-            return numericUserId.longValue();
+
+            String email = claims.getSubject();
+            if (email == null || email.isBlank()) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+
+            Set<RoleCode> roleCodes = new LinkedHashSet<>();
+            Object rawRoles = claims.get("roles");
+            if (rawRoles instanceof List<?> roleList) {
+                for (Object item : roleList) {
+                    if (item instanceof String roleName) {
+                        try {
+                            roleCodes.add(RoleCode.valueOf(roleName));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                }
+            }
+
+            return new AccessTokenClaims(numericUserId.longValue(), email, roleCodes);
         } catch (JwtException | IllegalArgumentException exception) {
             throw new InvalidAccessTokenException("Access token không hợp lệ", exception);
         }

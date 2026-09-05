@@ -8,5 +8,7 @@ public interface TokenIssuer {
 
     Long getAccessTokenUserId(String accessToken);
 
+    AccessTokenClaims getAccessTokenClaims(String accessToken);
+
     String getRefreshTokenId(String refreshToken);
 }
