@@ -1,0 +1,156 @@
+package com.techstore.security;
+
+import com.techstore.entity.User;
+import com.techstore.enums.RoleCode;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+@Service
+public class JwtTokenIssuer implements TokenIssuer {
+
+    private static final int MINIMUM_HMAC_SECRET_LENGTH = 32;
+
+    private final JwtProperties properties;
+    private SecretKey signingKey;
+
+    public JwtTokenIssuer(JwtProperties properties) {
+        this.properties = properties;
+    }
+
+    @PostConstruct
+    void initialize() {
+        String secret = properties.getSecret();
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("JWT_SECRET must be configured");
+        }
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MINIMUM_HMAC_SECRET_LENGTH) {
+            throw new IllegalStateException("JWT_SECRET must contain at least 32 characters");
+        }
+        if (properties.getAccessTokenTtl().isNegative() || properties.getAccessTokenTtl().isZero()
+                || properties.getRefreshTokenTtl().isNegative() || properties.getRefreshTokenTtl().isZero()) {
+            throw new IllegalStateException("JWT token TTL values must be greater than zero");
+        }
+        signingKey = Keys.hmacShaKeyFor(secretBytes);
+    }
+
+    @Override
+    public IssuedTokenPair issue(User user) {
+        Instant issuedAt = Instant.now();
+        Instant accessExpiresAt = issuedAt.plus(properties.getAccessTokenTtl());
+        Instant refreshExpiresAt = issuedAt.plus(properties.getRefreshTokenTtl());
+        List<String> roles = user.getRoleCodes().stream().map(Enum::name).sorted().toList();
+        String accessTokenId = UUID.randomUUID().toString();
+        String refreshTokenId = UUID.randomUUID().toString();
+
+        return new IssuedTokenPair(
+                createToken(user, roles, "access", accessTokenId, issuedAt, accessExpiresAt),
+                createToken(user, roles, "refresh", refreshTokenId, issuedAt, refreshExpiresAt),
+                refreshTokenId,
+                accessExpiresAt,
+                refreshExpiresAt
+        );
+    }
+
+    @Override
+    public Long getAccessTokenUserId(String accessToken) {
+        return getAccessTokenClaims(accessToken).userId();
+    }
+
+    @Override
+    public AccessTokenClaims getAccessTokenClaims(String accessToken) {
+        try {
+            Claims claims = parseClaims(accessToken);
+            if (!"access".equals(claims.get("type", String.class))) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+
+            Object userId = claims.get("uid");
+            if (!(userId instanceof Number numericUserId) || numericUserId.longValue() <= 0) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+
+            String email = claims.getSubject();
+            if (email == null || email.isBlank()) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+
+            Set<RoleCode> roleCodes = new LinkedHashSet<>();
+            Object rawRoles = claims.get("roles");
+            if (rawRoles instanceof List<?> roleList) {
+                for (Object item : roleList) {
+                    if (item instanceof String roleName) {
+                        try {
+                            roleCodes.add(RoleCode.valueOf(roleName));
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                }
+            }
+
+            return new AccessTokenClaims(numericUserId.longValue(), email, roleCodes);
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new InvalidAccessTokenException("Access token không hợp lệ", exception);
+        }
+    }
+
+    @Override
+    public String getRefreshTokenId(String refreshToken) {
+        try {
+            Claims claims = parseClaims(refreshToken);
+
+            if (!"refresh".equals(claims.get("type", String.class))) {
+                throw new InvalidRefreshTokenException("Refresh token không hợp lệ");
+            }
+
+            String tokenId = claims.getId();
+            if (tokenId == null || tokenId.isBlank()) {
+                throw new InvalidRefreshTokenException("Refresh token không hợp lệ");
+            }
+            return tokenId;
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new InvalidRefreshTokenException("Refresh token không hợp lệ", exception);
+        }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    private String createToken(
+            User user,
+            List<String> roles,
+            String tokenType,
+            String tokenId,
+            Instant issuedAt,
+            Instant expiresAt
+    ) {
+        return Jwts.builder()
+                .subject(user.getEmail())
+                .claim("uid", user.getId())
+                .claim("roles", roles)
+                .claim("type", tokenType)
+                .id(tokenId)
+                .issuedAt(Date.from(issuedAt))
+                .expiration(Date.from(expiresAt))
+                .signWith(signingKey)
+                .compact();
+    }
+}

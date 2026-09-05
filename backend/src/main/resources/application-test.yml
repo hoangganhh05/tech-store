@@ -9,10 +9,16 @@ spring:
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     show-sql: false
+  flyway:
+    enabled: false
 
 logging:
   level:
     root: WARN
     com.techstore: INFO
+
+app:
+  jwt:
+    secret: techstore-test-jwt-secret-for-automated-tests-only-2026

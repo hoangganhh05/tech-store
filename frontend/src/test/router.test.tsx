@@ -3,6 +3,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
 import { appTheme } from '../configs/theme'
 import { StorefrontLayout } from '../layouts/StorefrontLayout'
+import { AuthProvider } from '../modules/auth/AuthContext'
 import { HomePage } from '../modules/home/HomePage'
 import { ProductListPage } from '../modules/products/ProductListPage'
 import { NotFoundPage } from '../modules/not-found/NotFoundPage'
@@ -18,7 +19,11 @@ function renderRoute(path: string) {
       ],
     },
   ], { initialEntries: [path] })
-  return render(<ThemeProvider theme={appTheme}><RouterProvider router={router} /></ThemeProvider>)
+  return render(
+    <ThemeProvider theme={appTheme}>
+      <AuthProvider><RouterProvider router={router} /></AuthProvider>
+    </ThemeProvider>,
+  )
 }
 
 describe('application routing', () => {
