@@ -5,6 +5,7 @@ import com.techstore.dto.request.UpdateProfileRequest;
 import com.techstore.dto.response.UserProfileResponse;
 import com.techstore.security.AccessTokenAuthenticator;
 import com.techstore.service.AccountPasswordService;
+import com.techstore.service.AddressService;
 import com.techstore.service.UserProfileService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,9 @@ class UserControllerTest {
 
     @MockitoBean
     private AccountPasswordService accountPasswordService;
+
+    @MockitoBean
+    private AddressService addressService;
 
     @Test
     void getMeReturnsTheAuthenticatedUserProfile() throws Exception {
