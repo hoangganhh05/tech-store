@@ -14,3 +14,4 @@ public record AddressResponse(
         Instant createdAt
 ) {
 }
+

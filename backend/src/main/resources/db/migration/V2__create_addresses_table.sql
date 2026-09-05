@@ -16,3 +16,4 @@ CREATE TABLE addresses (
 );
 
 CREATE INDEX idx_addresses_user_id ON addresses (user_id);
+

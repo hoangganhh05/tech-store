@@ -1,7 +1,7 @@
-import AddIcon from '@mui/icons-material/Add'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import HomeIcon from '@mui/icons-material/Home'
+import AddIcon from "@mui/icons-material/Add";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import HomeIcon from "@mui/icons-material/Home";
 import {
   Alert,
   Box,
@@ -20,113 +20,125 @@ import {
   Stack,
   Tooltip,
   Typography,
-} from '@mui/material'
-import { isAxiosError } from 'axios'
-import { useCallback, useEffect, useState } from 'react'
-import { deleteMyAddress, getMyAddresses, setDefaultAddress, type Address } from '../../services/userService'
-import { AddressFormDialog } from './AddressFormDialog'
+} from "@mui/material";
+import { isAxiosError } from "axios";
+import { useCallback, useEffect, useState } from "react";
+import {
+  deleteMyAddress,
+  getMyAddresses,
+  setDefaultAddress,
+  type Address,
+} from "../../services/userService";
+import { AddressFormDialog } from "./AddressFormDialog";
 
 export function AddressesPage() {
-  const [addresses, setAddresses] = useState<Address[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
-  const [actionError, setActionError] = useState('')
-  const [reloadKey, setReloadKey] = useState(0)
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Dialog form (thêm/sửa)
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingAddress, setEditingAddress] = useState<Address | null>(null)
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
 
   // Dialog xác nhận xoá
-  const [deleteTarget, setDeleteTarget] = useState<Address | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Address | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Đang xử lý đặt mặc định
-  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null)
+  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
 
   const reload = useCallback(() => {
-    setIsLoading(true)
-    setLoadError('')
-    setReloadKey((k) => k + 1)
-  }, [])
+    setIsLoading(true);
+    setLoadError("");
+    setReloadKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     getMyAddresses()
       .then((data) => {
-        if (active) setAddresses(data)
+        if (active) setAddresses(data);
       })
       .catch(() => {
-        if (active) setLoadError('Không thể tải danh sách địa chỉ. Vui lòng thử lại.')
+        if (active)
+          setLoadError("Không thể tải danh sách địa chỉ. Vui lòng thử lại.");
       })
       .finally(() => {
-        if (active) setIsLoading(false)
-      })
+        if (active) setIsLoading(false);
+      });
     return () => {
-      active = false
-    }
-  }, [reloadKey])
+      active = false;
+    };
+  }, [reloadKey]);
 
   const handleOpenAdd = () => {
-    setEditingAddress(null)
-    setFormOpen(true)
-    setActionError('')
-  }
+    setEditingAddress(null);
+    setFormOpen(true);
+    setActionError("");
+  };
 
   const handleOpenEdit = (address: Address) => {
-    setEditingAddress(address)
-    setFormOpen(true)
-    setActionError('')
-  }
+    setEditingAddress(address);
+    setFormOpen(true);
+    setActionError("");
+  };
 
   const handleFormSaved = (saved: Address) => {
-    setFormOpen(false)
+    setFormOpen(false);
     setAddresses((prev) => {
-      const exists = prev.some((a) => a.id === saved.id)
+      const exists = prev.some((a) => a.id === saved.id);
       if (exists) {
-        return prev.map((a) => (a.id === saved.id ? saved : a))
+        return prev.map((a) => (a.id === saved.id ? saved : a));
       }
       // Địa chỉ mới: thêm vào đầu nếu là default, cuối nếu không
-      return saved.isDefault ? [saved, ...prev] : [...prev, saved]
-    })
-  }
+      return saved.isDefault ? [saved, ...prev] : [...prev, saved];
+    });
+  };
 
   const handleSetDefault = async (address: Address) => {
-    if (address.isDefault) return
-    setSettingDefaultId(address.id)
-    setActionError('')
+    if (address.isDefault) return;
+    setSettingDefaultId(address.id);
+    setActionError("");
     try {
-      const updated = await setDefaultAddress(address.id)
+      const updated = await setDefaultAddress(address.id);
       setAddresses((prev) =>
         prev.map((a) => ({
           ...a,
           isDefault: a.id === updated.id,
         })),
-      )
+      );
     } catch (error: unknown) {
-      const message = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined
-      setActionError(message || 'Không thể đặt địa chỉ mặc định lúc này.')
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      setActionError(message || "Không thể đặt địa chỉ mặc định lúc này.");
     } finally {
-      setSettingDefaultId(null)
+      setSettingDefaultId(null);
     }
-  }
+  };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return
-    setIsDeleting(true)
-    setActionError('')
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setActionError("");
     try {
-      await deleteMyAddress(deleteTarget.id)
-      setAddresses((prev) => prev.filter((a) => a.id !== deleteTarget.id))
-      setDeleteTarget(null)
+      await deleteMyAddress(deleteTarget.id);
+      setAddresses((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+      setDeleteTarget(null);
     } catch (error: unknown) {
-      const message = isAxiosError<{ message?: string }>(error) ? error.response?.data?.message : undefined
-      setActionError(message || 'Không thể xoá địa chỉ lúc này. Vui lòng thử lại.')
-      setDeleteTarget(null)
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      setActionError(
+        message || "Không thể xoá địa chỉ lúc này. Vui lòng thử lại.",
+      );
+      setDeleteTarget(null);
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -134,7 +146,7 @@ export function AddressesPage() {
         <CircularProgress />
         <Typography>Đang tải danh sách địa chỉ...</Typography>
       </Stack>
-    )
+    );
   }
 
   if (loadError) {
@@ -145,14 +157,18 @@ export function AddressesPage() {
           Thử lại
         </Button>
       </Stack>
-    )
+    );
   }
 
   return (
     <>
-      <Stack spacing={3} sx={{ maxWidth: 720, mx: 'auto' }}>
+      <Stack spacing={3} sx={{ maxWidth: 720, mx: "auto" }}>
         {/* Header */}
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
           <Box>
             <Typography component="h1" variant="h2">
               Địa chỉ giao hàng
@@ -161,14 +177,18 @@ export function AddressesPage() {
               Quản lý các địa chỉ giao hàng của bạn.
             </Typography>
           </Box>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAdd}
+          >
             Thêm địa chỉ
           </Button>
         </Stack>
 
         {/* Action error */}
         {actionError && (
-          <Alert severity="error" onClose={() => setActionError('')}>
+          <Alert severity="error" onClose={() => setActionError("")}>
             {actionError}
           </Alert>
         )}
@@ -178,9 +198,15 @@ export function AddressesPage() {
           <Card>
             <CardContent>
               <Stack alignItems="center" py={4} spacing={2}>
-                <HomeIcon sx={{ fontSize: 56, color: 'text.disabled' }} />
-                <Typography color="text.secondary">Bạn chưa có địa chỉ giao hàng nào.</Typography>
-                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleOpenAdd}>
+                <HomeIcon sx={{ fontSize: 56, color: "text.disabled" }} />
+                <Typography color="text.secondary">
+                  Bạn chưa có địa chỉ giao hàng nào.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenAdd}
+                >
                   Thêm địa chỉ đầu tiên
                 </Button>
               </Stack>
@@ -192,32 +218,57 @@ export function AddressesPage() {
         {addresses.map((address, index) => (
           <Card
             key={address.id}
-            variant={address.isDefault ? 'outlined' : 'elevation'}
-            sx={address.isDefault ? { borderColor: 'primary.main', borderWidth: 2 } : undefined}
+            variant={address.isDefault ? "outlined" : "elevation"}
+            sx={
+              address.isDefault
+                ? { borderColor: "primary.main", borderWidth: 2 }
+                : undefined
+            }
           >
             <CardContent>
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="flex-start"
+                spacing={1}
+              >
                 {/* Address info */}
                 <Box flex={1}>
-                  <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={1}
+                    mb={0.5}
+                  >
                     <Typography variant="subtitle1" fontWeight={600}>
                       {address.recipientName}
                     </Typography>
                     <Typography color="text.secondary">·</Typography>
-                    <Typography color="text.secondary">{address.phone}</Typography>
+                    <Typography color="text.secondary">
+                      {address.phone}
+                    </Typography>
                     {address.isDefault && (
-                      <Chip label="Mặc định" size="small" color="primary" variant="outlined" />
+                      <Chip
+                        label="Mặc định"
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
                     )}
                   </Stack>
                   <Typography color="text.secondary" variant="body2">
-                    {address.streetAddress}, {address.ward}, {address.district}, {address.province}
+                    {address.streetAddress}, {address.ward}, {address.district},{" "}
+                    {address.province}
                   </Typography>
                 </Box>
 
                 {/* Actions */}
                 <Stack direction="row" spacing={0.5}>
                   <Tooltip title="Chỉnh sửa">
-                    <IconButton size="small" onClick={() => handleOpenEdit(address)}>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenEdit(address)}
+                    >
                       <EditOutlinedIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -227,8 +278,8 @@ export function AddressesPage() {
                         size="small"
                         color="error"
                         onClick={() => {
-                          setActionError('')
-                          setDeleteTarget(address)
+                          setActionError("");
+                          setDeleteTarget(address);
                         }}
                       >
                         <DeleteOutlineIcon fontSize="small" />
@@ -247,7 +298,9 @@ export function AddressesPage() {
                     onClick={() => handleSetDefault(address)}
                     disabled={settingDefaultId === address.id}
                   >
-                    {settingDefaultId === address.id ? 'Đang đặt...' : 'Đặt làm mặc định'}
+                    {settingDefaultId === address.id
+                      ? "Đang đặt..."
+                      : "Đặt làm mặc định"}
                   </Button>
                 </>
               )}
@@ -265,11 +318,14 @@ export function AddressesPage() {
       />
 
       {/* Delete confirm dialog */}
-      <Dialog open={Boolean(deleteTarget)} onClose={isDeleting ? undefined : () => setDeleteTarget(null)}>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={isDeleting ? undefined : () => setDeleteTarget(null)}
+      >
         <DialogTitle>Xoá địa chỉ?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Bạn có chắc muốn xoá địa chỉ{' '}
+            Bạn có chắc muốn xoá địa chỉ{" "}
             <strong>
               {deleteTarget?.streetAddress}, {deleteTarget?.province}
             </strong>
@@ -280,11 +336,16 @@ export function AddressesPage() {
           <Button onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
             Huỷ
           </Button>
-          <Button color="error" variant="contained" onClick={handleDeleteConfirm} disabled={isDeleting}>
-            {isDeleting ? 'Đang xoá...' : 'Xoá'}
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleDeleteConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Đang xoá..." : "Xoá"}
           </Button>
         </DialogActions>
       </Dialog>
     </>
-  )
+  );
 }

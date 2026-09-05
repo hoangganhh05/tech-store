@@ -61,3 +61,4 @@ CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens (expi
 INSERT INTO roles (code, name, created_at)
 VALUES ('CUSTOMER', 'Khách hàng', NOW()),
        ('ADMIN', 'Quản trị viên', NOW());
+

@@ -78,3 +78,4 @@ public class AddressRequest {
         this.streetAddress = streetAddress;
     }
 }
+
