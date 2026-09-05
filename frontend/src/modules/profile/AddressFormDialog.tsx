@@ -29,7 +29,7 @@ const empty: AddressPayload = {
   streetAddress: "",
 };
 
-const phonePattern = /^[0-9+() .\-]{7,20}$/;
+const phonePattern = /^[0-9+() .-]{7,20}$/;
 
 interface Props {
   open: boolean;

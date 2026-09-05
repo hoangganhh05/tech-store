@@ -31,7 +31,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { isAxiosError } from "axios";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -61,7 +61,7 @@ export function AdminUsersPage() {
   const [targetUser, setTargetUser] = useState<AuthenticatedUser | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const response: PageResponse<AuthenticatedUser> = await getAdminUsers({
@@ -82,11 +82,11 @@ export function AdminUsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeKeyword, page, rowsPerPage]);
 
   useEffect(() => {
     fetchUsers();
-  }, [page, rowsPerPage, activeKeyword]);
+  }, [fetchUsers]);
 
   const handleSearchSubmit = (event: FormEvent) => {
     event.preventDefault();
