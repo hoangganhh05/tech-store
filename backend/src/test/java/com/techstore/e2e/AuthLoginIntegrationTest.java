@@ -3,6 +3,7 @@ package com.techstore.e2e;
 import com.techstore.entity.User;
 import com.techstore.enums.UserStatus;
 import com.techstore.repository.RefreshTokenRepository;
+import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.JwtProperties;
 import io.jsonwebtoken.Claims;
@@ -39,10 +40,14 @@ class AuthLoginIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
     private JwtProperties jwtProperties;
 
     @BeforeEach
     void cleanUsers() {
+        passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

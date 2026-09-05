@@ -8,7 +8,7 @@
 
 | Domain | Entities | Main rules |
 |---|---|---|
-| Identity | `users`, `roles`, `user_roles`, `refresh_tokens`, `addresses` | Email is unique; users and roles are many-to-many; a refresh token is revocable by its JWT identifier; one default address per user. |
+| Identity | `users`, `roles`, `user_roles`, `refresh_tokens`, `password_reset_tokens`, `addresses` | Email is unique; users and roles are many-to-many; refresh sessions are revocable by JWT identifier; reset links are one-time, expire, and persist only a token hash; one default address per user. |
 | Catalog | `categories`, `brands`, `products`, `product_variants`, `product_images`, `product_specifications` | Categories are hierarchical; SKU and product slug are unique; product specifications are stored as key/value rows. |
 | Inventory | `inventories`, `inventory_transactions` | One inventory row per variant; quantities cannot be negative; every stock change has an auditable transaction. |
 | Cart | `carts`, `cart_items` | A cart belongs to a user or guest session; a variant occurs at most once in a cart. |
@@ -22,6 +22,7 @@ erDiagram
     USERS ||--o{ USER_ROLES : has
     ROLES ||--o{ USER_ROLES : grants
     USERS ||--o{ REFRESH_TOKENS : owns_sessions
+    USERS ||--o{ PASSWORD_RESET_TOKENS : requests_reset
     USERS ||--o{ ADDRESSES : owns
     CATEGORIES ||--o{ CATEGORIES : contains
     CATEGORIES ||--o{ PRODUCTS : classifies
@@ -55,7 +56,7 @@ erDiagram
 
 - Every table has a primary key. Pure many-to-many relation `user_roles` uses the composite key `(user_id, role_id)`.
 - Foreign keys use `CASCADE` only for owned child data. Historical commerce data uses `RESTRICT` or `SET NULL` to prevent accidental loss.
-- Business identifiers `users.email`, `refresh_tokens.token_id`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
+- Business identifiers `users.email`, `refresh_tokens.token_id`, `password_reset_tokens.token_hash`, `products.slug`, `product_variants.sku`, `orders.order_number`, and `vouchers.code` are unique.
 - Generated helper columns with unique constraints enforce one default address per user and one primary image per product or variant. This is the MySQL-compatible equivalent of a partial unique index.
 - Foreign keys use table-level `FOREIGN KEY (...) REFERENCES ...` constraints so the schema can also be parsed by modeling tools using the MySQL 5.7 grammar.
 - Junction tables resolve the many-to-many relationships between users and roles, users and wishlist products, and voucher redemption records.
@@ -79,6 +80,7 @@ The operational model is in 3NF:
 - Voucher validity dates, percentage bounds and global usage counts are constrained. Per-user limits are enforced transactionally by the service using `voucher_usages`.
 - Status transition rules are enforced by the service and audited in `order_status_history`.
 - Refresh tokens are represented by their signed JWT `jti`, not the raw JWT. Logout sets `refresh_tokens.revoked_at`; future refresh-token use must reject a revoked record.
+- Password-reset tokens contain only a SHA-256 hash of a cryptographically random value. The service atomically claims a token only while it is unused and unexpired, invalidates the account's other unused reset links, and revokes active refresh sessions after a successful password change.
 
 ## 6. Initialization
 
@@ -97,13 +99,18 @@ Run the schema from the repository root with PowerShell:
 
 The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database.
 
-For an existing database created before US-01.3, apply the one-time migration `docs/migrations/V20260904_01__add_refresh_tokens.sql` before starting the Backend. The current project does not run migrations automatically:
+For an existing database, apply the one-time migrations that are newer than its current schema in version order. The current project does not run migrations automatically. For a database created before US-01.3, run `V20260904_01__add_refresh_tokens.sql`, then run `V20260905_02__add_password_reset_tokens.sql`:
 
 ```powershell
 & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
   --default-character-set=utf8mb4 `
-  --user=root --password techstore `
+  --user=root --password `
   --execute="source docs/migrations/V20260904_01__add_refresh_tokens.sql"
+
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
+  --default-character-set=utf8mb4 `
+  --user=root --password `
+  --execute="source docs/migrations/V20260905_02__add_password_reset_tokens.sql"
 ```
 
 ## 7. Naming conventions
@@ -112,3 +119,4 @@ For an existing database created before US-01.3, apply the one-time migration `d
 - Primary keys use `id`; foreign keys use `<entity>_id`.
 - Timestamps use MySQL `TIMESTAMP`; the application and database connection must use UTC (`time_zone='+00:00'`).
 - Passwords are never stored as plain text; only `password_hash` is persisted.
+- Reset links are never stored as plain text; only `password_reset_tokens.token_hash` is persisted.

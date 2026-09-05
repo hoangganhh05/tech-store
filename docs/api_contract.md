@@ -166,3 +166,91 @@ Error responses:
 The Frontend clears its local access token, refresh token, and authenticated
 user state even when the logout request cannot reach the server; it then sends
 the user to a public route.
+
+## Request a password-reset link
+
+`POST /api/v1/auth/forgot-password`
+
+Request body:
+
+```json
+{
+  "email": "customer@example.com"
+}
+```
+
+`email` is required, must be a valid address, and is normalized to lowercase.
+
+Successful response: `200 OK`
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Nếu email này thuộc về một tài khoản, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.",
+  "data": null,
+  "timestamp": "2026-09-05T00:00:00Z"
+}
+```
+
+The response is identical whether the email exists or not, so this endpoint
+does not disclose registered email addresses. For an existing account, the
+server invalidates older unused reset links, stores only a hash of a newly
+generated random token, and sends a link to
+`PASSWORD_RESET_FRONTEND_URL/reset-password?token=...`. The link lifetime is
+configured by `PASSWORD_RESET_TOKEN_TTL` (30 minutes by default).
+
+In the `prod` profile, `MAIL_HOST`, `MAIL_FROM`, and
+`PASSWORD_RESET_FRONTEND_URL` are required at startup so a deployment cannot
+silently claim to send reset links without SMTP and a public Frontend URL.
+
+Error response:
+
+- `400 Bad Request`, code `VALIDATION_ERROR`: `email` is missing or malformed.
+
+## Reset a password with a link
+
+`POST /api/v1/auth/reset-password`
+
+Request body:
+
+```json
+{
+  "token": "<random-reset-token-from-email>",
+  "password": "new-strong-password",
+  "confirmPassword": "new-strong-password"
+}
+```
+
+Validation rules:
+
+- `token`, `password`, and `confirmPassword` are required.
+- `password` must contain 8–72 characters and match `confirmPassword`.
+- The password must differ from the current password.
+
+Successful response: `200 OK`
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Đặt lại mật khẩu thành công",
+  "data": null,
+  "timestamp": "2026-09-05T00:00:00Z"
+}
+```
+
+On success, the server BCrypt-encodes the new password, consumes the link so it
+cannot be reused, invalidates the account's other unused links, and revokes all
+of the user's active refresh-token sessions. The previous password can no
+longer authenticate.
+
+Error responses:
+
+- `400 Bad Request`, code `VALIDATION_ERROR`: required fields are missing, the
+  password is outside the allowed length, or the confirmation differs.
+- `400 Bad Request`, code `INVALID_PASSWORD_RESET_TOKEN`: the link token is
+  invalid, expired, or already used. These cases intentionally share one
+  message.
+- `400 Bad Request`, code `PASSWORD_MUST_BE_DIFFERENT`: the submitted password
+  matches the current password.

@@ -1,6 +1,7 @@
 package com.techstore.e2e;
 
 import com.techstore.entity.User;
+import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,10 +35,14 @@ class AuthRegistrationIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void cleanUsers() {
+        passwordResetTokenRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         userRepository.deleteAll();
     }

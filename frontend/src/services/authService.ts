@@ -37,6 +37,16 @@ export type LogoutPayload = {
   refreshToken: string
 }
 
+export type ForgotPasswordPayload = {
+  email: string
+}
+
+export type ResetPasswordPayload = {
+  token: string
+  password: string
+  confirmPassword: string
+}
+
 type ApiResponse<T> = {
   success: boolean
   code: string
@@ -57,4 +67,12 @@ export async function loginAccount(payload: LoginPayload) {
 
 export async function logoutAccount(payload: LogoutPayload): Promise<void> {
   await httpClient.post('/auth/logout', payload)
+}
+
+export async function requestPasswordReset(payload: ForgotPasswordPayload): Promise<void> {
+  await httpClient.post('/auth/forgot-password', payload)
+}
+
+export async function resetPassword(payload: ResetPasswordPayload): Promise<void> {
+  await httpClient.post('/auth/reset-password', payload)
 }

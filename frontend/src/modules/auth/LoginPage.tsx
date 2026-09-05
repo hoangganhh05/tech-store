@@ -8,6 +8,11 @@ import { loginAccount, type LoginPayload } from '../../services/authService'
 
 type LoginField = keyof LoginPayload
 type FieldErrors = Partial<Record<LoginField, string>>
+type LoginLocationState = {
+  registrationMessage?: string
+  passwordResetMessage?: string
+  from?: string
+}
 
 const initialValues: LoginPayload = { email: '', password: '' }
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -16,8 +21,9 @@ export function LoginPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { signIn } = useAuth()
-  const registrationMessage = (location.state as { registrationMessage?: string } | null)?.registrationMessage
-  const redirectAfterLogin = (location.state as { from?: string } | null)?.from ?? ROUTES.home
+  const locationState = location.state as LoginLocationState | null
+  const confirmationMessage = locationState?.registrationMessage ?? locationState?.passwordResetMessage
+  const redirectAfterLogin = locationState?.from ?? ROUTES.home
   const [values, setValues] = useState(initialValues)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState('')
@@ -64,11 +70,14 @@ export function LoginPage() {
       <Card><CardContent sx={{ p: { xs: 3, sm: 5 } }}>
         <Typography component="h1" variant="h2" mb={1}>Đăng nhập</Typography>
         <Typography color="text.secondary" mb={3}>Truy cập tài khoản TechStore của bạn.</Typography>
-        {registrationMessage && <Alert severity="success" sx={{ mb: 2 }}>{registrationMessage}</Alert>}
+        {confirmationMessage && <Alert severity="success" sx={{ mb: 2 }}>{confirmationMessage}</Alert>}
         <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate>
           {submitError && <Alert severity="error">{submitError}</Alert>}
           <TextField label="Email" type="email" value={values.email} onChange={handleChange('email')} error={Boolean(fieldErrors.email)} helperText={fieldErrors.email} required autoComplete="email" />
           <TextField label="Mật khẩu" type="password" value={values.password} onChange={handleChange('password')} error={Boolean(fieldErrors.password)} helperText={fieldErrors.password} required autoComplete="current-password" />
+          <Typography textAlign="right" variant="body2">
+            <MuiLink component={Link} to={ROUTES.forgotPassword}>Quên mật khẩu?</MuiLink>
+          </Typography>
           <Button type="submit" variant="contained" size="large" disabled={isSubmitting} aria-busy={isSubmitting}>
             {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
