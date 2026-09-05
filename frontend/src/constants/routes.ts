@@ -13,6 +13,7 @@ export const ROUTES = {
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",
+  adminUsers: "/admin/users",
   adminProducts: "/admin/products",
   adminOrders: "/admin/orders",
 } as const;
