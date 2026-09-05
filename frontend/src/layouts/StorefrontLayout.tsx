@@ -53,6 +53,7 @@ export function StorefrontLayout() {
                 <Typography variant="body2" color="text.secondary" noWrap>
                   Chào, {user?.fullName}
                 </Typography>
+                <Button component={Link} to={ROUTES.profile} color="inherit">Tài khoản</Button>
                 <Button color="inherit" onClick={handleLogout} disabled={isLoggingOut}>
                   {isLoggingOut ? 'Đang đăng xuất...' : 'Đăng xuất'}
                 </Button>

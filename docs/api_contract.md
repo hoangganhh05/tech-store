@@ -254,3 +254,63 @@ Error responses:
   message.
 - `400 Bad Request`, code `PASSWORD_MUST_BE_DIFFERENT`: the submitted password
   matches the current password.
+
+## View the authenticated user's profile
+
+`GET /api/v1/users/me`
+
+Header: `Authorization: Bearer <access-token>`
+
+Successful response: `200 OK`
+
+```json
+{
+  "success": true,
+  "code": "SUCCESS",
+  "message": "Request completed successfully",
+  "data": {
+    "id": 1,
+    "email": "customer@example.com",
+    "fullName": "Nguyen Van A",
+    "phone": "0901234567",
+    "dateOfBirth": "2000-05-20",
+    "updatedAt": "2026-09-05T08:00:00Z"
+  },
+  "timestamp": "2026-09-05T08:00:00Z"
+}
+```
+
+`dateOfBirth` is `null` when it has not been provided. Password data is never
+returned.
+
+## Update the authenticated user's profile
+
+`PUT /api/v1/users/me`
+
+Header: `Authorization: Bearer <access-token>`
+
+Request body:
+
+```json
+{
+  "fullName": "Nguyen Van B",
+  "phone": "0987654321",
+  "dateOfBirth": "2000-05-20"
+}
+```
+
+`fullName` and `phone` are required. `dateOfBirth` is optional but, when
+present, must be in the past. Email is intentionally absent from the request
+contract and cannot be changed by this endpoint. A successful request returns
+the same profile shape as `GET /users/me` and the message
+`Cập nhật thông tin cá nhân thành công`.
+
+Error responses for both profile endpoints:
+
+- `401 Unauthorized`, code `INVALID_ACCESS_TOKEN`: the Bearer token is missing,
+  malformed, expired, not signed by this server, or is a refresh token.
+- `400 Bad Request`, code `VALIDATION_ERROR`: editable fields are invalid; the
+  message identifies each invalid field.
+- `423 Locked`, code `ACCOUNT_LOCKED`, or `403 Forbidden`, code
+  `ACCOUNT_DISABLED`: the account is no longer allowed to use authenticated
+  features.
