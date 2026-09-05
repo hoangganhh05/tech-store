@@ -17,6 +17,7 @@ import { RequireAuth } from "../modules/auth/RequireAuth";
 import { AdminDashboardPage } from "../modules/admin/AdminDashboardPage";
 import { AdminLoginPage } from "../modules/admin/AdminLoginPage";
 import { AdminUsersPage } from "../modules/admin/AdminUsersPage";
+import { AdminCategoriesPage } from "../modules/admin/AdminCategoriesPage";
 import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
@@ -76,6 +77,7 @@ export const appRouter = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: "users", element: <AdminUsersPage /> },
+      { path: "categories", element: <AdminCategoriesPage /> },
       { path: "products", element: <AdminProductsPage /> },
       { path: "orders", element: <AdminOrdersPage /> },
     ],
