@@ -32,6 +32,7 @@ function renderRoutes(initialPath: string) {
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path="/login" element={<h1>Đăng nhập</h1>} />
+          <Route path="/admin/login" element={<h1>Đăng nhập quản trị</h1>} />
           <Route path="/forbidden" element={<h1>Truy cập bị từ chối</h1>} />
           <Route
             path="/checkout"
@@ -77,10 +78,10 @@ describe('protected routes with role authorization', () => {
     expect(screen.getByRole('heading', { name: 'Thanh toán riêng tư' })).toBeInTheDocument()
   })
 
-  it('redirects an anonymous visitor from admin to the login page', async () => {
+  it('redirects an anonymous visitor from admin to the admin login page', async () => {
     renderRoutes('/admin')
 
-    expect(await screen.findByRole('heading', { name: 'Đăng nhập' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Đăng nhập quản trị' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Khu vực quản trị' })).not.toBeInTheDocument()
   })
 

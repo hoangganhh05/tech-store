@@ -208,6 +208,50 @@ class AuthServiceImplTest {
         verify(refreshTokenRepository, never()).findByTokenId(any());
     }
 
+    @Test
+    void adminLoginSucceedsWhenUserHasAdminRole() {
+        User adminUser = new User("admin@example.com", "encoded-password", "Admin User", "0901234567");
+        adminUser.addRole(new Role(RoleCode.ADMIN, "Administrator"));
+
+        when(userRepository.findByEmailIgnoreCase("admin@example.com")).thenReturn(Optional.of(adminUser));
+        when(passwordEncoder.matches("admin-password", "encoded-password")).thenReturn(true);
+        when(tokenIssuer.issue(adminUser)).thenReturn(new IssuedTokenPair(
+                "access-token",
+                "refresh-token",
+                "refresh-token-id",
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(604800)
+        ));
+
+        LoginResponse response = authService.adminLogin(loginRequest("admin@example.com", "admin-password"));
+
+        assertThat(response).isNotNull();
+        assertThat(response.user().roles()).contains("ADMIN");
+        verify(refreshTokenRepository).save(any());
+    }
+
+    @Test
+    void adminLoginFailsWhenUserHasOnlyCustomerRole() {
+        User customer = customerUser();
+        when(userRepository.findByEmailIgnoreCase("customer@example.com")).thenReturn(Optional.of(customer));
+        when(passwordEncoder.matches("customer-password", "encoded-password")).thenReturn(true);
+        when(tokenIssuer.issue(customer)).thenReturn(new IssuedTokenPair(
+                "access-token",
+                "refresh-token",
+                "refresh-token-id",
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(604800)
+        ));
+
+        BusinessException exception = catchThrowableOfType(
+                () -> authService.adminLogin(loginRequest("customer@example.com", "customer-password")),
+                BusinessException.class
+        );
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.ACCESS_DENIED);
+        assertThat(exception.getMessage()).isEqualTo("Tài khoản không có quyền truy cập khu vực quản trị");
+    }
+
     private RegisterRequest request(String email) {
         RegisterRequest request = new RegisterRequest();
         request.setFullName("Nguyen Van A");

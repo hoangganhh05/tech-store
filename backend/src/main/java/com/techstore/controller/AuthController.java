@@ -48,6 +48,13 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", response));
     }
 
+    @PostMapping("/admin/login")
+    @Operation(summary = "Log in to admin portal with email and password")
+    public ResponseEntity<ApiResponse<LoginResponse>> adminLogin(@Valid @RequestBody LoginRequest request) {
+        LoginResponse response = authService.adminLogin(request);
+        return ResponseEntity.ok(ApiResponse.success("Đăng nhập quản trị thành công", response));
+    }
+
     @PostMapping("/logout")
     @Operation(summary = "Log out and revoke the current refresh token")
     public ResponseEntity<ApiResponse<Void>> logout(@Valid @RequestBody LogoutRequest request) {

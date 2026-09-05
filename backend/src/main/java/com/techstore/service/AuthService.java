@@ -12,5 +12,7 @@ public interface AuthService {
 
     LoginResponse login(LoginRequest request);
 
+    LoginResponse adminLogin(LoginRequest request);
+
     void logout(LogoutRequest request);
 }
