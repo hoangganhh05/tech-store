@@ -24,6 +24,7 @@ CREATE TABLE users (
     password_hash   VARCHAR(255) NOT NULL,
     full_name       VARCHAR(150) NOT NULL,
     phone           VARCHAR(20),
+    date_of_birth   DATE,
     status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
                     CHECK (status IN ('ACTIVE', 'LOCKED', 'DISABLED')),
     email_verified  BOOLEAN NOT NULL DEFAULT FALSE,

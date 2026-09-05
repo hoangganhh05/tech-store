@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 import java.util.LinkedHashSet;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Set;
 
@@ -45,6 +46,9 @@ public class User extends BaseEntity {
 
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -76,6 +80,12 @@ public class User extends BaseEntity {
         this.passwordHash = Objects.requireNonNull(passwordHash, "passwordHash must not be null");
     }
 
+    public void updateProfile(String fullName, String phone, LocalDate dateOfBirth) {
+        this.fullName = Objects.requireNonNull(fullName, "fullName must not be null");
+        this.phone = Objects.requireNonNull(phone, "phone must not be null");
+        this.dateOfBirth = dateOfBirth;
+    }
+
     public Long getId() {
         return id;
     }
@@ -102,6 +112,10 @@ public class User extends BaseEntity {
 
     public boolean isEmailVerified() {
         return emailVerified;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
     }
 
     public Set<Role> getRoles() {

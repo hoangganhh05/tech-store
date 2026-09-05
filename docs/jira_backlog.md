@@ -175,7 +175,7 @@ Deliverables:
 
 ### US-01.4 — Reset password by email
 
-Status: **Done on `TSM-27/reset-password` (pending commit and Pull Request)**
+Status: **Done on `TSM-27/reset-password`**
 
 - [x] `T-01.4.1` Add `POST /api/v1/auth/forgot-password`; generate a random,
   expiring reset token for an existing account and persist only its hash.
@@ -199,4 +199,29 @@ Deliverables:
 - `frontend/src/modules/auth/ForgotPasswordPage.tsx`
 - `frontend/src/modules/auth/ResetPasswordPage.tsx`
 - `docs/migrations/V20260905_02__add_password_reset_tokens.sql`
+- `docs/api_contract.md`
+
+### US-01.5 — View and update personal profile
+
+Status: **Done on `TSM-28/view-update-profile` (pending commit and Pull Request)**
+
+- [x] `T-01.5.1` Add authenticated `GET /api/v1/users/me` and return full name,
+  email, phone, optional date of birth, and update timestamp without sensitive data.
+- [x] `T-01.5.2` Add `PUT /api/v1/users/me`, validate editable fields, preserve
+  the account email, and reject missing, invalid, or non-access Bearer tokens.
+- [x] `T-01.5.3` Add the protected Frontend profile route with initial loading,
+  retry, field validation, API error, submit loading, and success states.
+- [x] `T-01.5.4` Keep email read-only and synchronize updated full name and phone
+  into the active Frontend session.
+- [x] `T-01.5.5` Add service, controller, integration, and Frontend tests for
+  viewing, updating, validation, authentication, and email immutability.
+
+Deliverables:
+
+- `backend/src/main/java/com/techstore/controller/UserController.java`
+- `backend/src/main/java/com/techstore/service/impl/UserProfileServiceImpl.java`
+- `backend/src/main/java/com/techstore/security/AccessTokenAuthenticator.java`
+- `frontend/src/modules/profile/ProfilePage.tsx`
+- `frontend/src/services/userService.ts`
+- `docs/migrations/V20260905_03__add_user_date_of_birth.sql`
 - `docs/api_contract.md`

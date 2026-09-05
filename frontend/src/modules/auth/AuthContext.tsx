@@ -34,6 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user)
   }, [])
 
+  const updateUserProfile = useCallback((profile: Pick<AuthenticatedUser, 'fullName' | 'phone'>) => {
+    setUser((current) => {
+      if (!current) return null
+      const updatedUser = { ...current, ...profile }
+      window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(updatedUser))
+      return updatedUser
+    })
+  }, [])
+
   const signOut = useCallback(async () => {
     const refreshToken = tokenStorage.getRefreshToken()
 
@@ -55,9 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: user !== null,
     signIn,
+    updateUserProfile,
     signOut,
     clearSession,
-  }), [clearSession, signIn, signOut, user])
+  }), [clearSession, signIn, signOut, updateUserProfile, user])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

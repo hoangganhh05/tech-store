@@ -63,13 +63,27 @@ public class JwtTokenIssuer implements TokenIssuer {
     }
 
     @Override
+    public Long getAccessTokenUserId(String accessToken) {
+        try {
+            Claims claims = parseClaims(accessToken);
+            if (!"access".equals(claims.get("type", String.class))) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+
+            Object userId = claims.get("uid");
+            if (!(userId instanceof Number numericUserId) || numericUserId.longValue() <= 0) {
+                throw new InvalidAccessTokenException("Access token không hợp lệ");
+            }
+            return numericUserId.longValue();
+        } catch (JwtException | IllegalArgumentException exception) {
+            throw new InvalidAccessTokenException("Access token không hợp lệ", exception);
+        }
+    }
+
+    @Override
     public String getRefreshTokenId(String refreshToken) {
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(signingKey)
-                    .build()
-                    .parseSignedClaims(refreshToken)
-                    .getPayload();
+            Claims claims = parseClaims(refreshToken);
 
             if (!"refresh".equals(claims.get("type", String.class))) {
                 throw new InvalidRefreshTokenException("Refresh token không hợp lệ");
@@ -83,6 +97,14 @@ public class JwtTokenIssuer implements TokenIssuer {
         } catch (JwtException | IllegalArgumentException exception) {
             throw new InvalidRefreshTokenException("Refresh token không hợp lệ", exception);
         }
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private String createToken(

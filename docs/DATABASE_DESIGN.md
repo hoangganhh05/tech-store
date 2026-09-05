@@ -8,7 +8,7 @@
 
 | Domain | Entities | Main rules |
 |---|---|---|
-| Identity | `users`, `roles`, `user_roles`, `refresh_tokens`, `password_reset_tokens`, `addresses` | Email is unique; users and roles are many-to-many; refresh sessions are revocable by JWT identifier; reset links are one-time, expire, and persist only a token hash; one default address per user. |
+| Identity | `users`, `roles`, `user_roles`, `refresh_tokens`, `password_reset_tokens`, `addresses` | Email is unique and cannot be changed through the profile API; a user profile may store a date of birth; users and roles are many-to-many; refresh sessions are revocable by JWT identifier; reset links are one-time, expire, and persist only a token hash; one default address per user. |
 | Catalog | `categories`, `brands`, `products`, `product_variants`, `product_images`, `product_specifications` | Categories are hierarchical; SKU and product slug are unique; product specifications are stored as key/value rows. |
 | Inventory | `inventories`, `inventory_transactions` | One inventory row per variant; quantities cannot be negative; every stock change has an auditable transaction. |
 | Cart | `carts`, `cart_items` | A cart belongs to a user or guest session; a variant occurs at most once in a cart. |
@@ -99,7 +99,7 @@ Run the schema from the repository root with PowerShell:
 
 The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database.
 
-For an existing database, apply the one-time migrations that are newer than its current schema in version order. The current project does not run migrations automatically. For a database created before US-01.3, run `V20260904_01__add_refresh_tokens.sql`, then run `V20260905_02__add_password_reset_tokens.sql`:
+For an existing database, apply the one-time migrations that are newer than its current schema in version order. The current project does not run migrations automatically. For a database created before US-01.3, run `V20260904_01__add_refresh_tokens.sql`, then `V20260905_02__add_password_reset_tokens.sql`, and finally `V20260905_03__add_user_date_of_birth.sql`:
 
 ```powershell
 & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
@@ -111,6 +111,11 @@ For an existing database, apply the one-time migrations that are newer than its 
   --default-character-set=utf8mb4 `
   --user=root --password `
   --execute="source docs/migrations/V20260905_02__add_password_reset_tokens.sql"
+
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
+  --default-character-set=utf8mb4 `
+  --user=root --password `
+  --execute="source docs/migrations/V20260905_03__add_user_date_of_birth.sql"
 ```
 
 ## 7. Naming conventions
