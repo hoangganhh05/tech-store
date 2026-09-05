@@ -14,7 +14,14 @@ export function RequireAuth({ children, requiredRoles }: RequireAuthProps) {
 
   if (!isAuthenticated) {
     const from = `${location.pathname}${location.search}${location.hash}`
-    return <Navigate to={ROUTES.login} replace state={{ from }} />
+    const isAccessingAdmin = location.pathname.startsWith('/admin')
+    return (
+      <Navigate
+        to={isAccessingAdmin ? ROUTES.adminLogin : ROUTES.login}
+        replace
+        state={{ from }}
+      />
+    )
   }
 
   if (requiredRoles && requiredRoles.length > 0) {

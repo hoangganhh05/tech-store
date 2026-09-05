@@ -65,6 +65,11 @@ export async function loginAccount(payload: LoginPayload) {
   return response.data.data
 }
 
+export async function loginAdminAccount(payload: LoginPayload) {
+  const response = await httpClient.post<ApiResponse<LoginResult>>('/auth/admin/login', payload)
+  return response.data.data
+}
+
 export async function logoutAccount(payload: LogoutPayload): Promise<void> {
   await httpClient.post('/auth/logout', payload)
 }

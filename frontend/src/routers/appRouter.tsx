@@ -15,6 +15,7 @@ import { AddressesPage } from '../modules/profile/AddressesPage'
 import { ForbiddenPage } from '../modules/auth/ForbiddenPage'
 import { RequireAuth } from '../modules/auth/RequireAuth'
 import { AdminDashboardPage } from '../modules/admin/AdminDashboardPage'
+import { AdminLoginPage } from '../modules/admin/AdminLoginPage'
 import { AdminProductsPage } from '../modules/admin/AdminProductsPage'
 import { AdminOrdersPage } from '../modules/admin/AdminOrdersPage'
 import { NotFoundPage } from '../modules/not-found/NotFoundPage'
@@ -38,6 +39,10 @@ export const appRouter = createBrowserRouter([
       { path: ROUTES.forbidden, element: <ForbiddenPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
+  },
+  {
+    path: ROUTES.adminLogin,
+    element: <AdminLoginPage />,
   },
   {
     path: ROUTES.admin,

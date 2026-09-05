@@ -31,7 +31,7 @@ public class RoleAuthorizationInterceptor implements HandlerInterceptor {
         RequireRole classAnnotation = handlerMethod.getBeanType().getAnnotation(RequireRole.class);
         RequireRole requireRole = methodAnnotation != null ? methodAnnotation : classAnnotation;
 
-        boolean isAdminPath = request.getRequestURI().contains("/admin");
+        boolean isAdminPath = request.getRequestURI().contains("/admin") && !request.getRequestURI().contains("/auth/");
         RoleCode requiredRole = requireRole != null ? requireRole.value() : (isAdminPath ? RoleCode.ADMIN : null);
 
         if (requiredRole != null) {

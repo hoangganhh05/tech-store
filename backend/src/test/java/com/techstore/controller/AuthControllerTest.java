@@ -123,6 +123,42 @@ class AuthControllerTest {
     }
 
     @Test
+    void adminLoginReturnsTokensAndAdminUser() throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("admin@example.com");
+        request.setPassword("strong-admin-pass");
+        UserResponse user = new UserResponse(1L, "admin@example.com", "Admin User", "0901234567", "ACTIVE", Set.of("ADMIN"), true, null);
+        LoginResponse response = new LoginResponse("admin-access-token", "admin-refresh-token", "Bearer", null, null, user);
+        when(authService.adminLogin(any(LoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.accessToken").value("admin-access-token"))
+                .andExpect(jsonPath("$.data.user.roles[0]").value("ADMIN"));
+    }
+
+    @Test
+    void adminLoginReturnsForbiddenWhenNotAdmin() throws Exception {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("customer@example.com");
+        request.setPassword("customer-password");
+        when(authService.adminLogin(any(LoginRequest.class))).thenThrow(
+                new BusinessException(ErrorCode.ACCESS_DENIED, "Tài khoản không có quyền truy cập khu vực quản trị")
+        );
+
+        mockMvc.perform(post("/api/v1/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value("Tài khoản không có quyền truy cập khu vực quản trị"));
+    }
+
+    @Test
     void loginReturnsLockedStatusForALockedAccount() throws Exception {
         LoginRequest request = new LoginRequest();
         request.setEmail("customer@example.com");

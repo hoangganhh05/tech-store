@@ -102,6 +102,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    public LoginResponse adminLogin(LoginRequest request) {
+        LoginResponse response = login(request);
+        if (response.user() == null || response.user().roles() == null || !response.user().roles().contains(RoleCode.ADMIN.name())) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "Tài khoản không có quyền truy cập khu vực quản trị");
+        }
+        return response;
+    }
+
+    @Override
+    @Transactional
     public void logout(LogoutRequest request) {
         String tokenId;
         try {
