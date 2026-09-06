@@ -2,6 +2,9 @@ package com.techstore.service.impl;
 
 import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
+import com.techstore.dto.request.OrderInventoryDeductionRequest;
+import com.techstore.dto.request.OrderInventoryRestoreRequest;
+import com.techstore.dto.request.OrderItemStockRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
 import com.techstore.dto.response.InventoryTransactionResponse;
@@ -13,6 +16,7 @@ import com.techstore.entity.User;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.InventoryTransactionType;
 import com.techstore.enums.StockStatus;
+import com.techstore.enums.VariantStatus;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.InventoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
@@ -25,6 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class InventoryServiceImpl implements InventoryService {
@@ -173,6 +180,152 @@ public class InventoryServiceImpl implements InventoryService {
         inventoryTransactionRepository.save(transaction);
 
         return InventoryResponse.from(inventory);
+    }
+
+    @Override
+    @Transactional
+    public void deductInventoryForOrder(Long currentUserId, OrderInventoryDeductionRequest request) {
+        if (request == null || request.items() == null || request.items().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh sách sản phẩm trong đơn không được để trống");
+        }
+
+        Map<Long, Integer> aggregatedQuantities = new HashMap<>();
+        for (OrderItemStockRequest item : request.items()) {
+            if (item.variantId() == null) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID biến thể không được để trống");
+            }
+            if (item.quantity() == null || item.quantity() <= 0) {
+                throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY, "Số lượng trừ kho phải lớn hơn 0");
+            }
+            aggregatedQuantities.merge(item.variantId(), item.quantity(), Integer::sum);
+        }
+
+        // Sort variant IDs in ascending order to prevent deadlocks across concurrent orders
+        List<Long> sortedVariantIds = aggregatedQuantities.keySet().stream()
+                .sorted()
+                .toList();
+
+        User currentUser = null;
+        if (currentUserId != null) {
+            currentUser = userRepository.findById(currentUserId).orElse(null);
+        }
+
+        String note = request.note();
+        if (note == null || note.isBlank()) {
+            note = "Xuất kho đơn hàng " + (request.orderCode() != null ? request.orderCode() : (request.orderId() != null ? "#" + request.orderId() : ""));
+        }
+
+        for (Long variantId : sortedVariantIds) {
+            int quantityToDeduct = aggregatedQuantities.get(variantId);
+
+            // Pessimistic write lock on inventory row
+            Inventory inventory = inventoryRepository.findByVariantIdWithLock(variantId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND,
+                            "Không tìm thấy thông tin tồn kho cho biến thể ID: " + variantId));
+
+            ProductVariant variant = inventory.getVariant();
+            if (variant == null || variant.isDeleted()) {
+                throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND,
+                        "Biến thể sản phẩm với ID " + variantId + " không tồn tại hoặc đã bị xoá");
+            }
+            if (variant.getStatus() != VariantStatus.ACTIVE) {
+                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                        String.format("Biến thể '%s' (%s) hiện đang ngừng kinh doanh",
+                                variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm",
+                                variant.getSku()));
+            }
+
+            int availableQuantity = inventory.getAvailableQuantity();
+            if (availableQuantity < quantityToDeduct) {
+                String productName = (variant.getProduct() != null) ? variant.getProduct().getName() : "Sản phẩm";
+                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                        String.format("Sản phẩm '%s' (SKU: %s) không đủ tồn kho khả dụng. Khả dụng: %d, yêu cầu: %d",
+                                productName, variant.getSku(), availableQuantity, quantityToDeduct));
+            }
+
+            int newOnHand = inventory.getQuantityOnHand() - quantityToDeduct;
+            inventory.setQuantityOnHand(newOnHand);
+            inventory.setUpdatedAt(Instant.now());
+            inventoryRepository.save(inventory);
+
+            variant.setStockQuantity(newOnHand);
+            productVariantRepository.save(variant);
+
+            InventoryTransaction transaction = new InventoryTransaction();
+            transaction.setInventory(inventory);
+            transaction.setTransactionType(InventoryTransactionType.SALE);
+            transaction.setQuantityChange(-quantityToDeduct);
+            transaction.setReferenceType("ORDER");
+            transaction.setReferenceId(request.orderId());
+            transaction.setNote(note.trim());
+            transaction.setCreatedBy(currentUser);
+            transaction.setCreatedAt(Instant.now());
+            inventoryTransactionRepository.save(transaction);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void restoreInventoryForOrder(Long currentUserId, OrderInventoryRestoreRequest request) {
+        if (request == null || request.items() == null || request.items().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Danh sách sản phẩm hoàn kho không được để trống");
+        }
+        if (request.reason() == null || request.reason().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Lý do hoàn tồn kho không được để trống");
+        }
+
+        Map<Long, Integer> aggregatedQuantities = new HashMap<>();
+        for (OrderItemStockRequest item : request.items()) {
+            if (item.variantId() == null) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID biến thể không được để trống");
+            }
+            if (item.quantity() == null || item.quantity() <= 0) {
+                throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY, "Số lượng hoàn kho phải lớn hơn 0");
+            }
+            aggregatedQuantities.merge(item.variantId(), item.quantity(), Integer::sum);
+        }
+
+        // Sort variant IDs in ascending order to prevent deadlocks
+        List<Long> sortedVariantIds = aggregatedQuantities.keySet().stream()
+                .sorted()
+                .toList();
+
+        User currentUser = null;
+        if (currentUserId != null) {
+            currentUser = userRepository.findById(currentUserId).orElse(null);
+        }
+
+        String note = request.reason().trim();
+
+        for (Long variantId : sortedVariantIds) {
+            int quantityToRestore = aggregatedQuantities.get(variantId);
+
+            Inventory inventory = inventoryRepository.findByVariantIdWithLock(variantId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND,
+                            "Không tìm thấy thông tin tồn kho cho biến thể ID: " + variantId));
+
+            int newOnHand = inventory.getQuantityOnHand() + quantityToRestore;
+            inventory.setQuantityOnHand(newOnHand);
+            inventory.setUpdatedAt(Instant.now());
+            inventoryRepository.save(inventory);
+
+            ProductVariant variant = inventory.getVariant();
+            if (variant != null) {
+                variant.setStockQuantity(newOnHand);
+                productVariantRepository.save(variant);
+            }
+
+            InventoryTransaction transaction = new InventoryTransaction();
+            transaction.setInventory(inventory);
+            transaction.setTransactionType(InventoryTransactionType.CANCEL_RETURN);
+            transaction.setQuantityChange(quantityToRestore);
+            transaction.setReferenceType("ORDER");
+            transaction.setReferenceId(request.orderId());
+            transaction.setNote(note);
+            transaction.setCreatedBy(currentUser);
+            transaction.setCreatedAt(Instant.now());
+            inventoryTransactionRepository.save(transaction);
+        }
     }
 
     @Override

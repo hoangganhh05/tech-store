@@ -39,9 +39,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
+import com.techstore.dto.request.OrderInventoryDeductionRequest;
+import com.techstore.dto.request.OrderInventoryRestoreRequest;
+import com.techstore.dto.request.OrderItemStockRequest;
 import com.techstore.enums.InventoryTransactionType;
 import java.math.BigDecimal;
+import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -607,6 +612,153 @@ class AdminInventoryIntegrationTest {
         );
 
         mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.1: Trừ tồn kho khi đơn hàng đặt thành công -> thành công HTTP 200, trừ onHand và tạo SALE tx")
+    void deductOrderInventory_success_returns200() throws Exception {
+        OrderInventoryDeductionRequest request = new OrderInventoryDeductionRequest(
+                101L,
+                "ORD-101",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 3)),
+                "Xuất kho đơn hàng 101"
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/deduct-order")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Trừ tồn kho cho đơn hàng thành công")));
+
+        Inventory updatedInv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        assertThat(updatedInv.getQuantityOnHand()).isEqualTo(17);
+        assertThat(updatedInv.getAvailableQuantity()).isEqualTo(15);
+
+        ProductVariant updatedVariant = productVariantRepository.findById(iphone128.getId()).orElseThrow();
+        assertThat(updatedVariant.getStockQuantity()).isEqualTo(17);
+
+        var txs = inventoryTransactionRepository.findAll();
+        var saleTx = txs.stream()
+                .filter(t -> t.getTransactionType() == InventoryTransactionType.SALE)
+                .findFirst()
+                .orElseThrow();
+        assertThat(saleTx.getQuantityChange()).isEqualTo(-3);
+        assertThat(saleTx.getReferenceType()).isEqualTo("ORDER");
+        assertThat(saleTx.getReferenceId()).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.1: Trừ tồn kho khi số lượng yêu cầu vượt quá tồn khả dụng -> 400 INSUFFICIENT_STOCK")
+    void deductOrderInventory_insufficientStock_returns400() throws Exception {
+        // iphone128 has onHand=20, reserved=2 -> available=18. Request 19 units.
+        OrderInventoryDeductionRequest request = new OrderInventoryDeductionRequest(
+                102L,
+                "ORD-102",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 19)),
+                "Đơn hàng vượt số lượng tồn"
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/deduct-order")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("INSUFFICIENT_STOCK")));
+
+        Inventory untouchedInv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        assertThat(untouchedInv.getQuantityOnHand()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.1: Khách hàng gọi API deduct-order bị 403 Forbidden")
+    void deductOrderInventory_customerForbidden_returns403() throws Exception {
+        OrderInventoryDeductionRequest request = new OrderInventoryDeductionRequest(
+                103L,
+                "ORD-103",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 1)),
+                "Khách hàng cố tình gọi API admin"
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/deduct-order")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.2: Hoàn tồn kho khi đơn hàng bị huỷ -> thành công HTTP 200, tăng onHand và tạo CANCEL_RETURN tx")
+    void restoreOrderInventory_success_returns200() throws Exception {
+        OrderInventoryRestoreRequest request = new OrderInventoryRestoreRequest(
+                104L,
+                "ORD-104",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 2)),
+                "Khách hàng huỷ đơn do đặt nhầm"
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/restore-order")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Hoàn tồn kho cho đơn hàng thành công")));
+
+        Inventory updatedInv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        assertThat(updatedInv.getQuantityOnHand()).isEqualTo(22);
+        assertThat(updatedInv.getAvailableQuantity()).isEqualTo(20);
+
+        var txs = inventoryTransactionRepository.findAll();
+        var cancelTx = txs.stream()
+                .filter(t -> t.getTransactionType() == InventoryTransactionType.CANCEL_RETURN)
+                .findFirst()
+                .orElseThrow();
+        assertThat(cancelTx.getQuantityChange()).isEqualTo(2);
+        assertThat(cancelTx.getReferenceType()).isEqualTo("ORDER");
+        assertThat(cancelTx.getReferenceId()).isEqualTo(104L);
+        assertThat(cancelTx.getNote()).isEqualTo("Khách hàng huỷ đơn do đặt nhầm");
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.2: Hoàn tồn kho để trống lý do -> 400 Validation Error")
+    void restoreOrderInventory_blankReason_returns400() throws Exception {
+        OrderInventoryRestoreRequest request = new OrderInventoryRestoreRequest(
+                105L,
+                "ORD-105",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 2)),
+                ""
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/restore-order")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("US-04.4 T-04.4.2: Khách hàng gọi API restore-order bị 403 Forbidden")
+    void restoreOrderInventory_customerForbidden_returns403() throws Exception {
+        OrderInventoryRestoreRequest request = new OrderInventoryRestoreRequest(
+                106L,
+                "ORD-106",
+                List.of(new OrderItemStockRequest(iphone128.getId(), 1)),
+                "Khách hàng gọi restore"
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/restore-order")
                         .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
