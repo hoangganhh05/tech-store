@@ -79,6 +79,22 @@ export type ProductImageUpdatePayload = {
   displayOrder?: number;
 };
 
+export type ProductSpecification = {
+  id: number;
+  productId: number;
+  specKey: string;
+  specValue: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductSpecificationPayload = {
+  specKey: string;
+  specValue: string;
+  displayOrder?: number;
+};
+
 type ApiResponse<T> = {
   success: boolean;
   code: string;
@@ -251,5 +267,46 @@ export async function deleteProductImage(
 ): Promise<void> {
   await httpClient.delete<ApiResponse<void>>(
     `/admin/products/${productId}/images/${imageId}`,
+  );
+}
+
+export async function getProductSpecifications(
+  productId: number,
+): Promise<ProductSpecification[]> {
+  const response = await httpClient.get<ApiResponse<ProductSpecification[]>>(
+    `/admin/products/${productId}/specifications`,
+  );
+  return response.data.data;
+}
+
+export async function createProductSpecification(
+  productId: number,
+  payload: ProductSpecificationPayload,
+): Promise<ProductSpecification> {
+  const response = await httpClient.post<ApiResponse<ProductSpecification>>(
+    `/admin/products/${productId}/specifications`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updateProductSpecification(
+  productId: number,
+  specificationId: number,
+  payload: ProductSpecificationPayload,
+): Promise<ProductSpecification> {
+  const response = await httpClient.put<ApiResponse<ProductSpecification>>(
+    `/admin/products/${productId}/specifications/${specificationId}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deleteProductSpecification(
+  productId: number,
+  specificationId: number,
+): Promise<void> {
+  await httpClient.delete<ApiResponse<void>>(
+    `/admin/products/${productId}/specifications/${specificationId}`,
   );
 }
