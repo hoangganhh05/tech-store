@@ -7,6 +7,8 @@ export type Category = {
   parentId?: number | null
   parentName?: string | null
   imageUrl?: string | null
+  displayOrder: number
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -25,6 +27,11 @@ export type CategoryPayload = {
   description?: string
   parentId?: number | null
   imageUrl?: string
+}
+
+export type CategoryDisplayPayload = {
+  displayOrder: number
+  isActive: boolean
 }
 
 type ApiResponse<T> = {
@@ -62,4 +69,15 @@ export async function updateAdminCategory(id: number, payload: CategoryPayload):
 
 export async function deleteAdminCategory(id: number): Promise<void> {
   await httpClient.delete<ApiResponse<void>>(`/admin/categories/${id}`)
+}
+
+export async function updateCategoryDisplay(
+  id: number,
+  payload: CategoryDisplayPayload,
+): Promise<Category> {
+  const response = await httpClient.patch<ApiResponse<Category>>(
+    `/admin/categories/${id}/display`,
+    payload,
+  )
+  return response.data.data
 }

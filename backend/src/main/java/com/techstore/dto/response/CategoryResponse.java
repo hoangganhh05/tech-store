@@ -9,6 +9,8 @@ public record CategoryResponse(
         Long parentId,
         String parentName,
         String imageUrl,
+        Integer displayOrder,
+        Boolean isActive,
         Instant createdAt,
         Instant updatedAt
 ) {

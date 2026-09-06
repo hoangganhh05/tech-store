@@ -1,5 +1,6 @@
 package com.techstore.controller.admin;
 
+import com.techstore.dto.request.CategoryDisplayRequest;
 import com.techstore.dto.request.CategoryRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.CategoryResponse;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+
 
 @RestController
 @RequestMapping("${app.api.base-path}/admin/categories")
@@ -82,4 +85,14 @@ public class AdminCategoryController {
         categoryService.deleteCategory(id);
         return ResponseEntity.ok(ApiResponse.success("Xoá danh mục thành công", null));
     }
-}
+
+    @PatchMapping("/{id}/display")
+    @Operation(summary = "Update display order and visibility of a category")
+    public ResponseEntity<ApiResponse<CategoryResponse>> updateCategoryDisplay(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody CategoryDisplayRequest request
+    ) {
+        CategoryResponse response = categoryService.updateCategoryDisplay(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật hiển thị danh mục thành công", response));
+    }
+}

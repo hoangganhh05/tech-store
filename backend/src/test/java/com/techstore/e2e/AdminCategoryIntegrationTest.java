@@ -1,6 +1,7 @@
 package com.techstore.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.techstore.dto.request.CategoryDisplayRequest;
 import com.techstore.dto.request.CategoryRequest;
 import com.techstore.entity.Category;
 import com.techstore.entity.Role;
@@ -29,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -186,11 +188,6 @@ class AdminCategoryIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", hasSize(2)))
-                .andExpect(jsonPath("$.data[0].name").value("Điện thoại"))
-                .andExpect(jsonPath("$.data[0].children", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].children[0].name").value("iPhone"))
-                .andExpect(jsonPath("$.data[0].children[0].children", hasSize(1)))
-                .andExpect(jsonPath("$.data[0].children[0].children[0].name").value("iPhone 16"));
                 .andExpect(jsonPath("$.data[?(@.name == 'Điện thoại')].children[0].name").value("iPhone"))
                 .andExpect(jsonPath("$.data[?(@.name == 'Điện thoại')].children[0].children[0].name").value("iPhone 16"))
                 .andExpect(jsonPath("$.data[?(@.name == 'Laptop')].children[0].name").value("MacBook"));
@@ -253,5 +250,87 @@ class AdminCategoryIntegrationTest {
     void categoryApi_unauthenticated_returnsUnauthorized() throws Exception {
         mockMvc.perform(get("/api/v1/admin/categories"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Cập nhật thứ tự hiển thị và trạng thái active thành công (PATCH display)")
+    void updateCategoryDisplay_success() throws Exception {
+        Category category = categoryRepository.save(new Category("Danh mục test hiển thị", null, null, null));
+        CategoryDisplayRequest request = new CategoryDisplayRequest(5, false);
+
+        mockMvc.perform(patch("/api/v1/admin/categories/" + category.getId() + "/display")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(category.getId()))
+                .andExpect(jsonPath("$.data.displayOrder").value(5))
+                .andExpect(jsonPath("$.data.isActive").value(false));
+
+        Category updated = categoryRepository.findById(category.getId()).orElseThrow();
+        assertThat(updated.getDisplayOrder()).isEqualTo(5);
+        assertThat(updated.getIsActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Cập nhật thứ tự hiển thị thất bại khi validate lỗi (displayOrder âm hoặc null)")
+    void updateCategoryDisplay_validationError() throws Exception {
+        Category category = categoryRepository.save(new Category("Danh mục lỗi validate", null, null, null));
+        CategoryDisplayRequest request = new CategoryDisplayRequest(-1, true);
+
+        mockMvc.perform(patch("/api/v1/admin/categories/" + category.getId() + "/display")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("API Storefront public chỉ trả về danh mục active theo thứ tự displayOrder")
+    void getPublicCategoryTree_onlyReturnsActiveCategoriesInOrder() throws Exception {
+        // Root 1: active, displayOrder = 20
+        Category rootA = new Category("Danh mục A", null, null, null);
+        rootA.updateDisplay(20, true);
+        categoryRepository.save(rootA);
+
+        // Root 2: inactive, displayOrder = 5
+        Category rootB = new Category("Danh mục B ẩn", null, null, null);
+        rootB.updateDisplay(5, false);
+        categoryRepository.save(rootB);
+
+        // Root 3: active, displayOrder = 10 (có con: 1 active, 1 inactive)
+        Category rootC = new Category("Danh mục C", null, null, null);
+        rootC.updateDisplay(10, true);
+        rootC = categoryRepository.save(rootC);
+
+        Category childActive = new Category("Con active", null, rootC, null);
+        childActive.updateDisplay(1, true);
+        categoryRepository.save(childActive);
+
+        Category childInactive = new Category("Con inactive", null, rootC, null);
+        childInactive.updateDisplay(2, false);
+        categoryRepository.save(childInactive);
+
+        // Call public storefront API (no auth header needed)
+        mockMvc.perform(get("/api/v1/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2))) // B is excluded
+                .andExpect(jsonPath("$.data[0].name").value("Danh mục C")) // displayOrder 10
+                .andExpect(jsonPath("$.data[0].children", hasSize(1))) // only childActive
+                .andExpect(jsonPath("$.data[0].children[0].name").value("Con active"))
+                .andExpect(jsonPath("$.data[1].name").value("Danh mục A")); // displayOrder 20
+    }
+
+    @Test
+    @DisplayName("Customer cập nhật thứ tự hiển thị bị cấm (403 Forbidden)")
+    void updateCategoryDisplay_asCustomer_forbidden() throws Exception {
+        Category category = categoryRepository.save(new Category("Danh mục cấm sửa", null, null, null));
+        CategoryDisplayRequest request = new CategoryDisplayRequest(1, true);
+
+        mockMvc.perform(patch("/api/v1/admin/categories/" + category.getId() + "/display")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 }
