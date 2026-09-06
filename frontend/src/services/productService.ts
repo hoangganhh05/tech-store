@@ -132,6 +132,10 @@ export async function updateAdminProductStatus(
   return response.data.data;
 }
 
+export async function deleteAdminProduct(id: number): Promise<void> {
+  await httpClient.delete<ApiResponse<void>>(`/admin/products/${id}`);
+}
+
 export async function getProductVariants(
   productId: number,
 ): Promise<ProductVariant[]> {

@@ -37,11 +37,13 @@ import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import TuneIcon from "@mui/icons-material/Tune";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
 import {
   createAdminProduct,
+  deleteAdminProduct,
   getAdminProducts,
   updateAdminProduct,
   updateAdminProductStatus,
@@ -100,6 +102,11 @@ export function AdminProductsPage() {
   const [selectedProductForImages, setSelectedProductForImages] =
     useState<Product | null>(null);
   const [isImagesDialogOpen, setIsImagesDialogOpen] = useState(false);
+
+  // Delete Product Dialog state
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -310,6 +317,48 @@ export function AdminProductsPage() {
   const handleCloseImagesDialog = () => {
     setIsImagesDialogOpen(false);
     setSelectedProductForImages(null);
+  };
+
+  const handleOpenDeleteDialog = (product: Product) => {
+    setDeletingProduct(product);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    if (isDeleting) return;
+    setIsDeleteDialogOpen(false);
+    setDeletingProduct(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProduct) return;
+    try {
+      setIsDeleting(true);
+      await deleteAdminProduct(deletingProduct.id);
+      setFeedbackMessage({
+        type: "success",
+        text: `Đã xoá sản phẩm "${deletingProduct.name}" thành công.`,
+      });
+      setProducts((prev) => prev.filter((p) => p.id !== deletingProduct.id));
+      setIsDeleteDialogOpen(false);
+      setDeletingProduct(null);
+    } catch (err: unknown) {
+      if (isAxiosError<{ message?: string }>(err) && err.response?.data?.message) {
+        setFeedbackMessage({
+          type: "error",
+          text: err.response.data.message,
+        });
+      } else {
+        setFeedbackMessage({
+          type: "error",
+          text: "Không thể xoá sản phẩm. Vui lòng thử lại sau.",
+        });
+      }
+      setIsDeleteDialogOpen(false);
+      setDeletingProduct(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const filteredProducts = products.filter((p) => {
@@ -533,6 +582,15 @@ export function AdminProductsPage() {
                             onClick={() => handleOpenImagesDialog(p)}
                           >
                             Hình ảnh
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            startIcon={<DeleteOutlineIcon fontSize="small" />}
+                            onClick={() => handleOpenDeleteDialog(p)}
+                          >
+                            Xoá
                           </Button>
                         </Stack>
                       </TableCell>
@@ -784,6 +842,42 @@ export function AdminProductsPage() {
             </Button>
           </DialogActions>
         </form>
+      </Dialog>
+
+      {/* Dialog xác nhận xoá sản phẩm */}
+      <Dialog
+        open={isDeleteDialogOpen}
+        onClose={isDeleting ? undefined : handleCloseDeleteDialog}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>Xác nhận xoá sản phẩm</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Bạn có chắc chắn muốn xoá sản phẩm{" "}
+            <strong>{deletingProduct?.name}</strong> không?
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Sản phẩm và các biến thể liên quan sẽ được ẩn khỏi hệ thống (xoá mềm). Nếu sản phẩm đã phát sinh đơn hàng, hệ thống sẽ ngăn chặn xoá và bạn cần chuyển trạng thái sang &quot;Ngừng bán&quot;.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={handleCloseDeleteDialog}
+            disabled={isDeleting}
+            color="inherit"
+          >
+            Huỷ
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Đang xoá..." : "Xác nhận xoá"}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Dialog quản lý biến thể */}

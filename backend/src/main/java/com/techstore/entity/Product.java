@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
+import java.time.Instant;
 import java.util.Objects;
 
 @Entity
@@ -47,6 +48,12 @@ public class Product extends BaseEntity {
     @Column(nullable = false, length = 30)
     private ProductStatus status = ProductStatus.DRAFT;
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     protected Product() {
     }
 
@@ -56,6 +63,7 @@ public class Product extends BaseEntity {
         this.brand = Objects.requireNonNull(brand, "brand must not be null");
         this.category = Objects.requireNonNull(category, "category must not be null");
         this.status = status != null ? status : ProductStatus.DRAFT;
+        this.isDeleted = false;
     }
 
     public void update(String name, String description, Brand brand, Category category, ProductStatus status) {
@@ -66,6 +74,11 @@ public class Product extends BaseEntity {
         if (status != null) {
             this.status = status;
         }
+    }
+
+    public void softDelete() {
+        this.isDeleted = true;
+        this.deletedAt = Instant.now();
     }
 
     public Long getId() {
@@ -95,5 +108,12 @@ public class Product extends BaseEntity {
     public void setStatus(ProductStatus status) {
         this.status = Objects.requireNonNull(status, "status must not be null");
     }
-}
 
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+}

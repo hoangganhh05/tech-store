@@ -13,11 +13,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
-import java.math.BigDecimal;
-import java.util.Objects;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Table(
@@ -59,6 +60,12 @@ public class ProductVariant extends BaseEntity {
     @Column(nullable = false, length = 30)
     private VariantStatus status = VariantStatus.ACTIVE;
 
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     protected ProductVariant() {
     }
 
@@ -72,6 +79,7 @@ public class ProductVariant extends BaseEntity {
         this.originalPrice = originalPrice;
         this.stockQuantity = stockQuantity != null ? stockQuantity : 0;
         this.status = status != null ? status : VariantStatus.ACTIVE;
+        this.isDeleted = false;
     }
 
     public void update(String sku, String color, String storage,
@@ -87,6 +95,11 @@ public class ProductVariant extends BaseEntity {
         if (status != null) {
             this.status = status;
         }
+    }
+
+    public void softDelete() {
+        this.isDeleted = true;
+        this.deletedAt = Instant.now();
     }
 
     public Long getId() {
@@ -131,5 +144,13 @@ public class ProductVariant extends BaseEntity {
 
     public void setStatus(VariantStatus status) {
         this.status = Objects.requireNonNull(status, "status must not be null");
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
     }
 }

@@ -368,7 +368,10 @@ class AdminProductVariantIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Xoá biến thể sản phẩm thành công"));
 
-        assertThat(productVariantRepository.findById(saved.getId())).isEmpty();
+        ProductVariant deleted = productVariantRepository.findById(saved.getId()).orElseThrow();
+        assertThat(deleted.isDeleted()).isTrue();
+        assertThat(deleted.getDeletedAt()).isNotNull();
+        assertThat(productVariantRepository.findByIdAndProductIdAndIsDeletedFalse(saved.getId(), testProduct.getId())).isEmpty();
     }
 
     @Test

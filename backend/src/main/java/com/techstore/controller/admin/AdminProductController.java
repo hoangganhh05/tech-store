@@ -98,6 +98,13 @@ public class AdminProductController {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái sản phẩm thành công", response));
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Soft delete a product")
+    public ResponseEntity<ApiResponse<Void>> deleteProduct(@PathVariable("id") Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success("Xoá sản phẩm thành công", null));
+    }
+
     // --- Product Variant Endpoints ---
 
     @PostMapping("/{id}/variants")

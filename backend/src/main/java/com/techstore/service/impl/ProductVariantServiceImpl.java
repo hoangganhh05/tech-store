@@ -74,7 +74,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     @Transactional(readOnly = true)
     public List<ProductVariantResponse> getVariantsByProductId(Long productId) {
         findProductOrThrow(productId);
-        return productVariantRepository.findByProductIdOrderByCreatedAtAsc(productId)
+        return productVariantRepository.findByProductIdAndIsDeletedFalseOrderByCreatedAtAsc(productId)
                 .stream()
                 .map(ProductVariantResponse::from)
                 .toList();
@@ -132,11 +132,11 @@ public class ProductVariantServiceImpl implements ProductVariantService {
             );
         }
 
-        productVariantRepository.delete(variant);
+        variant.softDelete();
     }
 
     private Product findProductOrThrow(Long productId) {
-        return productRepository.findById(productId)
+        return productRepository.findByIdAndIsDeletedFalse(productId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PRODUCT_NOT_FOUND,
                         "Không tìm thấy sản phẩm với ID: " + productId
@@ -144,7 +144,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     }
 
     private ProductVariant findVariantOrThrow(Long productId, Long variantId) {
-        return productVariantRepository.findByIdAndProductId(variantId, productId)
+        return productVariantRepository.findByIdAndProductIdAndIsDeletedFalse(variantId, productId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PRODUCT_VARIANT_NOT_FOUND,
                         "Không tìm thấy biến thể với ID: " + variantId
@@ -162,8 +162,8 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         if (originalPrice != null) {
             if (originalPrice.compareTo(BigDecimal.ZERO) < 0) {
                 throw new BusinessException(
-                        ErrorCode.VARIANT_INVALID_PRICE,
-                        "Giá gốc phải lớn hơn hoặc bằng 0"
+                    ErrorCode.VARIANT_INVALID_PRICE,
+                    "Giá gốc phải lớn hơn hoặc bằng 0"
                 );
             }
             if (originalPrice.compareTo(price) < 0) {
