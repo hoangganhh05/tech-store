@@ -19,7 +19,11 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     boolean existsByParentId(Long parentId);
 
-    List<Category> findByParentIsNullOrderByNameAsc();
+    // Admin: all categories sorted by displayOrder then name
+    List<Category> findByParentIsNullOrderByDisplayOrderAscNameAsc();
 
-    List<Category> findAllByOrderByNameAsc();
+    List<Category> findAllByOrderByDisplayOrderAscNameAsc();
+
+    // Public storefront: only active categories
+    List<Category> findByParentIsNullAndIsActiveTrueOrderByDisplayOrderAscNameAsc();
 }

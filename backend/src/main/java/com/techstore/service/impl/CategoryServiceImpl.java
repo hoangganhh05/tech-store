@@ -1,5 +1,6 @@
 package com.techstore.service.impl;
 
+import com.techstore.dto.request.CategoryDisplayRequest;
 import com.techstore.dto.request.CategoryRequest;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.CategoryTreeResponse;
@@ -116,7 +117,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     public List<CategoryResponse> getAllCategories() {
-        return categoryRepository.findAllByOrderByNameAsc()
+        return categoryRepository.findAllByOrderByDisplayOrderAscNameAsc()
                 .stream()
                 .map(this::toCategoryResponse)
                 .toList();
@@ -125,7 +126,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Transactional(readOnly = true)
     public List<CategoryTreeResponse> getCategoryTree() {
-        List<Category> rootCategories = categoryRepository.findByParentIsNullOrderByNameAsc();
+        List<Category> rootCategories = categoryRepository.findByParentIsNullOrderByDisplayOrderAscNameAsc();
         return rootCategories.stream()
                 .map(this::toCategoryTreeResponse)
                 .toList();
@@ -139,6 +140,27 @@ public class CategoryServiceImpl implements CategoryService {
         return toCategoryResponse(category);
     }
 
+    @Override
+    @Transactional
+    public CategoryResponse updateCategoryDisplay(Long id, CategoryDisplayRequest request) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND, "Không tìm thấy danh mục"));
+
+        category.updateDisplay(request.displayOrder(), request.isActive());
+        Category updated = categoryRepository.save(category);
+        return toCategoryResponse(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CategoryTreeResponse> getPublicCategoryTree() {
+        List<Category> rootCategories = categoryRepository
+                .findByParentIsNullAndIsActiveTrueOrderByDisplayOrderAscNameAsc();
+        return rootCategories.stream()
+                .map(this::toPublicCategoryTreeResponse)
+                .toList();
+    }
+
     private CategoryResponse toCategoryResponse(Category category) {
         return new CategoryResponse(
                 category.getId(),
@@ -147,6 +169,8 @@ public class CategoryServiceImpl implements CategoryService {
                 category.getParent() != null ? category.getParent().getId() : null,
                 category.getParent() != null ? category.getParent().getName() : null,
                 category.getImageUrl(),
+                category.getDisplayOrder(),
+                category.getIsActive(),
                 category.getCreatedAt(),
                 category.getUpdatedAt()
         );
@@ -155,6 +179,27 @@ public class CategoryServiceImpl implements CategoryService {
     private CategoryTreeResponse toCategoryTreeResponse(Category category) {
         List<CategoryTreeResponse> children = category.getChildren() != null
                 ? category.getChildren().stream().map(this::toCategoryTreeResponse).toList()
+                : new ArrayList<>();
+
+        return new CategoryTreeResponse(
+                category.getId(),
+                category.getName(),
+                category.getDescription(),
+                category.getParent() != null ? category.getParent().getId() : null,
+                category.getImageUrl(),
+                children
+        );
+    }
+
+    private CategoryTreeResponse toPublicCategoryTreeResponse(Category category) {
+        // For public API: only include active children, sorted by displayOrder then name
+        List<CategoryTreeResponse> children = category.getChildren() != null
+                ? category.getChildren().stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getIsActive()))
+                        .sorted(java.util.Comparator.comparingInt(Category::getDisplayOrder)
+                                .thenComparing(Category::getName))
+                        .map(this::toPublicCategoryTreeResponse)
+                        .toList()
                 : new ArrayList<>();
 
         return new CategoryTreeResponse(

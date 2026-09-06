@@ -1,5 +1,6 @@
 package com.techstore.service;
 
+import com.techstore.dto.request.CategoryDisplayRequest;
 import com.techstore.dto.request.CategoryRequest;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.CategoryTreeResponse;
@@ -19,4 +20,8 @@ public interface CategoryService {
     List<CategoryTreeResponse> getCategoryTree();
 
     CategoryResponse getCategoryById(Long id);
+
+    CategoryResponse updateCategoryDisplay(Long id, CategoryDisplayRequest request);
+
+    List<CategoryTreeResponse> getPublicCategoryTree();
 }

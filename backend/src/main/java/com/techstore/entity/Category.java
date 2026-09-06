@@ -39,6 +39,12 @@ public class Category extends BaseEntity {
     @Column(name = "image_url", length = 255)
     private String imageUrl;
 
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder = 0;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
     protected Category() {
     }
 
@@ -47,6 +53,8 @@ public class Category extends BaseEntity {
         this.description = description;
         this.parent = parent;
         this.imageUrl = imageUrl;
+        this.displayOrder = 0;
+        this.isActive = true;
     }
 
     public void update(String name, String description, Category parent, String imageUrl) {
@@ -54,6 +62,11 @@ public class Category extends BaseEntity {
         this.description = description;
         this.parent = parent;
         this.imageUrl = imageUrl;
+    }
+
+    public void updateDisplay(Integer displayOrder, Boolean isActive) {
+        this.displayOrder = Objects.requireNonNull(displayOrder, "displayOrder must not be null");
+        this.isActive = Objects.requireNonNull(isActive, "isActive must not be null");
     }
 
     public Long getId() {
@@ -78,5 +91,13 @@ public class Category extends BaseEntity {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
     }
 }

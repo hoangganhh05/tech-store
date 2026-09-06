@@ -19,6 +19,7 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -44,6 +45,7 @@ import {
   getAdminCategories,
   getAdminCategoryTree,
   updateAdminCategory,
+  updateCategoryDisplay,
   type Category,
   type CategoryPayload,
   type CategoryTree,
@@ -55,24 +57,29 @@ type FlattenedTreeCategory = {
   description?: string | null
   parentId?: number | null
   imageUrl?: string | null
+  displayOrder: number
+  isActive: boolean
   level: number
   childrenCount: number
 }
 
-function flattenTree(nodes: CategoryTree[], level = 0): FlattenedTreeCategory[] {
+function flattenTree(nodes: CategoryTree[], level = 0, flatAll: Category[]): FlattenedTreeCategory[] {
   const result: FlattenedTreeCategory[] = []
   for (const node of nodes) {
+    const rawCat = flatAll.find((c) => c.id === node.id)
     result.push({
       id: node.id,
       name: node.name,
       description: node.description,
       parentId: node.parentId,
       imageUrl: node.imageUrl,
+      displayOrder: rawCat?.displayOrder ?? 0,
+      isActive: rawCat?.isActive ?? true,
       level,
       childrenCount: node.children ? node.children.length : 0,
     })
     if (node.children && node.children.length > 0) {
-      result.push(...flattenTree(node.children, level + 1))
+      result.push(...flattenTree(node.children, level + 1, flatAll))
     }
   }
   return result
@@ -122,6 +129,10 @@ export function AdminCategoriesPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<FlattenedTreeCategory | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Display order inline edit state
+  const [displayOrderEditing, setDisplayOrderEditing] = useState<Record<number, string>>({})
+  const [updatingDisplayId, setUpdatingDisplayId] = useState<number | null>(null)
+
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -130,7 +141,7 @@ export function AdminCategoriesPage() {
         getAdminCategoryTree(),
       ])
       setFlatCategories(allList)
-      setTreeCategories(flattenTree(treeList))
+      setTreeCategories(flattenTree(treeList, 0, allList))
     } catch (error: unknown) {
       const message = isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message
@@ -270,6 +281,66 @@ export function AdminCategoriesPage() {
     }
   }
 
+  // Toggle isActive
+  const handleToggleActive = async (item: FlattenedTreeCategory) => {
+    if (updatingDisplayId === item.id) return
+    setUpdatingDisplayId(item.id)
+    try {
+      await updateCategoryDisplay(item.id, {
+        displayOrder: item.displayOrder,
+        isActive: !item.isActive,
+      })
+      setFeedbackMessage({
+        type: 'success',
+        text: `Danh mục "${item.name}" đã ${!item.isActive ? 'hiện' : 'ẩn'} trên storefront.`,
+      })
+      await fetchData()
+    } catch (error: unknown) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined
+      setFeedbackMessage({ type: 'error', text: message || 'Không thể cập nhật trạng thái hiển thị.' })
+    } finally {
+      setUpdatingDisplayId(null)
+    }
+  }
+
+  // DisplayOrder inline edit
+  const handleDisplayOrderBlur = async (item: FlattenedTreeCategory) => {
+    const editedVal = displayOrderEditing[item.id]
+    if (editedVal === undefined) return
+
+    const newOrder = parseInt(editedVal, 10)
+    // Reset local edit state
+    setDisplayOrderEditing((prev) => {
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
+
+    if (isNaN(newOrder) || newOrder < 0 || newOrder === item.displayOrder) return
+
+    setUpdatingDisplayId(item.id)
+    try {
+      await updateCategoryDisplay(item.id, {
+        displayOrder: newOrder,
+        isActive: item.isActive,
+      })
+      setFeedbackMessage({
+        type: 'success',
+        text: `Đã cập nhật thứ tự hiển thị danh mục "${item.name}" thành ${newOrder}.`,
+      })
+      await fetchData()
+    } catch (error: unknown) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined
+      setFeedbackMessage({ type: 'error', text: message || 'Không thể cập nhật thứ tự hiển thị.' })
+    } finally {
+      setUpdatingDisplayId(null)
+    }
+  }
+
   // Chặn chọn chính nó hoặc con cháu làm danh mục cha khi đang chỉnh sửa
   const excludedParentIds = editingCategory
     ? new Set([editingCategory.id, ...Array.from(getDescendantIds(editingCategory.id, treeCategories))])
@@ -284,7 +355,7 @@ export function AdminCategoriesPage() {
       <PageIntro
         eyebrow="Quản trị"
         title="Quản lý danh mục sản phẩm"
-        description="Quản lý phân cấp danh mục sản phẩm đa cấp (cha - con), thêm mới, cập nhật và xoá danh mục."
+        description="Quản lý phân cấp danh mục sản phẩm đa cấp (cha - con), thêm mới, cập nhật, xoá và sắp xếp thứ tự hiển thị trên storefront."
         action={
           <Stack direction="row" spacing={1.5}>
             <Button
@@ -341,7 +412,7 @@ export function AdminCategoriesPage() {
             </Box>
           ) : (
             <TableContainer component={Paper} elevation={0}>
-              <Table sx={{ minWidth: 650 }}>
+              <Table sx={{ minWidth: 750 }}>
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'grey.50' }}>
                     <TableCell sx={{ fontWeight: 600 }}>Tên danh mục</TableCell>
@@ -352,6 +423,12 @@ export function AdminCategoriesPage() {
                     <TableCell sx={{ fontWeight: 600 }} align="center">
                       Danh mục con
                     </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }} align="center" width={100}>
+                      Thứ tự
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }} align="center" width={90}>
+                      Hiển thị
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 600 }} align="right">
                       Thao tác
                     </TableCell>
@@ -361,9 +438,15 @@ export function AdminCategoriesPage() {
                   {treeCategories.map((item) => {
                     const isRoot = item.level === 0
                     const hasChildren = item.childrenCount > 0
+                    const isUpdating = updatingDisplayId === item.id
+                    const editingOrder = displayOrderEditing[item.id]
 
                     return (
-                      <TableRow key={item.id} hover>
+                      <TableRow
+                        key={item.id}
+                        hover
+                        sx={{ opacity: item.isActive ? 1 : 0.55 }}
+                      >
                         <TableCell>
                           <Box
                             sx={{
@@ -405,7 +488,7 @@ export function AdminCategoriesPage() {
                             </Typography>
                           </Box>
                         </TableCell>
-                        <TableCell sx={{ maxWidth: 300 }}>
+                        <TableCell sx={{ maxWidth: 240 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
@@ -447,6 +530,44 @@ export function AdminCategoriesPage() {
                               0
                             </Typography>
                           )}
+                        </TableCell>
+                        {/* Thứ tự hiển thị — nhập inline */}
+                        <TableCell align="center">
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={editingOrder !== undefined ? editingOrder : item.displayOrder}
+                            onChange={(e) =>
+                              setDisplayOrderEditing((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value,
+                              }))
+                            }
+                            onBlur={() => handleDisplayOrderBlur(item)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur()
+                              }
+                            }}
+                            disabled={isUpdating}
+                            inputProps={{ min: 0, style: { textAlign: 'center', width: 52 } }}
+                            sx={{ '& .MuiOutlinedInput-root': { fontSize: '0.8rem' } }}
+                          />
+                        </TableCell>
+                        {/* Toggle Hiển thị */}
+                        <TableCell align="center">
+                          <Tooltip title={item.isActive ? 'Đang hiện — Nhấn để ẩn' : 'Đang ẩn — Nhấn để hiện'}>
+                            <span>
+                              <Switch
+                                size="small"
+                                checked={item.isActive}
+                                onChange={() => handleToggleActive(item)}
+                                disabled={isUpdating}
+                                color="success"
+                                inputProps={{ 'aria-label': `Toggle hiển thị ${item.name}` }}
+                              />
+                            </span>
+                          </Tooltip>
                         </TableCell>
                         <TableCell align="right">
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
