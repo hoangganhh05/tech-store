@@ -17,5 +17,6 @@ export const ROUTES = {
   adminCategories: "/admin/categories",
   adminBrands: "/admin/brands",
   adminProducts: "/admin/products",
+  adminInventory: "/admin/inventory",
   adminOrders: "/admin/orders",
 } as const;
