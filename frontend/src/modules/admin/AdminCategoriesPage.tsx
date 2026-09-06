@@ -161,23 +161,11 @@ export function AdminCategoriesPage() {
   }
 
   const handleOpenEditDialog = (item: FlattenedTreeCategory) => {
-    const original = flatCategories.find((c) => c.id === item.id) || {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      parentId: item.parentId,
-      imageUrl: item.imageUrl,
-      createdAt: '',
-      updatedAt: '',
-    }
-
-    setEditingCategory(original)
     const rawCat = flatCategories.find((c) => c.id === item.id)
     setEditingCategory(rawCat || null)
     setFormData({
       name: item.name,
       description: item.description || '',
-      parentId: item.parentId || null,
       parentId: item.parentId ?? null,
       imageUrl: item.imageUrl || '',
     })
@@ -185,7 +173,6 @@ export function AdminCategoriesPage() {
     setFormDialogOpen(true)
   }
 
-  const handleFormSubmit = async (e: FormEvent) => {
   const handleCloseFormDialog = () => {
     if (isSubmitting) return
     setFormDialogOpen(false)
@@ -197,9 +184,7 @@ export function AdminCategoriesPage() {
     e.preventDefault()
 
     const trimmedName = formData.name.trim()
-
     if (!trimmedName) {
-      setFormErrors({ name: 'Tên danh mục không được để trống' })
       setFormErrors({ name: 'Tên danh mục không được để trống.' })
       return
     }
@@ -211,7 +196,6 @@ export function AdminCategoriesPage() {
       const payload: CategoryPayload = {
         name: trimmedName,
         description: formData.description?.trim() || undefined,
-        parentId: formData.parentId || null,
         parentId: formData.parentId ?? null,
         imageUrl: formData.imageUrl?.trim() || undefined,
       }
@@ -238,7 +222,6 @@ export function AdminCategoriesPage() {
         : undefined
       setFeedbackMessage({
         type: 'error',
-        text: message || 'Có lỗi xảy ra khi lưu danh mục. Vui lòng kiểm tra lại.',
         text:
           message ||
           (editingCategory
@@ -265,7 +248,6 @@ export function AdminCategoriesPage() {
     if (!categoryToDelete) return
     setIsDeleting(true)
 
-    setIsDeleting(true)
     try {
       await deleteAdminCategory(categoryToDelete.id)
       setFeedbackMessage({
@@ -281,7 +263,6 @@ export function AdminCategoriesPage() {
         : undefined
       setFeedbackMessage({
         type: 'error',
-        text: message || 'Không thể xoá danh mục. Danh mục có thể đang chứa danh mục con hoặc sản phẩm.',
         text: message || 'Không thể xoá danh mục. Vui lòng thử lại.',
       })
     } finally {
@@ -289,25 +270,20 @@ export function AdminCategoriesPage() {
     }
   }
 
-  // Lọc ra các danh mục cha hợp lệ khi chỉnh sửa (tránh chọn chính nó hoặc con cháu của nó)
-  const invalidParentIds = editingCategory
   // Chặn chọn chính nó hoặc con cháu làm danh mục cha khi đang chỉnh sửa
   const excludedParentIds = editingCategory
     ? new Set([editingCategory.id, ...Array.from(getDescendantIds(editingCategory.id, treeCategories))])
     : new Set<number>()
 
-  const selectableParents = flatCategories.filter((c) => !invalidParentIds.has(c.id))
   const selectableParents = flatCategories.filter(
     (c) => !excludedParentIds.has(c.id),
   )
 
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
     <Stack spacing={3}>
       <PageIntro
         eyebrow="Quản trị"
         title="Quản lý danh mục sản phẩm"
-        description="Thêm, chỉnh sửa và phân cấp cây danh mục sản phẩm cho toàn bộ catalog cửa hàng."
         description="Quản lý phân cấp danh mục sản phẩm đa cấp (cha - con), thêm mới, cập nhật và xoá danh mục."
         action={
           <Stack direction="row" spacing={1.5}>
@@ -333,7 +309,6 @@ export function AdminCategoriesPage() {
       {feedbackMessage && (
         <Alert
           severity={feedbackMessage.type}
-          sx={{ mb: 3 }}
           onClose={() => setFeedbackMessage(null)}
           sx={{ mb: 1 }}
         >
@@ -341,25 +316,6 @@ export function AdminCategoriesPage() {
         </Alert>
       )}
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', py: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700}>
-            Cây danh mục sản phẩm ({treeCategories.length} danh mục)
-          </Typography>
-          <Stack direction="row" spacing={1.5}>
-            <IconButton onClick={fetchData} disabled={isLoading} title="Làm mới dữ liệu">
-              <RefreshIcon />
-            </IconButton>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleOpenAddDialog}
-            >
-              Thêm danh mục
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
       <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
         <CardContent sx={{ p: 0 }}>
           {isLoading && treeCategories.length === 0 ? (
@@ -406,73 +362,6 @@ export function AdminCategoriesPage() {
                     const isRoot = item.level === 0
                     const hasChildren = item.childrenCount > 0
 
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-        <TableContainer sx={{ minHeight: 320 }}>
-          <Table stickyHeader aria-label="Bảng danh mục sản phẩm">
-            <TableHead>
-              <TableRow>
-                <TableCell width={70}><strong>ID</strong></TableCell>
-                <TableCell><strong>Tên danh mục (Phân cấp)</strong></TableCell>
-                <TableCell><strong>Ảnh đại diện</strong></TableCell>
-                <TableCell><strong>Mô tả</strong></TableCell>
-                <TableCell><strong>Số danh mục con</strong></TableCell>
-                <TableCell align="right"><strong>Thao tác</strong></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading && treeCategories.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={36} />
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-                      Đang tải danh sách danh mục...
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : treeCategories.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <FolderOutlinedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-                    <Typography variant="body1" color="text.secondary" fontWeight={500}>
-                      Chưa có danh mục nào trong hệ thống.
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<AddIcon />}
-                      onClick={handleOpenAddDialog}
-                      sx={{ mt: 1.5 }}
-                    >
-                      Tạo danh mục đầu tiên
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                treeCategories.map((item) => {
-                  const hasChildren = item.childrenCount > 0
-
-                  return (
-                    <TableRow key={item.id} hover>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            pl: item.level * 3.5,
-                          }}
-                        >
-                          {item.level > 0 ? (
-                            <SubdirectoryArrowRightIcon
-                              fontSize="small"
-                              sx={{ mr: 1, color: 'text.secondary', opacity: 0.7 }}
-                            />
-                          ) : (
-                            <FolderOutlinedIcon
-                              fontSize="small"
-                              sx={{ mr: 1, color: 'primary.main' }}
-                            />
-                          )}
                     return (
                       <TableRow key={item.id} hover>
                         <TableCell>
@@ -519,16 +408,12 @@ export function AdminCategoriesPage() {
                         <TableCell sx={{ maxWidth: 300 }}>
                           <Typography
                             variant="body2"
-                            fontWeight={item.level === 0 ? 700 : 500}
-                            color={item.level === 0 ? 'text.primary' : 'text.secondary'}
                             color="text.secondary"
                             noWrap
                             title={item.description || ''}
                           >
-                            {item.name}
                             {item.description || '—'}
                           </Typography>
-                          {item.level === 0 && (
                         </TableCell>
                         <TableCell align="center">
                           {isRoot ? (
@@ -544,68 +429,15 @@ export function AdminCategoriesPage() {
                               label={`Cấp ${item.level}`}
                               size="small"
                               variant="outlined"
-                              sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
                               sx={{ fontSize: '0.75rem' }}
                             />
                           )}
-                        </Box>
-                      </TableCell>
-                      <TableCell>
-                        {item.imageUrl ? (
-                          <Avatar
-                            src={item.imageUrl}
-                            alt={item.name}
-                            variant="rounded"
-                            sx={{ width: 36, height: 36 }}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.disabled">
-                            —
-                          </Typography>
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.description || <Typography variant="body2" color="text.disabled">—</Typography>}
-                      </TableCell>
-                      <TableCell>
-                        {hasChildren ? (
-                          <Chip
-                            label={`${item.childrenCount} con`}
-                            size="small"
-                            color="info"
-                            variant="filled"
-                            sx={{ height: 22, fontSize: '0.75rem' }}
-                          />
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">0</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={1} justifyContent="flex-end">
-                          <Tooltip title="Chỉnh sửa danh mục">
-                            <IconButton
                         </TableCell>
                         <TableCell align="center">
                           {hasChildren ? (
                             <Chip
                               label={`${item.childrenCount} con`}
                               size="small"
-                              color="primary"
-                              onClick={() => handleOpenEditDialog(item)}
-                              aria-label={`Sửa ${item.name}`}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip
-                            title={
-                              hasChildren
-                                ? 'Không thể xoá danh mục đang có danh mục con'
-                                : 'Xoá danh mục này'
-                            }
-                          >
-                            <span>
                               color="secondary"
                               variant="outlined"
                               sx={{ fontSize: '0.75rem' }}
@@ -621,28 +453,11 @@ export function AdminCategoriesPage() {
                             <Tooltip title="Chỉnh sửa danh mục">
                               <IconButton
                                 size="small"
-                                color="error"
-                                disabled={hasChildren}
-                                onClick={() => handleOpenDeleteDialog(item)}
-                                aria-label={`Xoá ${item.name}`}
                                 aria-label={`Sửa ${item.name}`}
                                 onClick={() => handleOpenEditDialog(item)}
                               >
-                                <DeleteOutlineIcon fontSize="small" />
                                 <EditOutlinedIcon fontSize="small" />
                               </IconButton>
-                            </span>
-                          </Tooltip>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
                             </Tooltip>
                             <Tooltip
                               title={
@@ -678,12 +493,10 @@ export function AdminCategoriesPage() {
       {/* Dialog Thêm / Sửa Danh mục */}
       <Dialog
         open={formDialogOpen}
-        onClose={() => !isSubmitting && setFormDialogOpen(false)}
         onClose={handleCloseFormDialog}
         maxWidth="sm"
         fullWidth
       >
-        <form onSubmit={handleFormSubmit}>
         <form onSubmit={handleSubmitForm}>
           <DialogTitle>
             {editingCategory ? 'Chỉnh sửa danh mục sản phẩm' : 'Thêm danh mục sản phẩm mới'}
@@ -704,7 +517,6 @@ export function AdminCategoriesPage() {
 
               <FormControl fullWidth disabled={isSubmitting}>
                 <InputLabel id="parent-category-select-label">Danh mục cha (Tuỳ chọn)</InputLabel>
-                <Select
                 <Select<number | string>
                   labelId="parent-category-select-label"
                   label="Danh mục cha (Tuỳ chọn)"
@@ -739,7 +551,6 @@ export function AdminCategoriesPage() {
                 fullWidth
                 multiline
                 rows={3}
-                placeholder="Mô tả ngắn về danh mục này..."
                 placeholder="Nhập mô tả ngắn gọn về danh mục..."
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -748,12 +559,9 @@ export function AdminCategoriesPage() {
             </Stack>
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
-            <Button onClick={() => setFormDialogOpen(false)} disabled={isSubmitting} color="inherit">
             <Button onClick={handleCloseFormDialog} disabled={isSubmitting}>
               Huỷ
             </Button>
-            <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Đang lưu...' : editingCategory ? 'Cập nhật' : 'Thêm mới'}
             <Button
               type="submit"
               variant="contained"
@@ -766,11 +574,9 @@ export function AdminCategoriesPage() {
         </form>
       </Dialog>
 
-      {/* Dialog Xác nhận Xoá */}
       {/* Dialog Xác nhận Xoá Danh mục */}
       <Dialog
         open={deleteDialogOpen}
-        onClose={() => !isDeleting && setDeleteDialogOpen(false)}
         onClose={handleCloseDeleteDialog}
         maxWidth="xs"
         fullWidth
@@ -778,20 +584,12 @@ export function AdminCategoriesPage() {
         <DialogTitle>Xác nhận xoá danh mục?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Bạn có chắc chắn muốn xoá danh mục <strong>"{categoryToDelete?.name}"</strong> không? Hành động này không thể hoàn tác.
             Bạn có chắc chắn muốn xoá danh mục{' '}
             <strong>{categoryToDelete?.name}</strong> không? Hành động này không thể
             hoàn tác.
           </DialogContentText>
-          {categoryToDelete && categoryToDelete.childrenCount > 0 && (
-            <Alert severity="warning" sx={{ mt: 2 }}>
-              Danh mục này đang có {categoryToDelete.childrenCount} danh mục con. Vui lòng xoá hoặc chuyển các danh mục con trước khi xoá danh mục này.
-            </Alert>
-          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting} color="inherit">
-            Huỷ
           <Button onClick={handleCloseDeleteDialog} disabled={isDeleting}>
             Huỷ bỏ
           </Button>
@@ -799,16 +597,13 @@ export function AdminCategoriesPage() {
             onClick={handleConfirmDelete}
             color="error"
             variant="contained"
-            disabled={isDeleting || (categoryToDelete?.childrenCount ?? 0) > 0}
             disabled={isDeleting}
             startIcon={isDeleting ? <CircularProgress size={16} /> : null}
           >
-            {isDeleting ? 'Đang xoá...' : 'Xoá danh mục'}
             Xoá danh mục
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
     </Stack>
   )
 }
