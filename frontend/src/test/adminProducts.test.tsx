@@ -8,6 +8,7 @@ import {
   createAdminProduct,
   getAdminProducts,
   updateAdminProduct,
+  updateAdminProductStatus,
   type Product,
 } from "../services/productService";
 import { getAdminBrands, type Brand } from "../services/brandService";
@@ -18,6 +19,7 @@ vi.mock("../services/productService", () => ({
   getAdminProductById: vi.fn(),
   createAdminProduct: vi.fn(),
   updateAdminProduct: vi.fn(),
+  updateAdminProductStatus: vi.fn(),
 }));
 
 vi.mock("../services/brandService", () => ({
@@ -31,6 +33,7 @@ vi.mock("../services/categoryService", () => ({
 const mockedGetAdminProducts = vi.mocked(getAdminProducts);
 const mockedCreateAdminProduct = vi.mocked(createAdminProduct);
 const mockedUpdateAdminProduct = vi.mocked(updateAdminProduct);
+const mockedUpdateAdminProductStatus = vi.mocked(updateAdminProductStatus);
 const mockedGetAdminBrands = vi.mocked(getAdminBrands);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 
@@ -334,6 +337,70 @@ describe("AdminProductsPage", () => {
     await waitFor(() => {
       expect(
         screen.getByText(/Tên sản phẩm đã tồn tại trong cùng thương hiệu/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("toggles product status quickly via status menu to INACTIVE", async () => {
+    mockedUpdateAdminProductStatus.mockResolvedValue({
+      ...mockProducts[1],
+      status: "INACTIVE",
+    });
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Galaxy S25 Ultra")).toBeInTheDocument();
+    });
+
+    const activeChip = screen.getByTestId("status-chip-101");
+    fireEvent.click(activeChip);
+
+    const inactiveOption = screen.getByRole("menuitem", {
+      name: /ngừng bán \(inactive\)/i,
+    });
+    fireEvent.click(inactiveOption);
+
+    await waitFor(() => {
+      expect(mockedUpdateAdminProductStatus).toHaveBeenCalledWith(101, {
+        status: "INACTIVE",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Đã chuyển trạng thái sản phẩm "Galaxy S25 Ultra" sang "Ngừng bán" thành công/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("displays error alert when toggling product status fails", async () => {
+    mockedUpdateAdminProductStatus.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          message: "Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ",
+        },
+      },
+    });
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const draftChip = screen.getByTestId("status-chip-100");
+    fireEvent.click(draftChip);
+
+    const activeOption = screen.getByRole("menuitem", {
+      name: /đang bán \(active\)/i,
+    });
+    fireEvent.click(activeOption);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ/i),
       ).toBeInTheDocument();
     });
   });

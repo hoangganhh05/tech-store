@@ -32,6 +32,10 @@ export type ProductUpdatePayload = {
   status?: ProductStatus;
 };
 
+export type ProductStatusUpdatePayload = {
+  status: ProductStatus;
+};
+
 export type ProductVariant = {
   id: number;
   productId: number;
@@ -112,6 +116,17 @@ export async function updateAdminProduct(
 ): Promise<Product> {
   const response = await httpClient.put<ApiResponse<Product>>(
     `/admin/products/${id}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updateAdminProductStatus(
+  id: number,
+  payload: ProductStatusUpdatePayload,
+): Promise<Product> {
+  const response = await httpClient.patch<ApiResponse<Product>>(
+    `/admin/products/${id}/status`,
     payload,
   );
   return response.data.data;

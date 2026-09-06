@@ -1,6 +1,7 @@
 package com.techstore.repository;
 
 import com.techstore.entity.Product;
+import com.techstore.enums.ProductStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -22,5 +23,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategoryId(Long categoryId);
 
     List<Product> findByBrandId(Long brandId);
-}
 
+    List<Product> findByStatusOrderByCreatedAtDesc(ProductStatus status);
+}

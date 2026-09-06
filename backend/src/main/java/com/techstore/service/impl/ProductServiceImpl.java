@@ -1,6 +1,7 @@
 package com.techstore.service.impl;
 
 import com.techstore.dto.request.ProductCreateRequest;
+import com.techstore.dto.request.ProductStatusUpdateRequest;
 import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.dto.response.ProductResponse;
 import com.techstore.entity.Brand;
@@ -129,6 +130,26 @@ public class ProductServiceImpl implements ProductService {
                 targetStatus
         );
 
+        return ProductResponse.from(product);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse updateProductStatus(Long id, ProductStatusUpdateRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy sản phẩm với ID: " + id
+                ));
+
+        if (request.status() == ProductStatus.ACTIVE && productVariantRepository.countByProductId(id) == 0) {
+            throw new BusinessException(
+                    ErrorCode.PRODUCT_CANNOT_PUBLISH_WITHOUT_VARIANTS,
+                    "Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"
+            );
+        }
+
+        product.setStatus(request.status());
         return ProductResponse.from(product);
     }
 
