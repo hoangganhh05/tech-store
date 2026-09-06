@@ -210,9 +210,11 @@ describe("AdminProductsPage", () => {
     const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm/i });
     fireEvent.click(submitBtn);
 
-    expect(
-      screen.getByText("Tên sản phẩm không được để trống."),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Tên sản phẩm không được để trống."),
+      ).toBeInTheDocument();
+    });
     expect(mockedCreateAdminProduct).not.toHaveBeenCalled();
   });
 

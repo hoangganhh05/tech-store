@@ -1,6 +1,3 @@
-import { Button, Card, CardContent, Typography } from "@mui/material";
-import { PageIntro } from "../../components/common/PageIntro";
-import { Button, Card, CardContent, Typography } from "@mui/material";
 import {
   Alert,
   Box,
@@ -34,6 +31,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import TuneIcon from "@mui/icons-material/Tune";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
@@ -49,42 +47,9 @@ import {
   getAdminCategories,
   type Category,
 } from "../../services/categoryService";
+import { AdminProductVariantsDialog } from "./AdminProductVariantsDialog";
 
 export function AdminProductsPage() {
-  return (
-    <>
-      <PageIntro
-        eyebrow="Quản trị"
-        title="Quản lý sản phẩm"
-        description="Thêm, cập nhật và theo dõi danh mục sản phẩm."
-        action={<Button variant="contained">Thêm sản phẩm</Button>}
-      />
-      <Card>
-        <CardContent>
-          <Typography color="text.secondary">
-            Chưa có dữ liệu sản phẩm.
-          </Typography>
-        </CardContent>
-      </Card>
-    </>
-  );
-  return (
-    <>
-      <PageIntro
-        eyebrow="Quản trị"
-        title="Quản lý sản phẩm"
-        description="Thêm, cập nhật và theo dõi danh mục sản phẩm."
-        action={<Button variant="contained">Thêm sản phẩm</Button>}
-      />
-      <Card>
-        <CardContent>
-          <Typography color="text.secondary">
-            Chưa có dữ liệu sản phẩm.
-          </Typography>
-        </CardContent>
-      </Card>
-    </>
-  );
   const [products, setProducts] = useState<Product[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -95,7 +60,7 @@ export function AdminProductsPage() {
     text: string;
   } | null>(null);
 
-  // Dialog state
+  // Add Product Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<ProductCreatePayload>({
@@ -110,6 +75,11 @@ export function AdminProductsPage() {
     brandId?: string;
     categoryId?: string;
   }>({});
+
+  // Product Variants Dialog state
+  const [selectedProductForVariants, setSelectedProductForVariants] =
+    useState<Product | null>(null);
+  const [isVariantsDialogOpen, setIsVariantsDialogOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -210,6 +180,16 @@ export function AdminProductsPage() {
     }
   };
 
+  const handleOpenVariantsDialog = (product: Product) => {
+    setSelectedProductForVariants(product);
+    setIsVariantsDialogOpen(true);
+  };
+
+  const handleCloseVariantsDialog = () => {
+    setIsVariantsDialogOpen(false);
+    setSelectedProductForVariants(null);
+  };
+
   const filteredProducts = products.filter((p) => {
     const q = searchKeyword.toLowerCase().trim();
     if (!q) return true;
@@ -239,7 +219,7 @@ export function AdminProductsPage() {
       <PageIntro
         eyebrow="Quản trị"
         title="Quản lý sản phẩm"
-        description="Thêm mới sản phẩm với thông tin cơ bản, quản lý trạng thái hiển thị và phân loại theo thương hiệu, danh mục."
+        description="Thêm mới sản phẩm với thông tin cơ bản, quản lý biến thể, trạng thái hiển thị và phân loại theo thương hiệu, danh mục."
         action={
           <Stack direction="row" spacing={1.5}>
             <Button
@@ -335,6 +315,9 @@ export function AdminProductsPage() {
                       Trạng thái
                     </TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Mô tả</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }} align="center">
+                      Biến thể
+                    </TableCell>
                     <TableCell sx={{ fontWeight: 600 }} align="right">
                       Ngày tạo
                     </TableCell>
@@ -355,7 +338,7 @@ export function AdminProductsPage() {
                       <TableCell align="center">
                         {getStatusChip(p.status)}
                       </TableCell>
-                      <TableCell sx={{ maxWidth: 300 }}>
+                      <TableCell sx={{ maxWidth: 250 }}>
                         <Typography
                           variant="body2"
                           color="text.secondary"
@@ -364,6 +347,16 @@ export function AdminProductsPage() {
                         >
                           {p.description || "—"}
                         </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          startIcon={<TuneIcon fontSize="small" />}
+                          onClick={() => handleOpenVariantsDialog(p)}
+                        >
+                          Biến thể
+                        </Button>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="caption" color="text.secondary">
@@ -386,7 +379,7 @@ export function AdminProductsPage() {
         maxWidth="sm"
         fullWidth
       >
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <DialogTitle>Tạo sản phẩm mới</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -520,6 +513,14 @@ export function AdminProductsPage() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Dialog quản lý biến thể */}
+      <AdminProductVariantsDialog
+        open={isVariantsDialogOpen}
+        product={selectedProductForVariants}
+        onClose={handleCloseVariantsDialog}
+        onVariantsChanged={fetchData}
+      />
     </Stack>
   );
 }
