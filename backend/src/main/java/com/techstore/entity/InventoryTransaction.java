@@ -141,6 +141,10 @@ public class InventoryTransaction {
         return createdAt;
     }
 
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
