@@ -37,7 +37,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
+import com.techstore.enums.InventoryTransactionType;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -445,5 +447,171 @@ class AdminInventoryIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].quantityChange", is(5)))
                 .andExpect(jsonPath("$.data.items[0].note", is("Lô thử nghiệm")))
                 .andExpect(jsonPath("$.data.items[0].createdByName", is("Admin User")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.1: Điều chỉnh tăng tồn kho thủ công thành công (ADJUSTMENT > 0)")
+    void adjustInventory_increase_success() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                8,
+                "Kiểm kê phát hiện thừa 8 máy",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.quantityOnHand", is(28)))
+                .andExpect(jsonPath("$.data.availableQuantity", is(26)))
+                .andExpect(jsonPath("$.data.stockStatus", is("IN_STOCK")));
+
+        mockMvc.perform(get("/api/v1/admin/inventory/transactions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("variantId", iphone128.getId().toString())
+                        .param("type", "ADJUSTMENT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].transactionType", is("ADJUSTMENT")))
+                .andExpect(jsonPath("$.data.items[0].quantityChange", is(8)))
+                .andExpect(jsonPath("$.data.items[0].note", is("Kiểm kê phát hiện thừa 8 máy")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.1: Điều chỉnh giảm tồn kho thủ công thành công (ADJUSTMENT < 0)")
+    void adjustInventory_decrease_success() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                -5,
+                "Hàng vỡ màn hình trong quá trình kiểm kê",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.quantityOnHand", is(15)))
+                .andExpect(jsonPath("$.data.availableQuantity", is(13)));
+
+        mockMvc.perform(get("/api/v1/admin/inventory/transactions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("variantId", iphone128.getId().toString())
+                        .param("type", "ADJUSTMENT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].transactionType", is("ADJUSTMENT")))
+                .andExpect(jsonPath("$.data.items[0].quantityChange", is(-5)))
+                .andExpect(jsonPath("$.data.items[0].note", is("Hàng vỡ màn hình trong quá trình kiểm kê")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.1: Điều chỉnh làm tồn kho âm bị từ chối")
+    void adjustInventory_negativeStock_fails() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                -25,
+                "Thất thoát toàn bộ kho",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("INVALID_STOCK_QUANTITY")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.1: Điều chỉnh làm tồn kho nhỏ hơn số lượng đang giữ bị từ chối")
+    void adjustInventory_belowReserved_fails() throws Exception {
+        Inventory inv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        inv.setQuantityReserved(15);
+        inventoryRepository.save(inv);
+
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                -10,
+                "Giảm tồn",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("INVALID_STOCK_QUANTITY")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.2: Điều chỉnh với quantityChange = 0 bị từ chối")
+    void adjustInventory_zeroChange_fails() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                0,
+                "Không thay đổi gì",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("INVALID_STOCK_QUANTITY")));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.2: Lý do điều chỉnh bị trống bị từ chối validation")
+    void adjustInventory_blankReason_fails() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                2,
+                "   ",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("US-04.3 T-04.3.2: Khách hàng gọi API điều chỉnh bị 403 Forbidden")
+    void adjustInventory_forbiddenForCustomer_returns403() throws Exception {
+        InventoryAdjustmentRequest request = new InventoryAdjustmentRequest(
+                iphone128.getId(),
+                5,
+                "Khách hàng cố tình can thiệp kho",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/adjust")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
     }
 }

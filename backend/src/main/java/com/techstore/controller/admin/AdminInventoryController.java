@@ -1,5 +1,6 @@
 package com.techstore.controller.admin;
 
+import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.InventoryResponse;
@@ -85,6 +86,17 @@ public class AdminInventoryController {
         Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
         InventoryResponse response = inventoryService.importInventory(currentUserId, request);
         return ApiResponse.success("Nhập kho thành công", response);
+    }
+
+    @PostMapping("/adjust")
+    @Operation(summary = "Điều chỉnh tồn kho thủ công khi kiểm kê phát hiện sai lệch")
+    public ApiResponse<InventoryResponse> adjustInventory(
+            @Valid @RequestBody InventoryAdjustmentRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
+        InventoryResponse response = inventoryService.adjustInventory(currentUserId, request);
+        return ApiResponse.success("Điều chỉnh tồn kho thành công", response);
     }
 
     @GetMapping("/transactions")
