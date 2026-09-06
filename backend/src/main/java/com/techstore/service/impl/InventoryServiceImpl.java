@@ -1,5 +1,6 @@
 package com.techstore.service.impl;
 
+import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
@@ -110,6 +111,63 @@ public class InventoryServiceImpl implements InventoryService {
         transaction.setReferenceType(request.referenceType() != null && !request.referenceType().isBlank() ? request.referenceType() : "MANUAL_IMPORT");
         transaction.setReferenceId(request.referenceId());
         transaction.setNote(request.note());
+        transaction.setCreatedBy(currentUser);
+        transaction.setCreatedAt(Instant.now());
+        inventoryTransactionRepository.save(transaction);
+
+        return InventoryResponse.from(inventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse adjustInventory(Long currentUserId, InventoryAdjustmentRequest request) {
+        if (request.quantityChange() == null || request.quantityChange() == 0) {
+            throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY, "Số lượng điều chỉnh phải khác 0");
+        }
+        if (request.reason() == null || request.reason().trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Lý do điều chỉnh không được để trống");
+        }
+
+        ProductVariant variant = productVariantRepository.findById(request.variantId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Không tìm thấy biến thể sản phẩm với ID: " + request.variantId()));
+
+        Inventory inventory = inventoryRepository.findByVariantId(request.variantId())
+                .orElseGet(() -> {
+                    Inventory newInv = new Inventory(variant, 0, 0, 5);
+                    return inventoryRepository.save(newInv);
+                });
+
+        int newQuantity = inventory.getQuantityOnHand() + request.quantityChange();
+        if (newQuantity < 0) {
+            throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY,
+                    String.format("Số lượng tồn kho sau điều chỉnh không thể nhỏ hơn 0 (Tồn hiện tại: %d, Điều chỉnh: %d)",
+                            inventory.getQuantityOnHand(), request.quantityChange()));
+        }
+        if (newQuantity < inventory.getQuantityReserved()) {
+            throw new BusinessException(ErrorCode.INVALID_STOCK_QUANTITY,
+                    String.format("Số lượng tồn kho không thể nhỏ hơn số lượng đang giữ cho đơn hàng (Tồn sau điều chỉnh: %d, Đang giữ: %d)",
+                            newQuantity, inventory.getQuantityReserved()));
+        }
+
+        inventory.setQuantityOnHand(newQuantity);
+        inventory.setUpdatedAt(Instant.now());
+        inventory = inventoryRepository.save(inventory);
+
+        variant.setStockQuantity(newQuantity);
+        productVariantRepository.save(variant);
+
+        User currentUser = null;
+        if (currentUserId != null) {
+            currentUser = userRepository.findById(currentUserId).orElse(null);
+        }
+
+        InventoryTransaction transaction = new InventoryTransaction();
+        transaction.setInventory(inventory);
+        transaction.setTransactionType(InventoryTransactionType.ADJUSTMENT);
+        transaction.setQuantityChange(request.quantityChange());
+        transaction.setReferenceType(request.referenceType() != null && !request.referenceType().isBlank() ? request.referenceType() : "MANUAL_ADJUSTMENT");
+        transaction.setReferenceId(request.referenceId());
+        transaction.setNote(request.reason().trim());
         transaction.setCreatedBy(currentUser);
         transaction.setCreatedAt(Instant.now());
         inventoryTransactionRepository.save(transaction);

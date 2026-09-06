@@ -1,5 +1,6 @@
 package com.techstore.service;
 
+import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
@@ -19,6 +20,8 @@ public interface InventoryService {
     InventoryResponse getInventoryByVariantId(Long variantId);
 
     InventoryResponse importInventory(Long currentUserId, InventoryImportRequest request);
+
+    InventoryResponse adjustInventory(Long currentUserId, InventoryAdjustmentRequest request);
 
     PageResponse<InventoryTransactionResponse> getTransactions(Long variantId, InventoryTransactionType type, Pageable pageable);
 

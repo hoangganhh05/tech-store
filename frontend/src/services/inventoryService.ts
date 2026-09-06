@@ -127,11 +127,37 @@ export type InventoryTransactionItem = {
   createdAt: string;
 };
 
+export type InventoryImportRequest = {
+  variantId: number;
+  quantity: number;
+  note?: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
+export type InventoryAdjustmentRequest = {
+  variantId: number;
+  quantityChange: number;
+  reason: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
 export async function importInventory(
   request: InventoryImportRequest,
 ): Promise<InventoryItem> {
   const response = await httpClient.post<ApiResponse<InventoryItem>>(
     "/admin/inventory/import",
+    request,
+  );
+  return response.data.data;
+}
+
+export async function adjustInventory(
+  request: InventoryAdjustmentRequest,
+): Promise<InventoryItem> {
+  const response = await httpClient.post<ApiResponse<InventoryItem>>(
+    "/admin/inventory/adjust",
     request,
   );
   return response.data.data;

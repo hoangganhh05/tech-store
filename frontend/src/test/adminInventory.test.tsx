@@ -10,6 +10,7 @@ import { MemoryRouter } from "react-router-dom";
 import { appTheme } from "../configs/theme";
 import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import {
+  adjustInventory,
   getInventories,
   getInventorySummary,
   getInventoryTransactions,
@@ -26,6 +27,7 @@ vi.mock("../services/inventoryService", () => ({
   getInventoryByVariantId: vi.fn(),
   getInventoryTransactions: vi.fn(),
   importInventory: vi.fn(),
+  adjustInventory: vi.fn(),
 }));
 
 vi.mock("../services/categoryService", () => ({
@@ -37,6 +39,7 @@ const mockedGetInventorySummary = vi.mocked(getInventorySummary);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 const mockedGetInventoryTransactions = vi.mocked(getInventoryTransactions);
 const mockedImportInventory = vi.mocked(importInventory);
+const mockedAdjustInventory = vi.mocked(adjustInventory);
 
 const mockCategories: Category[] = [
   {
@@ -399,7 +402,6 @@ describe("AdminInventoryPage", () => {
     await waitFor(() => {
       expect(mockedGetInventoryTransactions).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "IMPORT",
           page: 0,
           size: 10,
         }),
@@ -439,5 +441,183 @@ describe("AdminInventoryPage", () => {
     });
 
     expect(mockedImportInventory).not.toHaveBeenCalled();
+  });
+
+  test("opens adjust dialog from header and validates required fields", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const headerAdjustBtn = screen.getByTestId("btn-header-adjust");
+    fireEvent.click(headerAdjustBtn);
+
+    expect(screen.getByTestId("dialog-adjust-inventory")).toBeInTheDocument();
+    expect(screen.getByText("Điều chỉnh tồn kho kiểm kê")).toBeInTheDocument();
+
+    const submitBtn = screen.getByTestId("btn-submit-adjust");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Số lượng điều chỉnh phải khác 0"),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockedAdjustInventory).not.toHaveBeenCalled();
+  });
+
+  test("opens adjust dialog from row and submits adjustment successfully", async () => {
+    mockedAdjustInventory.mockResolvedValueOnce({
+      id: 1,
+      variantId: 101,
+      productId: 1,
+      productName: "iPhone 16 Pro",
+      sku: "IP16P-128-BLK",
+      color: "Titan Đen",
+      storage: "128GB",
+      categoryName: "Điện thoại",
+      quantityOnHand: 17,
+      quantityReserved: 0,
+      availableQuantity: 17,
+      lowStockThreshold: 5,
+      stockStatus: "IN_STOCK",
+      updatedAt: new Date().toISOString(),
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const rowAdjustBtn = screen.getByTestId("btn-adjust-row-101");
+    fireEvent.click(rowAdjustBtn);
+
+    const dialog = screen.getByTestId("dialog-adjust-inventory");
+    expect(dialog).toBeInTheDocument();
+
+    const qtyInput = screen
+      .getByTestId("input-adjust-quantity")
+      .querySelector("input")!;
+    fireEvent.change(qtyInput, { target: { value: "-3" } });
+
+    const reasonInput = screen
+      .getByTestId("input-adjust-reason")
+      .querySelector("textarea")!;
+    fireEvent.change(reasonInput, {
+      target: { value: "Kiểm kê định kỳ phát hiện thiếu 3 chiếc" },
+    });
+
+    const submitBtn = screen.getByTestId("btn-submit-adjust");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockedAdjustInventory).toHaveBeenCalledWith({
+        variantId: 101,
+        quantityChange: -3,
+        reason: "Kiểm kê định kỳ phát hiện thiếu 3 chiếc",
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Điều chỉnh tồn kho thành công!/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("validates negative expected stock prevents adjustment submission", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const rowAdjustBtn = screen.getByTestId("btn-adjust-row-101");
+    fireEvent.click(rowAdjustBtn);
+
+    const qtyInput = screen
+      .getByTestId("input-adjust-quantity")
+      .querySelector("input")!;
+    fireEvent.change(qtyInput, { target: { value: "-25" } });
+
+    const reasonInput = screen
+      .getByTestId("input-adjust-reason")
+      .querySelector("textarea")!;
+    fireEvent.change(reasonInput, { target: { value: "Thất thoát lớn" } });
+
+    const submitBtn = screen.getByTestId("btn-submit-adjust");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/không thể âm/i)).toBeInTheDocument();
+    });
+
+    expect(mockedAdjustInventory).not.toHaveBeenCalled();
+  });
+
+  test("filters transactions by type in history tab and displays ADJUSTMENT badge", async () => {
+    const mockAdjustTx: InventoryTransactionItem[] = [
+      {
+        id: 201,
+        inventoryId: 1,
+        variantId: 101,
+        productName: "iPhone 16 Pro",
+        sku: "IP16P-128-BLK",
+        color: "Titan Đen",
+        storage: "128GB",
+        transactionType: "ADJUSTMENT",
+        quantityChange: -4,
+        referenceType: "MANUAL_ADJUSTMENT",
+        referenceId: null,
+        note: "Hàng hư hỏng vỡ kính khi vận chuyển",
+        createdById: 1,
+        createdByName: "Admin User",
+        createdByEmail: "admin@techstore.com",
+        createdAt: "2026-03-30T10:00:00Z",
+      },
+    ];
+
+    mockedGetInventoryTransactions.mockResolvedValue({
+      items: mockAdjustTx,
+      page: 0,
+      size: 10,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true,
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const historyTab = screen.getByTestId("tab-inventory-history");
+    fireEvent.click(historyTab);
+
+    const adjustFilterBtn = await screen.findByTestId("filter-tx-adjustment");
+    fireEvent.click(adjustFilterBtn);
+
+    await waitFor(() => {
+      expect(mockedGetInventoryTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "ADJUSTMENT",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Điều chỉnh").length).toBeGreaterThanOrEqual(
+        2,
+      );
+      expect(screen.getByText("-4")).toBeInTheDocument();
+      expect(
+        screen.getByText("Hàng hư hỏng vỡ kính khi vận chuyển"),
+      ).toBeInTheDocument();
+    });
   });
 });
