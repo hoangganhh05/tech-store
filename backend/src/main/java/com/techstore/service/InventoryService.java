@@ -2,6 +2,8 @@ package com.techstore.service;
 
 import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
+import com.techstore.dto.request.OrderInventoryDeductionRequest;
+import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
 import com.techstore.dto.response.InventoryTransactionResponse;
@@ -22,6 +24,10 @@ public interface InventoryService {
     InventoryResponse importInventory(Long currentUserId, InventoryImportRequest request);
 
     InventoryResponse adjustInventory(Long currentUserId, InventoryAdjustmentRequest request);
+
+    void deductInventoryForOrder(Long currentUserId, OrderInventoryDeductionRequest request);
+
+    void restoreInventoryForOrder(Long currentUserId, OrderInventoryRestoreRequest request);
 
     PageResponse<InventoryTransactionResponse> getTransactions(Long variantId, InventoryTransactionType type, Pageable pageable);
 

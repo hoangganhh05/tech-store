@@ -2,6 +2,8 @@ package com.techstore.controller.admin;
 
 import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
+import com.techstore.dto.request.OrderInventoryDeductionRequest;
+import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
@@ -97,6 +99,28 @@ public class AdminInventoryController {
         Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
         InventoryResponse response = inventoryService.adjustInventory(currentUserId, request);
         return ApiResponse.success("Điều chỉnh tồn kho thành công", response);
+    }
+
+    @PostMapping("/deduct-order")
+    @Operation(summary = "Tự động trừ tồn kho khi đơn hàng đặt thành công")
+    public ApiResponse<Void> deductInventoryForOrder(
+            @Valid @RequestBody OrderInventoryDeductionRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
+        inventoryService.deductInventoryForOrder(currentUserId, request);
+        return ApiResponse.success("Trừ tồn kho cho đơn hàng thành công", null);
+    }
+
+    @PostMapping("/restore-order")
+    @Operation(summary = "Tự động hoàn tồn kho khi đơn hàng bị huỷ")
+    public ApiResponse<Void> restoreInventoryForOrder(
+            @Valid @RequestBody OrderInventoryRestoreRequest request,
+            HttpServletRequest httpServletRequest
+    ) {
+        Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
+        inventoryService.restoreInventoryForOrder(currentUserId, request);
+        return ApiResponse.success("Hoàn tồn kho cho đơn hàng thành công", null);
     }
 
     @GetMapping("/transactions")
