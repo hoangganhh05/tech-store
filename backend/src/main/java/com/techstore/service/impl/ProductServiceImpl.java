@@ -7,6 +7,7 @@ import com.techstore.dto.response.ProductResponse;
 import com.techstore.entity.Brand;
 import com.techstore.entity.Category;
 import com.techstore.entity.Product;
+import com.techstore.entity.ProductVariant;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.ProductStatus;
 import com.techstore.exception.BusinessException;
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -27,6 +30,7 @@ public class ProductServiceImpl implements ProductService {
     private final BrandRepository brandRepository;
     private final CategoryRepository categoryRepository;
     private final ProductVariantRepository productVariantRepository;
+    private Predicate<Long> orderChecker = id -> false;
 
     public ProductServiceImpl(
             ProductRepository productRepository,
@@ -38,6 +42,10 @@ public class ProductServiceImpl implements ProductService {
         this.brandRepository = brandRepository;
         this.categoryRepository = categoryRepository;
         this.productVariantRepository = productVariantRepository;
+    }
+
+    public void setOrderChecker(Predicate<Long> orderChecker) {
+        this.orderChecker = Objects.requireNonNull(orderChecker, "orderChecker must not be null");
     }
 
     @Override
@@ -57,7 +65,7 @@ public class ProductServiceImpl implements ProductService {
                         "Không tìm thấy danh mục với ID: " + request.categoryId()
                 ));
 
-        if (productRepository.existsByNameIgnoreCaseAndBrandId(trimmedName, request.brandId())) {
+        if (productRepository.existsByNameIgnoreCaseAndBrandIdAndIsDeletedFalse(trimmedName, request.brandId())) {
             throw new BusinessException(
                     ErrorCode.PRODUCT_NAME_DUPLICATE,
                     "Tên sản phẩm đã tồn tại trong cùng thương hiệu"
@@ -87,7 +95,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse updateProduct(Long id, ProductUpdateRequest request) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PRODUCT_NOT_FOUND,
                         "Không tìm thấy sản phẩm với ID: " + id
@@ -107,7 +115,7 @@ public class ProductServiceImpl implements ProductService {
                         "Không tìm thấy danh mục với ID: " + request.categoryId()
                 ));
 
-        if (productRepository.existsByNameIgnoreCaseAndBrandIdAndIdNot(trimmedName, request.brandId(), id)) {
+        if (productRepository.existsByNameIgnoreCaseAndBrandIdAndIdNotAndIsDeletedFalse(trimmedName, request.brandId(), id)) {
             throw new BusinessException(
                     ErrorCode.PRODUCT_NAME_DUPLICATE,
                     "Tên sản phẩm đã tồn tại trong cùng thương hiệu"
@@ -115,7 +123,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         ProductStatus targetStatus = request.status() != null ? request.status() : product.getStatus();
-        if (targetStatus == ProductStatus.ACTIVE && productVariantRepository.countByProductId(id) == 0) {
+        if (targetStatus == ProductStatus.ACTIVE && productVariantRepository.countByProductIdAndIsDeletedFalse(id) == 0) {
             throw new BusinessException(
                     ErrorCode.PRODUCT_CANNOT_PUBLISH_WITHOUT_VARIANTS,
                     "Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"
@@ -136,13 +144,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse updateProductStatus(Long id, ProductStatusUpdateRequest request) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PRODUCT_NOT_FOUND,
                         "Không tìm thấy sản phẩm với ID: " + id
                 ));
 
-        if (request.status() == ProductStatus.ACTIVE && productVariantRepository.countByProductId(id) == 0) {
+        if (request.status() == ProductStatus.ACTIVE && productVariantRepository.countByProductIdAndIsDeletedFalse(id) == 0) {
             throw new BusinessException(
                     ErrorCode.PRODUCT_CANNOT_PUBLISH_WITHOUT_VARIANTS,
                     "Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"
@@ -154,9 +162,35 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Transactional
+    public void deleteProduct(Long id) {
+        Product product = productRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy sản phẩm với ID: " + id
+                ));
+
+        List<ProductVariant> variants = productVariantRepository.findByProductId(id);
+        boolean hasOrders = orderChecker.test(id) || variants.stream().anyMatch(v -> orderChecker.test(v.getId()));
+        if (hasOrders) {
+            throw new BusinessException(
+                    ErrorCode.PRODUCT_HAS_ORDERS,
+                    "Không thể xoá sản phẩm đã phát sinh đơn hàng, vui lòng chuyển trạng thái sang ngừng bán"
+            );
+        }
+
+        product.softDelete();
+        for (ProductVariant variant : variants) {
+            if (!variant.isDeleted()) {
+                variant.softDelete();
+            }
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> getAllAdminProducts() {
-        return productRepository.findAllByOrderByCreatedAtDesc()
+        return productRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
                 .stream()
                 .map(ProductResponse::from)
                 .toList();
@@ -165,7 +199,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public ProductResponse getProductById(Long id) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.PRODUCT_NOT_FOUND,
                         "Không tìm thấy sản phẩm với ID: " + id

@@ -24,6 +24,7 @@ import com.techstore.repository.RoleRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
 import com.techstore.security.TokenIssuer;
+import com.techstore.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -92,6 +93,9 @@ class AdminProductIntegrationTest {
     @Autowired
     private TokenIssuer tokenIssuer;
 
+    @Autowired
+    private ProductServiceImpl productServiceImpl;
+
     private String adminToken;
     private String customerToken;
     private Brand appleBrand;
@@ -100,6 +104,7 @@ class AdminProductIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        productServiceImpl.setOrderChecker(id -> false);
         productImageRepository.deleteAll();
         productVariantRepository.deleteAll();
         productRepository.deleteAll();
@@ -532,6 +537,96 @@ class AdminProductIntegrationTest {
                         .content(objectMapper.writeValueAsString(statusRequest)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm với ID: 999999"));
+    }
+
+    // --- DELETE Product (Soft Delete) Endpoints Tests ---
+
+    @Test
+    @DisplayName("Admin xoá mềm sản phẩm chưa phát sinh đơn hàng thành công")
+    void deleteProduct_asAdmin_success() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", "Mô tả", appleBrand, phoneCategory, ProductStatus.DRAFT));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(
+                product,
+                "IP15-DELETE-TEST",
+                "Đen",
+                "128GB",
+                BigDecimal.valueOf(20000000),
+                BigDecimal.valueOf(22000000),
+                10,
+                VariantStatus.ACTIVE
+        ));
+
+        mockMvc.perform(delete("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Xoá sản phẩm thành công"));
+
+        // Entity vẫn còn trong DB (soft delete)
+        Product dbProduct = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(dbProduct.isDeleted()).isTrue();
+        assertThat(dbProduct.getDeletedAt()).isNotNull();
+
+        ProductVariant dbVariant = productVariantRepository.findById(variant.getId()).orElseThrow();
+        assertThat(dbVariant.isDeleted()).isTrue();
+        assertThat(dbVariant.getDeletedAt()).isNotNull();
+
+        // Không còn hiển thị trong danh sách sản phẩm của admin
+        mockMvc.perform(get("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        // Không thể lấy chi tiết qua API thông thường
+        mockMvc.perform(get("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Chặn xoá sản phẩm khi sản phẩm/biến thể đã phát sinh đơn hàng (400 Bad Request)")
+    void deleteProduct_havingOrders_throwsBadRequest() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(
+                product,
+                "IP15-ORDERED",
+                "Đen",
+                "128GB",
+                BigDecimal.valueOf(20000000),
+                BigDecimal.valueOf(22000000),
+                10,
+                VariantStatus.ACTIVE
+        ));
+
+        // Mock rằng variant này đã phát sinh đơn hàng
+        productServiceImpl.setOrderChecker(id -> id.equals(variant.getId()));
+
+        mockMvc.perform(delete("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Không thể xoá sản phẩm đã phát sinh đơn hàng, vui lòng chuyển trạng thái sang ngừng bán"));
+
+        Product dbProduct = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(dbProduct.isDeleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Chặn xoá sản phẩm khi sản phẩm không tồn tại (404 Not Found)")
+    void deleteProduct_notFound_throwsNotFound() throws Exception {
+        mockMvc.perform(delete("/api/v1/admin/products/999999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm với ID: 999999"));
+    }
+
+    @Test
+    @DisplayName("Customer truy cập API xoá sản phẩm bị cấm (403 Forbidden)")
+    void deleteProduct_asCustomer_returnsForbidden() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        mockMvc.perform(delete("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test

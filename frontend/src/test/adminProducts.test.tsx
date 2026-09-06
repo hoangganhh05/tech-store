@@ -6,6 +6,7 @@ import { AuthProvider } from "../modules/auth/AuthContext";
 import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import {
   createAdminProduct,
+  deleteAdminProduct,
   getAdminProducts,
   updateAdminProduct,
   updateAdminProductStatus,
@@ -20,6 +21,7 @@ vi.mock("../services/productService", () => ({
   createAdminProduct: vi.fn(),
   updateAdminProduct: vi.fn(),
   updateAdminProductStatus: vi.fn(),
+  deleteAdminProduct: vi.fn(),
 }));
 
 vi.mock("../services/brandService", () => ({
@@ -34,6 +36,7 @@ const mockedGetAdminProducts = vi.mocked(getAdminProducts);
 const mockedCreateAdminProduct = vi.mocked(createAdminProduct);
 const mockedUpdateAdminProduct = vi.mocked(updateAdminProduct);
 const mockedUpdateAdminProductStatus = vi.mocked(updateAdminProductStatus);
+const mockedDeleteAdminProduct = vi.mocked(deleteAdminProduct);
 const mockedGetAdminBrands = vi.mocked(getAdminBrands);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 
@@ -134,6 +137,7 @@ describe("AdminProductsPage", () => {
     expect(screen.getAllByRole("button", { name: /sửa/i })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /biến thể/i })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /hình ảnh/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /xoá/i })).toHaveLength(2);
   });
 
   it("filters products using search input", async () => {
@@ -413,6 +417,83 @@ describe("AdminProductsPage", () => {
     await waitFor(() => {
       expect(
         screen.getByText(/Không thể tải danh sách sản phẩm/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("deletes a product successfully after confirming in dialog", async () => {
+    mockedDeleteAdminProduct.mockResolvedValue();
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: /xoá/i });
+    fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByRole("heading", { name: /xác nhận xoá sản phẩm/i })).toBeInTheDocument();
+    expect(screen.getByText(/Bạn có chắc chắn muốn xoá sản phẩm/i)).toBeInTheDocument();
+
+    const confirmButton = screen.getByRole("button", { name: "Xác nhận xoá" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(mockedDeleteAdminProduct).toHaveBeenCalledWith(100);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Đã xoá sản phẩm "iPhone 16 Pro Max" thành công/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("cancels deleting a product when clicking Huỷ in dialog", async () => {
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: /xoá/i });
+    fireEvent.click(deleteButtons[0]);
+
+    expect(screen.getByRole("heading", { name: /xác nhận xoá sản phẩm/i })).toBeInTheDocument();
+
+    const cancelButton = screen.getByRole("button", { name: "Huỷ" });
+    fireEvent.click(cancelButton);
+
+    expect(mockedDeleteAdminProduct).not.toHaveBeenCalled();
+  });
+
+  it("displays error alert when deleting product fails due to existing orders", async () => {
+    mockedDeleteAdminProduct.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          code: "PRODUCT_HAS_ORDERS",
+          message: "Không thể xoá sản phẩm đã phát sinh đơn hàng, vui lòng chuyển trạng thái sang ngừng bán",
+        },
+      },
+    });
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const deleteButtons = screen.getAllByRole("button", { name: /xoá/i });
+    fireEvent.click(deleteButtons[0]);
+
+    const confirmButton = screen.getByRole("button", { name: "Xác nhận xoá" });
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Không thể xoá sản phẩm đã phát sinh đơn hàng, vui lòng chuyển trạng thái sang ngừng bán/i),
       ).toBeInTheDocument();
     });
   });
