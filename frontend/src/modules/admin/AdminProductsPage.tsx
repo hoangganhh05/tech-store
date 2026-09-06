@@ -37,6 +37,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import TuneIcon from "@mui/icons-material/Tune";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import ListAltIcon from "@mui/icons-material/ListAlt";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -58,6 +59,7 @@ import {
 } from "../../services/categoryService";
 import { AdminProductVariantsDialog } from "./AdminProductVariantsDialog";
 import { AdminProductImagesDialog } from "./AdminProductImagesDialog";
+import { AdminProductSpecificationsDialog } from "./AdminProductSpecificationsDialog";
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -102,6 +104,11 @@ export function AdminProductsPage() {
   const [selectedProductForImages, setSelectedProductForImages] =
     useState<Product | null>(null);
   const [isImagesDialogOpen, setIsImagesDialogOpen] = useState(false);
+
+  // Product Specifications Dialog state
+  const [selectedProductForSpecifications, setSelectedProductForSpecifications] =
+    useState<Product | null>(null);
+  const [isSpecificationsDialogOpen, setIsSpecificationsDialogOpen] = useState(false);
 
   // Delete Product Dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -317,6 +324,16 @@ export function AdminProductsPage() {
   const handleCloseImagesDialog = () => {
     setIsImagesDialogOpen(false);
     setSelectedProductForImages(null);
+  };
+
+  const handleOpenSpecificationsDialog = (product: Product) => {
+    setSelectedProductForSpecifications(product);
+    setIsSpecificationsDialogOpen(true);
+  };
+
+  const handleCloseSpecificationsDialog = () => {
+    setIsSpecificationsDialogOpen(false);
+    setSelectedProductForSpecifications(null);
   };
 
   const handleOpenDeleteDialog = (product: Product) => {
@@ -582,6 +599,15 @@ export function AdminProductsPage() {
                             onClick={() => handleOpenImagesDialog(p)}
                           >
                             Hình ảnh
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="secondary"
+                            startIcon={<ListAltIcon fontSize="small" />}
+                            onClick={() => handleOpenSpecificationsDialog(p)}
+                          >
+                            Thông số
                           </Button>
                           <Button
                             variant="outlined"
@@ -894,6 +920,14 @@ export function AdminProductsPage() {
         product={selectedProductForImages}
         onClose={handleCloseImagesDialog}
         onImagesChanged={fetchData}
+      />
+
+      {/* Dialog quản lý thông số kỹ thuật */}
+      <AdminProductSpecificationsDialog
+        open={isSpecificationsDialogOpen}
+        product={selectedProductForSpecifications}
+        onClose={handleCloseSpecificationsDialog}
+        onSpecificationsChanged={fetchData}
       />
     </Stack>
   );

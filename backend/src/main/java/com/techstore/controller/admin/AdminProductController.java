@@ -2,17 +2,20 @@ package com.techstore.controller.admin;
 
 import com.techstore.dto.request.ProductCreateRequest;
 import com.techstore.dto.request.ProductImageUpdateRequest;
+import com.techstore.dto.request.ProductSpecificationRequest;
 import com.techstore.dto.request.ProductStatusUpdateRequest;
 import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.dto.request.ProductVariantRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.ProductImageResponse;
 import com.techstore.dto.response.ProductResponse;
+import com.techstore.dto.response.ProductSpecificationResponse;
 import com.techstore.dto.response.ProductVariantResponse;
 import com.techstore.enums.RoleCode;
 import com.techstore.security.RequireRole;
 import com.techstore.service.ProductImageService;
 import com.techstore.service.ProductService;
+import com.techstore.service.ProductSpecificationService;
 import com.techstore.service.ProductVariantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,15 +46,18 @@ public class AdminProductController {
     private final ProductService productService;
     private final ProductVariantService productVariantService;
     private final ProductImageService productImageService;
+    private final ProductSpecificationService productSpecificationService;
 
     public AdminProductController(
             ProductService productService,
             ProductVariantService productVariantService,
-            ProductImageService productImageService
+            ProductImageService productImageService,
+            ProductSpecificationService productSpecificationService
     ) {
         this.productService = productService;
         this.productVariantService = productVariantService;
         this.productImageService = productImageService;
+        this.productSpecificationService = productSpecificationService;
     }
 
     @PostMapping
@@ -211,5 +217,58 @@ public class AdminProductController {
     ) {
         productImageService.deleteImage(productId, imageId);
         return ResponseEntity.ok(ApiResponse.success("Xoá hình ảnh thành công", null));
+    }
+
+    // --- Product Specification Endpoints ---
+
+    @PostMapping("/{id}/specifications")
+    @Operation(summary = "Create a new specification for a product")
+    public ResponseEntity<ApiResponse<ProductSpecificationResponse>> createSpecification(
+            @PathVariable("id") Long productId,
+            @Valid @RequestBody ProductSpecificationRequest request
+    ) {
+        ProductSpecificationResponse response = productSpecificationService.createSpecification(productId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Tạo thông số kỹ thuật thành công", response));
+    }
+
+    @GetMapping("/{id}/specifications")
+    @Operation(summary = "Get all specifications of a product")
+    public ResponseEntity<ApiResponse<List<ProductSpecificationResponse>>> getSpecifications(
+            @PathVariable("id") Long productId
+    ) {
+        List<ProductSpecificationResponse> response = productSpecificationService.getSpecifications(productId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thông số kỹ thuật thành công", response));
+    }
+
+    @GetMapping("/{id}/specifications/{specId}")
+    @Operation(summary = "Get specification details by ID")
+    public ResponseEntity<ApiResponse<ProductSpecificationResponse>> getSpecificationById(
+            @PathVariable("id") Long productId,
+            @PathVariable("specId") Long specId
+    ) {
+        ProductSpecificationResponse response = productSpecificationService.getSpecificationById(productId, specId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin thông số kỹ thuật thành công", response));
+    }
+
+    @PutMapping("/{id}/specifications/{specId}")
+    @Operation(summary = "Update a product specification")
+    public ResponseEntity<ApiResponse<ProductSpecificationResponse>> updateSpecification(
+            @PathVariable("id") Long productId,
+            @PathVariable("specId") Long specId,
+            @Valid @RequestBody ProductSpecificationRequest request
+    ) {
+        ProductSpecificationResponse response = productSpecificationService.updateSpecification(productId, specId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông số kỹ thuật thành công", response));
+    }
+
+    @DeleteMapping("/{id}/specifications/{specId}")
+    @Operation(summary = "Delete a product specification")
+    public ResponseEntity<ApiResponse<Void>> deleteSpecification(
+            @PathVariable("id") Long productId,
+            @PathVariable("specId") Long specId
+    ) {
+        productSpecificationService.deleteSpecification(productId, specId);
+        return ResponseEntity.ok(ApiResponse.success("Xoá thông số kỹ thuật thành công", null));
     }
 }

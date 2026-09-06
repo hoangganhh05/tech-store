@@ -8,6 +8,7 @@ import {
   createAdminProduct,
   deleteAdminProduct,
   getAdminProducts,
+  getProductSpecifications,
   updateAdminProduct,
   updateAdminProductStatus,
   type Product,
@@ -22,6 +23,7 @@ vi.mock("../services/productService", () => ({
   updateAdminProduct: vi.fn(),
   updateAdminProductStatus: vi.fn(),
   deleteAdminProduct: vi.fn(),
+  getProductSpecifications: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("../services/brandService", () => ({
@@ -37,6 +39,7 @@ const mockedCreateAdminProduct = vi.mocked(createAdminProduct);
 const mockedUpdateAdminProduct = vi.mocked(updateAdminProduct);
 const mockedUpdateAdminProductStatus = vi.mocked(updateAdminProductStatus);
 const mockedDeleteAdminProduct = vi.mocked(deleteAdminProduct);
+const mockedGetProductSpecifications = vi.mocked(getProductSpecifications);
 const mockedGetAdminBrands = vi.mocked(getAdminBrands);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 
@@ -119,6 +122,7 @@ describe("AdminProductsPage", () => {
     mockedGetAdminProducts.mockResolvedValue(mockProducts);
     mockedGetAdminBrands.mockResolvedValue(mockBrands);
     mockedGetAdminCategories.mockResolvedValue(mockCategories);
+    mockedGetProductSpecifications.mockResolvedValue([]);
   });
 
   it("renders products table with brand and category data", async () => {
@@ -137,6 +141,7 @@ describe("AdminProductsPage", () => {
     expect(screen.getAllByRole("button", { name: /sửa/i })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /biến thể/i })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /hình ảnh/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /thông số/i })).toHaveLength(2);
     expect(screen.getAllByRole("button", { name: /xoá/i })).toHaveLength(2);
   });
 
@@ -495,6 +500,21 @@ describe("AdminProductsPage", () => {
       expect(
         screen.getByText(/Không thể xoá sản phẩm đã phát sinh đơn hàng, vui lòng chuyển trạng thái sang ngừng bán/i),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("opens specifications dialog when clicking Thông số button", async () => {
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const specButtons = screen.getAllByRole("button", { name: /thông số/i });
+    fireEvent.click(specButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Thông số kỹ thuật sản phẩm")).toBeInTheDocument();
     });
   });
 });
