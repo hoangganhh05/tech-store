@@ -42,6 +42,7 @@ import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.request.OrderItemStockRequest;
+import com.techstore.dto.request.UpdateThresholdRequest;
 import com.techstore.enums.InventoryTransactionType;
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,6 +52,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -759,6 +761,99 @@ class AdminInventoryIntegrationTest {
         );
 
         mockMvc.perform(post("/api/v1/admin/inventory/restore-order")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.1: Lấy danh sách tồn kho dưới ngưỡng -> trả về các biến thể có available <= threshold")
+    void getLowStockInventories_returnsOnlyItemsUnderThreshold_success() throws Exception {
+        // In setUp: iphone256 (available=3 <= 5) and macbookBase (available=0 <= 5) are under threshold.
+        // iphone128 (available=18 > 5) is NOT under threshold.
+        mockMvc.perform(get("/api/v1/admin/inventory/low-stock")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.totalElements", is(2)))
+                .andExpect(jsonPath("$.data.items", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.1: Lấy danh sách tồn kho dưới ngưỡng có lọc theo danh mục")
+    void getLowStockInventories_filtersBySearchAndCategory_success() throws Exception {
+        // Filter by phone category -> only iphone256
+        mockMvc.perform(get("/api/v1/admin/inventory/low-stock")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("categoryId", String.valueOf(phoneCategory.getId()))
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.totalElements", is(1)))
+                .andExpect(jsonPath("$.data.items[0].sku", is("IP16P-256-WHT")));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.2: Khách hàng gọi API low-stock bị 403 Forbidden")
+    void getLowStockInventories_customerForbidden_returns403() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/inventory/low-stock")
+                        .header("Authorization", "Bearer " + customerToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.1 & T-04.5.2: Cập nhật ngưỡng cảnh báo tồn kho thấp cho biến thể thành công")
+    void updateLowStockThreshold_success_updatesThreshold() throws Exception {
+        // Initially iphone128 has threshold=5, available=18 (not low stock).
+        // Update threshold to 20 -> available=18 <= 20 (becomes low stock).
+        UpdateThresholdRequest request = new UpdateThresholdRequest(20);
+
+        mockMvc.perform(put("/api/v1/admin/inventory/variants/{variantId}/threshold", iphone128.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.lowStockThreshold", is(20)))
+                .andExpect(jsonPath("$.data.stockStatus", is("LOW_STOCK")));
+
+        Inventory updatedInv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        assertThat(updatedInv.getLowStockThreshold()).isEqualTo(20);
+
+        // Verify it now appears in low-stock API
+        mockMvc.perform(get("/api/v1/admin/inventory/low-stock")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalElements", is(3)));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.2: Cập nhật ngưỡng với số âm -> 400 Bad Request")
+    void updateLowStockThreshold_negativeThreshold_returns400() throws Exception {
+        UpdateThresholdRequest request = new UpdateThresholdRequest(-1);
+
+        mockMvc.perform(put("/api/v1/admin/inventory/variants/{variantId}/threshold", iphone128.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("US-04.5 T-04.5.2: Khách hàng cập nhật ngưỡng bị 403 Forbidden")
+    void updateLowStockThreshold_customerForbidden_returns403() throws Exception {
+        UpdateThresholdRequest request = new UpdateThresholdRequest(10);
+
+        mockMvc.perform(put("/api/v1/admin/inventory/variants/{variantId}/threshold", iphone128.getId())
                         .header("Authorization", "Bearer " + customerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

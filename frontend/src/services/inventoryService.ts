@@ -95,14 +95,6 @@ export async function getInventoryByVariantId(
   return response.data.data;
 }
 
-export type InventoryImportRequest = {
-  variantId: number;
-  quantity: number;
-  note?: string;
-  referenceType?: string;
-  referenceId?: number;
-};
-
 export type InventoryTransactionItem = {
   id: number;
   inventoryId: number;
@@ -186,5 +178,42 @@ export async function getInventoryTransactions(params?: {
   const response = await httpClient.get<
     ApiResponse<PageResponse<InventoryTransactionItem>>
   >("/admin/inventory/transactions", { params: queryParams });
+  return response.data.data;
+}
+
+export async function getLowStockInventories(params?: {
+  search?: string;
+  categoryId?: number;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<InventoryItem>> {
+  const queryParams: Record<string, string | number> = {};
+  if (params?.search) {
+    queryParams.search = params.search;
+  }
+  if (params?.categoryId) {
+    queryParams.categoryId = params.categoryId;
+  }
+  if (params?.page !== undefined) {
+    queryParams.page = params.page;
+  }
+  if (params?.size !== undefined) {
+    queryParams.size = params.size;
+  }
+
+  const response = await httpClient.get<
+    ApiResponse<PageResponse<InventoryItem>>
+  >("/admin/inventory/low-stock", { params: queryParams });
+  return response.data.data;
+}
+
+export async function updateLowStockThreshold(
+  variantId: number,
+  lowStockThreshold: number,
+): Promise<InventoryItem> {
+  const response = await httpClient.put<ApiResponse<InventoryItem>>(
+    `/admin/inventory/variants/${variantId}/threshold`,
+    { lowStockThreshold },
+  );
   return response.data.data;
 }

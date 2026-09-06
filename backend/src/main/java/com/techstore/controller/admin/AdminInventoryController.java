@@ -4,6 +4,7 @@ import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.OrderInventoryRestoreRequest;
+import com.techstore.dto.request.UpdateThresholdRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -121,6 +123,38 @@ public class AdminInventoryController {
         Long currentUserId = (Long) httpServletRequest.getAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE);
         inventoryService.restoreInventoryForOrder(currentUserId, request);
         return ApiResponse.success("Hoàn tồn kho cho đơn hàng thành công", null);
+    }
+
+    @GetMapping("/low-stock")
+    @Operation(summary = "Xem danh sách tồn kho dưới ngưỡng cảnh báo phân trang")
+    public ApiResponse<PageResponse<InventoryResponse>> getLowStockInventories(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        if (page < 0) {
+            page = 0;
+        }
+        if (size < 1) {
+            size = 10;
+        } else if (size > 100) {
+            size = 100;
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "updatedAt"));
+        PageResponse<InventoryResponse> response = inventoryService.getLowStockInventories(search, categoryId, pageable);
+        return ApiResponse.success("Lấy danh sách tồn kho dưới ngưỡng thành công", response);
+    }
+
+    @PutMapping("/variants/{variantId}/threshold")
+    @Operation(summary = "Cập nhật ngưỡng cảnh báo tồn kho thấp cho biến thể")
+    public ApiResponse<InventoryResponse> updateLowStockThreshold(
+            @PathVariable Long variantId,
+            @Valid @RequestBody UpdateThresholdRequest request
+    ) {
+        InventoryResponse response = inventoryService.updateLowStockThreshold(variantId, request);
+        return ApiResponse.success("Cập nhật ngưỡng tồn kho thấp thành công", response);
     }
 
     @GetMapping("/transactions")
