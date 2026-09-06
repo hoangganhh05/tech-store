@@ -18,6 +18,7 @@ import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductSpecificationRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.RoleRepository;
@@ -60,6 +61,9 @@ class AdminProductImageIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductSpecificationRepository productSpecificationRepository;
 
     @Autowired
     private ProductImageRepository productImageRepository;
@@ -111,6 +115,7 @@ class AdminProductImageIntegrationTest {
         passwordResetTokenRepository.deleteAll();
         userRepository.deleteAll();
         roleRepository.deleteAll();
+        cleanDatabase();
 
         Role adminRole = roleRepository.findByCode(RoleCode.ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleCode.ADMIN, "Quản trị viên")));
@@ -143,11 +148,20 @@ class AdminProductImageIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        cleanDatabase();
+    }
+
+    private void cleanDatabase() {
+        productSpecificationRepository.deleteAll();
         productImageRepository.deleteAll();
         productVariantRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
         brandRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
     }
 
     @Test

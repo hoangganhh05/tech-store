@@ -16,6 +16,7 @@ import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductSpecificationRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.RoleRepository;
@@ -23,6 +24,7 @@ import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
 import com.techstore.security.TokenIssuer;
 import com.techstore.service.impl.ProductVariantServiceImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,9 @@ class AdminProductVariantIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductSpecificationRepository productSpecificationRepository;
 
     @Autowired
     private ProductVariantRepository productVariantRepository;
@@ -112,6 +117,7 @@ class AdminProductVariantIntegrationTest {
 
         // Reset orderChecker to default
         productVariantService.setOrderChecker(id -> false);
+        cleanDatabase();
 
         Role adminRole = roleRepository.findByCode(RoleCode.ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleCode.ADMIN, "Quản trị viên")));
@@ -137,6 +143,24 @@ class AdminProductVariantIntegrationTest {
 
         testProduct = productRepository.save(new Product("iPhone 16 Pro", "Flagship", apple, phone, ProductStatus.DRAFT));
         secondProduct = productRepository.save(new Product("iPhone 16", "Standard", apple, phone, ProductStatus.DRAFT));
+    }
+
+    @AfterEach
+    void tearDown() {
+        cleanDatabase();
+    }
+
+    private void cleanDatabase() {
+        productSpecificationRepository.deleteAll();
+        productImageRepository.deleteAll();
+        productVariantRepository.deleteAll();
+        productRepository.deleteAll();
+        categoryRepository.deleteAll();
+        brandRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
     }
 
     @Test

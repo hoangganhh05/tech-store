@@ -18,6 +18,7 @@ import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductSpecificationRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.RoleRepository;
@@ -25,6 +26,7 @@ import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
 import com.techstore.security.TokenIssuer;
 import com.techstore.service.impl.ProductServiceImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +61,9 @@ class AdminProductIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductSpecificationRepository productSpecificationRepository;
 
     @Autowired
     private ProductRepository productRepository;
@@ -105,15 +110,7 @@ class AdminProductIntegrationTest {
     @BeforeEach
     void setUp() {
         productServiceImpl.setOrderChecker(id -> false);
-        productImageRepository.deleteAll();
-        productVariantRepository.deleteAll();
-        productRepository.deleteAll();
-        categoryRepository.deleteAll();
-        brandRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        passwordResetTokenRepository.deleteAll();
-        userRepository.deleteAll();
-        roleRepository.deleteAll();
+        cleanDatabase();
 
         Role adminRole = roleRepository.findByCode(RoleCode.ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleCode.ADMIN, "Quản trị viên")));
@@ -137,6 +134,24 @@ class AdminProductIntegrationTest {
         appleBrand = brandRepository.save(new Brand("Apple", "https://example.com/apple.png", "Hãng Apple"));
         samsungBrand = brandRepository.save(new Brand("Samsung", "https://example.com/samsung.png", "Hãng Samsung"));
         phoneCategory = categoryRepository.save(new Category("Điện thoại", "Điện thoại thông minh", null, null));
+    }
+
+    @AfterEach
+    void tearDown() {
+        cleanDatabase();
+    }
+
+    private void cleanDatabase() {
+        productSpecificationRepository.deleteAll();
+        productImageRepository.deleteAll();
+        productVariantRepository.deleteAll();
+        productRepository.deleteAll();
+        categoryRepository.deleteAll();
+        brandRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
     }
 
     @Test
