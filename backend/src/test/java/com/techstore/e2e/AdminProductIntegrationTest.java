@@ -1,0 +1,328 @@
+package com.techstore.e2e;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.techstore.dto.request.ProductCreateRequest;
+import com.techstore.entity.Brand;
+import com.techstore.entity.Category;
+import com.techstore.entity.Product;
+import com.techstore.entity.Role;
+import com.techstore.entity.User;
+import com.techstore.enums.ProductStatus;
+import com.techstore.enums.RoleCode;
+import com.techstore.repository.BrandRepository;
+import com.techstore.repository.CategoryRepository;
+import com.techstore.repository.PasswordResetTokenRepository;
+import com.techstore.repository.ProductRepository;
+import com.techstore.repository.RefreshTokenRepository;
+import com.techstore.repository.RoleRepository;
+import com.techstore.repository.UserRepository;
+import com.techstore.security.IssuedTokenPair;
+import com.techstore.security.TokenIssuer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ActiveProfiles("test")
+@SpringBootTest
+@AutoConfigureMockMvc
+class AdminProductIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private BrandRepository brandRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private TokenIssuer tokenIssuer;
+
+    private String adminToken;
+    private String customerToken;
+    private Brand appleBrand;
+    private Brand samsungBrand;
+    private Category phoneCategory;
+
+    @BeforeEach
+    void setUp() {
+        productRepository.deleteAll();
+        categoryRepository.deleteAll();
+        brandRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
+
+        Role adminRole = roleRepository.findByCode(RoleCode.ADMIN)
+                .orElseGet(() -> roleRepository.save(new Role(RoleCode.ADMIN, "Quản trị viên")));
+        Role customerRole = roleRepository.findByCode(RoleCode.CUSTOMER)
+                .orElseGet(() -> roleRepository.save(new Role(RoleCode.CUSTOMER, "Khách hàng")));
+
+        User admin = new User("admin@techstore.com", passwordEncoder.encode("Admin@123"), "Admin User", "0900000001");
+        admin.addRole(adminRole);
+        admin = userRepository.save(admin);
+
+        User customer = new User("customer@techstore.com", passwordEncoder.encode("Customer@123"), "Customer User", "0900000002");
+        customer.addRole(customerRole);
+        customer = userRepository.save(customer);
+
+        IssuedTokenPair adminTokens = tokenIssuer.issue(admin);
+        adminToken = adminTokens.accessToken();
+
+        IssuedTokenPair customerTokens = tokenIssuer.issue(customer);
+        customerToken = customerTokens.accessToken();
+
+        appleBrand = brandRepository.save(new Brand("Apple", "https://example.com/apple.png", "Hãng Apple"));
+        samsungBrand = brandRepository.save(new Brand("Samsung", "https://example.com/samsung.png", "Hãng Samsung"));
+        phoneCategory = categoryRepository.save(new Category("Điện thoại", "Điện thoại thông minh", null, null));
+    }
+
+    @Test
+    @DisplayName("Admin tạo sản phẩm mới với thông tin cơ bản thành công (mặc định DRAFT)")
+    void createProduct_asAdmin_success() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "iPhone 16 Pro Max",
+                "Flagship mới nhất từ Apple",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.name").value("iPhone 16 Pro Max"))
+                .andExpect(jsonPath("$.data.description").value("Flagship mới nhất từ Apple"))
+                .andExpect(jsonPath("$.data.brandId").value(appleBrand.getId()))
+                .andExpect(jsonPath("$.data.brandName").value("Apple"))
+                .andExpect(jsonPath("$.data.categoryId").value(phoneCategory.getId()))
+                .andExpect(jsonPath("$.data.categoryName").value("Điện thoại"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertThat(productRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Chặn tạo sản phẩm trùng tên trong cùng một thương hiệu (400 Bad Request)")
+    void createProduct_duplicateNameInSameBrand_throwsBadRequest() throws Exception {
+        productRepository.save(new Product("iPhone 16", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        ProductCreateRequest duplicate = new ProductCreateRequest(
+                "iPhone 16",
+                "Mô tả khác",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(duplicate)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Tên sản phẩm đã tồn tại trong cùng thương hiệu"));
+    }
+
+    @Test
+    @DisplayName("Cho phép tạo sản phẩm cùng tên nhưng ở thương hiệu khác nhau")
+    void createProduct_sameNameDifferentBrand_success() throws Exception {
+        productRepository.save(new Product("Buds Pro", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        ProductCreateRequest request = new ProductCreateRequest(
+                "Buds Pro",
+                "Tai nghe Samsung",
+                samsungBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("Buds Pro"))
+                .andExpect(jsonPath("$.data.brandName").value("Samsung"));
+
+        assertThat(productRepository.findAll()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Chặn tạo sản phẩm khi thương hiệu không tồn tại (404 Not Found)")
+    void createProduct_brandNotFound_throwsNotFound() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "Test Phone",
+                "Mô tả",
+                999999L,
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Không tìm thấy thương hiệu với ID: 999999"));
+    }
+
+    @Test
+    @DisplayName("Chặn tạo sản phẩm khi danh mục không tồn tại (404 Not Found)")
+    void createProduct_categoryNotFound_throwsNotFound() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "Test Phone",
+                "Mô tả",
+                appleBrand.getId(),
+                999999L,
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Không tìm thấy danh mục với ID: 999999"));
+    }
+
+    @Test
+    @DisplayName("Chặn tạo sản phẩm với trạng thái ACTIVE khi chưa có biến thể (400 Bad Request)")
+    void createProduct_withActiveStatusWithoutVariants_throwsBadRequest() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "iPhone 16 Pro",
+                "Mô tả",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.ACTIVE
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Sản phẩm mới tạo phải ở trạng thái nháp (DRAFT), chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"));
+    }
+
+    @Test
+    @DisplayName("Chặn tạo sản phẩm khi thiếu các trường bắt buộc")
+    void createProduct_missingRequiredFields_throwsBadRequest() throws Exception {
+        ProductCreateRequest request = new ProductCreateRequest(
+                "",
+                null,
+                null,
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Admin lấy danh sách tất cả sản phẩm thành công")
+    void getAllProducts_asAdmin_returnsList() throws Exception {
+        productRepository.save(new Product("SP 1", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+        productRepository.save(new Product("SP 2", null, samsungBrand, phoneCategory, ProductStatus.DRAFT));
+
+        mockMvc.perform(get("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("Admin lấy chi tiết một sản phẩm theo ID thành công")
+    void getProductById_asAdmin_success() throws Exception {
+        Product saved = productRepository.save(new Product("iPhone 16", "Mô tả", appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        mockMvc.perform(get("/api/v1/admin/products/" + saved.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(saved.getId()))
+                .andExpect(jsonPath("$.data.name").value("iPhone 16"));
+    }
+
+    @Test
+    @DisplayName("Customer truy cập API quản trị sản phẩm bị cấm (403 Forbidden)")
+    void productApi_asCustomer_returnsForbidden() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/products")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Khách vãng lai truy cập API quản trị sản phẩm bị từ chối (401 Unauthorized)")
+    void productApi_unauthenticated_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/products"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Chặn xoá thương hiệu khi đang có sản phẩm liên kết (400 Bad Request)")
+    void deleteBrand_havingProducts_throwsBadRequest() throws Exception {
+        productRepository.save(new Product("iPhone", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        mockMvc.perform(delete("/api/v1/admin/brands/" + appleBrand.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Không thể xoá thương hiệu đang gắn với sản phẩm"));
+    }
+
+    @Test
+    @DisplayName("Chặn xoá danh mục khi đang có sản phẩm liên kết (400 Bad Request)")
+    void deleteCategory_havingProducts_throwsBadRequest() throws Exception {
+        productRepository.save(new Product("iPhone", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        mockMvc.perform(delete("/api/v1/admin/categories/" + phoneCategory.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Không thể xoá danh mục đang có sản phẩm gắn với nó"));
+    }
+}
+
