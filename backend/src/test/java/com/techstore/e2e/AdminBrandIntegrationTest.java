@@ -52,6 +52,12 @@ class AdminBrandIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private com.techstore.repository.InventoryTransactionRepository inventoryTransactionRepository;
+
+    @Autowired
+    private com.techstore.repository.InventoryRepository inventoryRepository;
+
+    @Autowired
     private ProductSpecificationRepository productSpecificationRepository;
 
     @Autowired
@@ -120,6 +126,8 @@ class AdminBrandIntegrationTest {
     }
 
     private void cleanDatabase() {
+        inventoryTransactionRepository.deleteAll();
+        inventoryRepository.deleteAll();
         productSpecificationRepository.deleteAll();
         productImageRepository.deleteAll();
         productVariantRepository.deleteAll();

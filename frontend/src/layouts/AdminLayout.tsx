@@ -23,6 +23,7 @@ const adminItems = [
   { label: "Danh mục", to: ROUTES.adminCategories },
   { label: "Thương hiệu", to: ROUTES.adminBrands },
   { label: "Sản phẩm", to: ROUTES.adminProducts },
+  { label: "Tồn kho", to: ROUTES.adminInventory },
   { label: "Đơn hàng", to: ROUTES.adminOrders },
 ];
 
