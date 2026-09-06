@@ -105,16 +105,6 @@ class AdminProductVariantIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        productImageRepository.deleteAll();
-        productVariantRepository.deleteAll();
-        productRepository.deleteAll();
-        categoryRepository.deleteAll();
-        brandRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        passwordResetTokenRepository.deleteAll();
-        userRepository.deleteAll();
-        roleRepository.deleteAll();
-
         // Reset orderChecker to default
         productVariantService.setOrderChecker(id -> false);
         cleanDatabase();
