@@ -2,13 +2,16 @@ package com.techstore.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.ProductCreateRequest;
+import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.entity.Brand;
 import com.techstore.entity.Category;
 import com.techstore.entity.Product;
+import com.techstore.entity.ProductVariant;
 import com.techstore.entity.Role;
 import com.techstore.entity.User;
 import com.techstore.enums.ProductStatus;
 import com.techstore.enums.RoleCode;
+import com.techstore.enums.VariantStatus;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
@@ -32,11 +35,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -275,6 +281,163 @@ class AdminProductIntegrationTest {
     }
 
     @Test
+    @DisplayName("Admin cập nhật thông tin sản phẩm thành công")
+    void updateProduct_asAdmin_success() throws Exception {
+        Product product = productRepository.save(new Product(
+                "iPhone 15",
+                "Mô tả cũ",
+                appleBrand,
+                phoneCategory,
+                ProductStatus.DRAFT
+        ));
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "iPhone 15 Pro",
+                "Mô tả mới cập nhật",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.id").value(product.getId()))
+                .andExpect(jsonPath("$.data.name").value("iPhone 15 Pro"))
+                .andExpect(jsonPath("$.data.description").value("Mô tả mới cập nhật"))
+                .andExpect(jsonPath("$.data.brandId").value(appleBrand.getId()))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        Product updated = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("iPhone 15 Pro");
+        assertThat(updated.getDescription()).isEqualTo("Mô tả mới cập nhật");
+    }
+
+    @Test
+    @DisplayName("Admin cập nhật sản phẩm giữ nguyên tên của chính nó thành công (không bị lỗi trùng lặp)")
+    void updateProduct_keepSameName_success() throws Exception {
+        Product product = productRepository.save(new Product(
+                "iPhone 15",
+                "Mô tả ban đầu",
+                appleBrand,
+                phoneCategory,
+                ProductStatus.DRAFT
+        ));
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "iPhone 15",
+                "Mô tả đã sửa đổi",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("iPhone 15"))
+                .andExpect(jsonPath("$.data.description").value("Mô tả đã sửa đổi"));
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật sản phẩm trùng tên với sản phẩm khác trong cùng thương hiệu (400 Bad Request)")
+    void updateProduct_duplicateNameInSameBrand_throwsBadRequest() throws Exception {
+        productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+        Product product2 = productRepository.save(new Product("iPhone 16", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "iPhone 15",
+                "Đổi tên sang iPhone 15 nhưng đã có sản phẩm khác tên này",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + product2.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Tên sản phẩm đã tồn tại trong cùng thương hiệu"));
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật trạng thái sản phẩm sang ACTIVE khi chưa có biến thể nào")
+    void updateProduct_changeStatusToActiveWithoutVariants_throwsBadRequest() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "iPhone 15",
+                "Chuyển sang ACTIVE",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.ACTIVE
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"));
+    }
+
+    @Test
+    @DisplayName("Cho phép cập nhật trạng thái sản phẩm sang ACTIVE khi đã có biến thể hợp lệ")
+    void updateProduct_changeStatusToActiveWithVariants_success() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+        productVariantRepository.save(new ProductVariant(
+                product,
+                "IP15-BLK-128",
+                "Đen",
+                "128GB",
+                BigDecimal.valueOf(20000000),
+                BigDecimal.valueOf(22000000),
+                10,
+                VariantStatus.ACTIVE
+        ));
+
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "iPhone 15",
+                "Chuyển sang ACTIVE khi đã có biến thể",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.ACTIVE
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + product.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật sản phẩm không tồn tại (404 Not Found)")
+    void updateProduct_notFound_throwsNotFound() throws Exception {
+        ProductUpdateRequest updateRequest = new ProductUpdateRequest(
+                "Test Non-existent",
+                "Mô tả",
+                appleBrand.getId(),
+                phoneCategory.getId(),
+                ProductStatus.DRAFT
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/999999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm với ID: 999999"));
+    }
+
+    @Test
     @DisplayName("Admin lấy danh sách tất cả sản phẩm thành công")
     void getAllProducts_asAdmin_returnsList() throws Exception {
         productRepository.save(new Product("SP 1", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
@@ -335,4 +498,3 @@ class AdminProductIntegrationTest {
                 .andExpect(jsonPath("$.message").value("Không thể xoá danh mục đang có sản phẩm gắn với nó"));
     }
 }
-

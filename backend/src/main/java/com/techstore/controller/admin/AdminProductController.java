@@ -2,6 +2,7 @@ package com.techstore.controller.admin;
 
 import com.techstore.dto.request.ProductCreateRequest;
 import com.techstore.dto.request.ProductImageUpdateRequest;
+import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.dto.request.ProductVariantRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.ProductImageResponse;
@@ -73,6 +74,16 @@ public class AdminProductController {
     public ResponseEntity<ApiResponse<ProductResponse>> getProductById(@PathVariable("id") Long id) {
         ProductResponse response = productService.getProductById(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin sản phẩm thành công", response));
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Update product basic information")
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProduct(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ProductUpdateRequest request
+    ) {
+        ProductResponse response = productService.updateProduct(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật sản phẩm thành công", response));
     }
 
     // --- Product Variant Endpoints ---
