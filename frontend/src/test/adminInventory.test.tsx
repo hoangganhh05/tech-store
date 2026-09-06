@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { ThemeProvider } from "@mui/material";
 import { MemoryRouter } from "react-router-dom";
 import { appTheme } from "../configs/theme";
@@ -6,8 +12,11 @@ import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import {
   getInventories,
   getInventorySummary,
+  getInventoryTransactions,
+  importInventory,
   type InventoryItem,
   type InventorySummary,
+  type InventoryTransactionItem,
 } from "../services/inventoryService";
 import { getAdminCategories, type Category } from "../services/categoryService";
 
@@ -15,6 +24,8 @@ vi.mock("../services/inventoryService", () => ({
   getInventories: vi.fn(),
   getInventorySummary: vi.fn(),
   getInventoryByVariantId: vi.fn(),
+  getInventoryTransactions: vi.fn(),
+  importInventory: vi.fn(),
 }));
 
 vi.mock("../services/categoryService", () => ({
@@ -24,6 +35,8 @@ vi.mock("../services/categoryService", () => ({
 const mockedGetInventories = vi.mocked(getInventories);
 const mockedGetInventorySummary = vi.mocked(getInventorySummary);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
+const mockedGetInventoryTransactions = vi.mocked(getInventoryTransactions);
+const mockedImportInventory = vi.mocked(importInventory);
 
 const mockCategories: Category[] = [
   {
@@ -110,6 +123,27 @@ const mockItems: InventoryItem[] = [
   },
 ];
 
+const mockTransactions: InventoryTransactionItem[] = [
+  {
+    id: 1,
+    inventoryId: 1,
+    variantId: 101,
+    productName: "iPhone 16 Pro",
+    sku: "IP16P-128-BLK",
+    color: "Titan Đen",
+    storage: "128GB",
+    transactionType: "IMPORT",
+    quantityChange: 10,
+    referenceType: "MANUAL_IMPORT",
+    referenceId: null,
+    note: "Nhập hàng từ nhà cung cấp Apple",
+    createdById: 1,
+    createdByName: "Admin User",
+    createdByEmail: "admin@techstore.com",
+    createdAt: "2026-09-06T15:00:00Z",
+  },
+];
+
 const renderComponent = () => {
   return render(
     <ThemeProvider theme={appTheme}>
@@ -133,6 +167,20 @@ describe("AdminInventoryPage", () => {
       totalPages: 1,
       first: true,
       last: true,
+    });
+    mockedGetInventoryTransactions.mockResolvedValue({
+      items: mockTransactions,
+      page: 0,
+      size: 10,
+      totalElements: 1,
+      totalPages: 1,
+      first: true,
+      last: true,
+    });
+    mockedImportInventory.mockResolvedValue({
+      ...mockItems[0],
+      quantityOnHand: 30,
+      availableQuantity: 28,
     });
   });
 
@@ -278,5 +326,118 @@ describe("AdminInventoryPage", () => {
     await waitFor(() => {
       expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
     });
+  });
+
+  test("opens import dialog from row with pre-selected variant", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const importRowBtn = screen.getByTestId("btn-import-row-101");
+    fireEvent.click(importRowBtn);
+
+    const dialog = screen.getByTestId("dialog-import-inventory");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText("Nhập kho biến thể sản phẩm")).toBeInTheDocument();
+    expect(
+      within(dialog).getAllByText(/IP16P-128-BLK/).length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  test("submits import inventory successfully and triggers API call", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const headerImportBtn = screen.getByTestId("btn-header-import");
+    fireEvent.click(headerImportBtn);
+
+    expect(screen.getByTestId("dialog-import-inventory")).toBeInTheDocument();
+
+    const quantityInput = screen.getByLabelText(/Số lượng nhập/i);
+    fireEvent.change(quantityInput, { target: { value: "15" } });
+
+    const noteInput = screen.getByLabelText(/Ghi chú nhập hàng/i);
+    fireEvent.change(noteInput, {
+      target: { value: "Nhập lô hàng Apple mới" },
+    });
+
+    const submitBtn = screen.getByTestId("btn-submit-import");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockedImportInventory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variantId: 101,
+          quantity: 15,
+          note: "Nhập lô hàng Apple mới",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Nhập kho thành công 15 sản phẩm!/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("switches to Lịch sử nhập kho tab and displays transaction list", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const historyTab = screen.getByTestId("tab-inventory-history");
+    fireEvent.click(historyTab);
+
+    await waitFor(() => {
+      expect(mockedGetInventoryTransactions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "IMPORT",
+          page: 0,
+          size: 10,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("+10")).toBeInTheDocument();
+      expect(
+        screen.getByText("Nhập hàng từ nhà cung cấp Apple"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Admin User")).toBeInTheDocument();
+      expect(screen.getByText("admin@techstore.com")).toBeInTheDocument();
+    });
+  });
+
+  test("validates import form preventing submission when quantity is invalid", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const headerImportBtn = screen.getByTestId("btn-header-import");
+    fireEvent.click(headerImportBtn);
+
+    const quantityInput = screen.getByLabelText(/Số lượng nhập/i);
+    fireEvent.change(quantityInput, { target: { value: "0" } });
+
+    const submitBtn = screen.getByTestId("btn-submit-import");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Số lượng nhập phải lớn hơn 0"),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockedImportInventory).not.toHaveBeenCalled();
   });
 });

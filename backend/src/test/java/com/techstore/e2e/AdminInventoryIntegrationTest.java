@@ -37,11 +37,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.techstore.dto.request.InventoryImportRequest;
 import java.math.BigDecimal;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -316,5 +318,132 @@ class AdminInventoryIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.success", is(false)))
                 .andExpect(jsonPath("$.code", is("INVENTORY_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("US-04.2 T-04.2.1: Nhập kho tăng số lượng tồn và tạo lịch sử giao dịch thành công")
+    void importInventory_success() throws Exception {
+        InventoryImportRequest request = new InventoryImportRequest(
+                iphone128.getId(),
+                15,
+                "Nhập lô hàng Apple mới từ nhà phân phối",
+                "PURCHASE_ORDER",
+                1001L
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/import")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.variantId", is(iphone128.getId().intValue())))
+                .andExpect(jsonPath("$.data.quantityOnHand", is(35))) // 20 + 15
+                .andExpect(jsonPath("$.data.quantityReserved", is(2)))
+                .andExpect(jsonPath("$.data.availableQuantity", is(33))) // 35 - 2
+                .andExpect(jsonPath("$.data.stockStatus", is("IN_STOCK")));
+
+        // Verify database state for variant and inventory transaction
+        ProductVariant updatedVariant = productVariantRepository.findById(iphone128.getId()).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(35, updatedVariant.getStockQuantity());
+
+        Inventory inv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
+        var transactions = inventoryTransactionRepository.findByInventoryIdOrderByCreatedAtDesc(inv.getId());
+        org.junit.jupiter.api.Assertions.assertFalse(transactions.isEmpty());
+        var tx = transactions.get(0);
+        org.junit.jupiter.api.Assertions.assertEquals(15, tx.getQuantityChange());
+        org.junit.jupiter.api.Assertions.assertEquals("Nhập lô hàng Apple mới từ nhà phân phối", tx.getNote());
+        org.junit.jupiter.api.Assertions.assertNotNull(tx.getCreatedBy());
+        org.junit.jupiter.api.Assertions.assertNotNull(tx.getCreatedBy().getId());
+    }
+
+    @Test
+    @DisplayName("US-04.2 T-04.2.2: Nhập kho với số lượng nhỏ hơn hoặc bằng 0 trả về 400")
+    void importInventory_invalidQuantity_returns400() throws Exception {
+        InventoryImportRequest request = new InventoryImportRequest(
+                iphone128.getId(),
+                0,
+                "Nhập 0 cái",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/import")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success", is(false)));
+    }
+
+    @Test
+    @DisplayName("US-04.2 T-04.2.2: Nhập kho với variantId không tồn tại trả về 404")
+    void importInventory_variantNotFound_returns404() throws Exception {
+        InventoryImportRequest request = new InventoryImportRequest(
+                999999L,
+                10,
+                "Nhập variant ảo",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/import")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("PRODUCT_VARIANT_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("US-04.2 T-04.2.2: Phân quyền - Người dùng không phải Admin bị từ chối 403")
+    void importInventory_forbiddenForCustomer_returns403() throws Exception {
+        InventoryImportRequest request = new InventoryImportRequest(
+                iphone128.getId(),
+                10,
+                "Customer thử hack",
+                null,
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/import")
+                        .header("Authorization", "Bearer " + customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success", is(false)))
+                .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
+    }
+
+    @Test
+    @DisplayName("US-04.2 T-04.2.1: Lấy danh sách lịch sử giao dịch kho phân trang")
+    void getTransactions_success() throws Exception {
+        // First perform an import
+        InventoryImportRequest importReq = new InventoryImportRequest(
+                iphone128.getId(),
+                5,
+                "Lô thử nghiệm",
+                "MANUAL_IMPORT",
+                null
+        );
+
+        mockMvc.perform(post("/api/v1/admin/inventory/import")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(importReq)))
+                .andExpect(status().isOk());
+
+        // Then query transactions
+        mockMvc.perform(get("/api/v1/admin/inventory/transactions")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("variantId", iphone128.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].sku", is("IP16P-128-BLK")))
+                .andExpect(jsonPath("$.data.items[0].quantityChange", is(5)))
+                .andExpect(jsonPath("$.data.items[0].note", is("Lô thử nghiệm")))
+                .andExpect(jsonPath("$.data.items[0].createdByName", is("Admin User")));
     }
 }

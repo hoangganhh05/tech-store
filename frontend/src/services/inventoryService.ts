@@ -73,10 +73,9 @@ export async function getInventories(
     queryParams.size = params.size;
   }
 
-  const response = await httpClient.get<ApiResponse<PageResponse<InventoryItem>>>(
-    "/admin/inventory",
-    { params: queryParams },
-  );
+  const response = await httpClient.get<
+    ApiResponse<PageResponse<InventoryItem>>
+  >("/admin/inventory", { params: queryParams });
   return response.data.data;
 }
 
@@ -93,5 +92,73 @@ export async function getInventoryByVariantId(
   const response = await httpClient.get<ApiResponse<InventoryItem>>(
     `/admin/inventory/variants/${variantId}`,
   );
+  return response.data.data;
+}
+
+export type InventoryImportRequest = {
+  variantId: number;
+  quantity: number;
+  note?: string;
+  referenceType?: string;
+  referenceId?: number;
+};
+
+export type InventoryTransactionItem = {
+  id: number;
+  inventoryId: number;
+  variantId: number;
+  productName: string | null;
+  sku: string;
+  color: string | null;
+  storage: string | null;
+  transactionType:
+    | "IMPORT"
+    | "EXPORT"
+    | "ADJUSTMENT"
+    | "RESERVATION"
+    | "RELEASE";
+  quantityChange: number;
+  referenceType: string | null;
+  referenceId: number | null;
+  note: string | null;
+  createdById: number | null;
+  createdByName: string | null;
+  createdByEmail: string | null;
+  createdAt: string;
+};
+
+export async function importInventory(
+  request: InventoryImportRequest,
+): Promise<InventoryItem> {
+  const response = await httpClient.post<ApiResponse<InventoryItem>>(
+    "/admin/inventory/import",
+    request,
+  );
+  return response.data.data;
+}
+
+export async function getInventoryTransactions(params?: {
+  variantId?: number;
+  type?: string;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<InventoryTransactionItem>> {
+  const queryParams: Record<string, string | number> = {};
+  if (params?.variantId) {
+    queryParams.variantId = params.variantId;
+  }
+  if (params?.type) {
+    queryParams.type = params.type;
+  }
+  if (params?.page !== undefined) {
+    queryParams.page = params.page;
+  }
+  if (params?.size !== undefined) {
+    queryParams.size = params.size;
+  }
+
+  const response = await httpClient.get<
+    ApiResponse<PageResponse<InventoryTransactionItem>>
+  >("/admin/inventory/transactions", { params: queryParams });
   return response.data.data;
 }
