@@ -2,6 +2,7 @@ package com.techstore.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.ProductCreateRequest;
+import com.techstore.dto.request.ProductStatusUpdateRequest;
 import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.entity.Brand;
 import com.techstore.entity.Category;
@@ -41,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -433,6 +435,101 @@ class AdminProductIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm với ID: 999999"));
+    }
+
+    // --- PATCH Status Endpoints Tests ---
+
+    @Test
+    @DisplayName("Admin cập nhật trạng thái nhanh sang ACTIVE khi có biến thể thành công")
+    void updateProductStatus_asAdmin_toActive_withVariants_success() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+        productVariantRepository.save(new ProductVariant(
+                product,
+                "IP15-STATUS-TEST",
+                "Xanh",
+                "128GB",
+                BigDecimal.valueOf(20000000),
+                BigDecimal.valueOf(22000000),
+                10,
+                VariantStatus.ACTIVE
+        ));
+
+        ProductStatusUpdateRequest statusRequest = new ProductStatusUpdateRequest(ProductStatus.ACTIVE);
+
+        mockMvc.perform(patch("/api/v1/admin/products/" + product.getId() + "/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"));
+
+        Product updated = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(ProductStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật trạng thái nhanh sang ACTIVE khi chưa có biến thể (400 Bad Request)")
+    void updateProductStatus_toActive_withoutVariants_throwsBadRequest() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.DRAFT));
+
+        ProductStatusUpdateRequest statusRequest = new ProductStatusUpdateRequest(ProductStatus.ACTIVE);
+
+        mockMvc.perform(patch("/api/v1/admin/products/" + product.getId() + "/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Sản phẩm chỉ có thể chuyển sang đang bán khi có ít nhất một biến thể hợp lệ"));
+    }
+
+    @Test
+    @DisplayName("Admin cập nhật trạng thái nhanh sang INACTIVE (Ngừng bán) thành công")
+    void updateProductStatus_asAdmin_toInactive_success() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.ACTIVE));
+
+        ProductStatusUpdateRequest statusRequest = new ProductStatusUpdateRequest(ProductStatus.INACTIVE);
+
+        mockMvc.perform(patch("/api/v1/admin/products/" + product.getId() + "/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+
+        Product updated = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(ProductStatus.INACTIVE);
+    }
+
+    @Test
+    @DisplayName("Admin cập nhật trạng thái nhanh sang DRAFT (Nháp) thành công")
+    void updateProductStatus_asAdmin_toDraft_success() throws Exception {
+        Product product = productRepository.save(new Product("iPhone 15", null, appleBrand, phoneCategory, ProductStatus.INACTIVE));
+
+        ProductStatusUpdateRequest statusRequest = new ProductStatusUpdateRequest(ProductStatus.DRAFT);
+
+        mockMvc.perform(patch("/api/v1/admin/products/" + product.getId() + "/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        Product updated = productRepository.findById(product.getId()).orElseThrow();
+        assertThat(updated.getStatus()).isEqualTo(ProductStatus.DRAFT);
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật trạng thái nhanh khi sản phẩm không tồn tại (404 Not Found)")
+    void updateProductStatus_notFound_throwsNotFound() throws Exception {
+        ProductStatusUpdateRequest statusRequest = new ProductStatusUpdateRequest(ProductStatus.ACTIVE);
+
+        mockMvc.perform(patch("/api/v1/admin/products/999999/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(statusRequest)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm với ID: 999999"));
     }

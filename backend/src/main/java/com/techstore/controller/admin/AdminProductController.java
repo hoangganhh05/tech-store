@@ -2,6 +2,7 @@ package com.techstore.controller.admin;
 
 import com.techstore.dto.request.ProductCreateRequest;
 import com.techstore.dto.request.ProductImageUpdateRequest;
+import com.techstore.dto.request.ProductStatusUpdateRequest;
 import com.techstore.dto.request.ProductUpdateRequest;
 import com.techstore.dto.request.ProductVariantRequest;
 import com.techstore.dto.response.ApiResponse;
@@ -21,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -84,6 +86,16 @@ public class AdminProductController {
     ) {
         ProductResponse response = productService.updateProduct(id, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật sản phẩm thành công", response));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Update product status (DRAFT, ACTIVE, INACTIVE)")
+    public ResponseEntity<ApiResponse<ProductResponse>> updateProductStatus(
+            @PathVariable("id") Long id,
+            @Valid @RequestBody ProductStatusUpdateRequest request
+    ) {
+        ProductResponse response = productService.updateProductStatus(id, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật trạng thái sản phẩm thành công", response));
     }
 
     // --- Product Variant Endpoints ---

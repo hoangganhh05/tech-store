@@ -14,6 +14,7 @@ import {
   FormHelperText,
   InputAdornment,
   InputLabel,
+  Menu,
   MenuItem,
   Paper,
   Select,
@@ -25,10 +26,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -41,6 +44,7 @@ import {
   createAdminProduct,
   getAdminProducts,
   updateAdminProduct,
+  updateAdminProductStatus,
   type Product,
   type ProductCreatePayload,
   type ProductStatus,
@@ -80,6 +84,12 @@ export function AdminProductsPage() {
     brandId?: string;
     categoryId?: string;
   }>({});
+
+  // Quick status menu state
+  const [statusMenuAnchorEl, setStatusMenuAnchorEl] =
+    useState<null | HTMLElement>(null);
+  const [selectedProductForStatus, setSelectedProductForStatus] =
+    useState<Product | null>(null);
 
   // Product Variants Dialog state
   const [selectedProductForVariants, setSelectedProductForVariants] =
@@ -225,6 +235,63 @@ export function AdminProductsPage() {
     }
   };
 
+  const handleOpenStatusMenu = (
+    event: React.MouseEvent<HTMLElement>,
+    product: Product,
+  ) => {
+    event.stopPropagation();
+    setStatusMenuAnchorEl(event.currentTarget);
+    setSelectedProductForStatus(product);
+  };
+
+  const handleCloseStatusMenu = () => {
+    setStatusMenuAnchorEl(null);
+    setSelectedProductForStatus(null);
+  };
+
+  const handleSelectStatus = async (newStatus: ProductStatus) => {
+    if (!selectedProductForStatus) return;
+
+    if (selectedProductForStatus.status === newStatus) {
+      handleCloseStatusMenu();
+      return;
+    }
+
+    const targetProduct = selectedProductForStatus;
+    handleCloseStatusMenu();
+
+    try {
+      const updated = await updateAdminProductStatus(targetProduct.id, {
+        status: newStatus,
+      });
+
+      const statusLabels: Record<ProductStatus, string> = {
+        ACTIVE: "Đang bán",
+        INACTIVE: "Ngừng bán",
+        DRAFT: "Nháp",
+      };
+
+      setFeedbackMessage({
+        type: "success",
+        text: `Đã chuyển trạng thái sản phẩm "${updated.name}" sang "${statusLabels[newStatus]}" thành công.`,
+      });
+
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === updated.id ? { ...p, status: updated.status } : p,
+        ),
+      );
+    } catch (error: unknown) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      setFeedbackMessage({
+        type: "error",
+        text: message || "Không thể cập nhật trạng thái sản phẩm.",
+      });
+    }
+  };
+
   const handleOpenVariantsDialog = (product: Product) => {
     setSelectedProductForVariants(product);
     setIsVariantsDialogOpen(true);
@@ -254,20 +321,6 @@ export function AdminProductsPage() {
       p.categoryName.toLowerCase().includes(q)
     );
   });
-
-  const getStatusChip = (status: ProductStatus) => {
-    switch (status) {
-      case "ACTIVE":
-        return <Chip label="Đang bán" size="small" color="success" />;
-      case "INACTIVE":
-        return <Chip label="Ngừng bán" size="small" color="default" />;
-      case "DRAFT":
-      default:
-        return (
-          <Chip label="Nháp" size="small" color="warning" variant="outlined" />
-        );
-    }
-  };
 
   return (
     <Stack spacing={3}>
@@ -391,7 +444,53 @@ export function AdminProductsPage() {
                       </TableCell>
                       <TableCell>{p.categoryName}</TableCell>
                       <TableCell align="center">
-                        {getStatusChip(p.status)}
+                        <Tooltip title="Bấm để đổi nhanh trạng thái" arrow>
+                          <Chip
+                            label={
+                              p.status === "ACTIVE"
+                                ? "Đang bán"
+                                : p.status === "INACTIVE"
+                                ? "Ngừng bán"
+                                : "Nháp"
+                            }
+                            size="small"
+                            color={
+                              p.status === "ACTIVE"
+                                ? "success"
+                                : p.status === "INACTIVE"
+                                ? "default"
+                                : "warning"
+                            }
+                            variant={
+                              p.status === "DRAFT" ? "outlined" : "filled"
+                            }
+                            onClick={(e) => handleOpenStatusMenu(e, p)}
+                            deleteIcon={<ExpandMoreIcon fontSize="small" />}
+                            onDelete={(e) =>
+                              handleOpenStatusMenu(
+                                e as unknown as React.MouseEvent<HTMLElement>,
+                                p,
+                              )
+                            }
+                            sx={{
+                              cursor: "pointer",
+                              fontWeight: 600,
+                              "& .MuiChip-deleteIcon": {
+                                color: "inherit",
+                                marginRight: "4px",
+                                marginLeft: "-2px",
+                              },
+                            }}
+                            data-testid={`status-chip-${p.id}`}
+                            aria-label={`Trạng thái: ${
+                              p.status === "ACTIVE"
+                                ? "Đang bán"
+                                : p.status === "INACTIVE"
+                                ? "Ngừng bán"
+                                : "Nháp"
+                            }`}
+                          />
+                        </Tooltip>
                       </TableCell>
                       <TableCell sx={{ maxWidth: 250 }}>
                         <Typography
@@ -451,6 +550,85 @@ export function AdminProductsPage() {
         </CardContent>
       </Card>
 
+      {/* Menu chuyển nhanh trạng thái */}
+      <Menu
+        anchorEl={statusMenuAnchorEl}
+        open={Boolean(statusMenuAnchorEl)}
+        onClose={handleCloseStatusMenu}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <MenuItem
+          onClick={() => handleSelectStatus("ACTIVE")}
+          selected={selectedProductForStatus?.status === "ACTIVE"}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: "success.main",
+              }}
+            />
+            <Typography
+              variant="body2"
+              fontWeight={
+                selectedProductForStatus?.status === "ACTIVE" ? 600 : 400
+              }
+            >
+              Đang bán (ACTIVE)
+            </Typography>
+          </Stack>
+        </MenuItem>
+        <MenuItem
+          onClick={() => handleSelectStatus("INACTIVE")}
+          selected={selectedProductForStatus?.status === "INACTIVE"}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: "grey.500",
+              }}
+            />
+            <Typography
+              variant="body2"
+              fontWeight={
+                selectedProductForStatus?.status === "INACTIVE" ? 600 : 400
+              }
+            >
+              Ngừng bán (INACTIVE)
+            </Typography>
+          </Stack>
+        </MenuItem>
+        <MenuItem
+          onClick={() => handleSelectStatus("DRAFT")}
+          selected={selectedProductForStatus?.status === "DRAFT"}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                bgcolor: "warning.main",
+              }}
+            />
+            <Typography
+              variant="body2"
+              fontWeight={
+                selectedProductForStatus?.status === "DRAFT" ? 600 : 400
+              }
+            >
+              Nháp (DRAFT)
+            </Typography>
+          </Stack>
+        </MenuItem>
+      </Menu>
+
       {/* Dialog tạo / sửa sản phẩm */}
       <Dialog
         open={isDialogOpen}
@@ -460,7 +638,9 @@ export function AdminProductsPage() {
       >
         <form onSubmit={handleSubmit} noValidate>
           <DialogTitle>
-            {editingProduct ? "Chỉnh sửa thông tin sản phẩm" : "Tạo sản phẩm mới"}
+            {editingProduct
+              ? "Chỉnh sửa thông tin sản phẩm"
+              : "Tạo sản phẩm mới"}
           </DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2.5} sx={{ pt: 1 }}>
