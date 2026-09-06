@@ -49,6 +49,24 @@ export type ProductVariantPayload = {
   status?: VariantStatus;
 };
 
+export type ProductImage = {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantSku?: string | null;
+  variantColor?: string | null;
+  imageUrl: string;
+  isPrimary: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductImageUpdatePayload = {
+  variantId?: number | null;
+  displayOrder?: number;
+};
+
 type ApiResponse<T> = {
   success: boolean;
   code: string;
@@ -128,5 +146,72 @@ export async function deleteProductVariant(
 ): Promise<void> {
   await httpClient.delete<ApiResponse<void>>(
     `/admin/products/${productId}/variants/${variantId}`,
+  );
+}
+
+export async function getProductImages(
+  productId: number,
+): Promise<ProductImage[]> {
+  const response = await httpClient.get<ApiResponse<ProductImage[]>>(
+    `/admin/products/${productId}/images`,
+  );
+  return response.data.data;
+}
+
+export async function uploadProductImage(
+  productId: number,
+  file: File,
+  variantId?: number | null,
+  isPrimary?: boolean,
+): Promise<ProductImage> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (variantId !== undefined && variantId !== null) {
+    formData.append("variantId", String(variantId));
+  }
+  if (isPrimary !== undefined && isPrimary !== null) {
+    formData.append("isPrimary", String(isPrimary));
+  }
+
+  const response = await httpClient.post<ApiResponse<ProductImage>>(
+    `/admin/products/${productId}/images`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    },
+  );
+  return response.data.data;
+}
+
+export async function setPrimaryProductImage(
+  productId: number,
+  imageId: number,
+): Promise<ProductImage> {
+  const response = await httpClient.put<ApiResponse<ProductImage>>(
+    `/admin/products/${productId}/images/${imageId}/primary`,
+  );
+  return response.data.data;
+}
+
+export async function updateProductImage(
+  productId: number,
+  imageId: number,
+  payload: ProductImageUpdatePayload,
+): Promise<ProductImage> {
+  const response = await httpClient.put<ApiResponse<ProductImage>>(
+    `/admin/products/${productId}/images/${imageId}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deleteProductImage(
+  productId: number,
+  imageId: number,
+): Promise<void> {
+  await httpClient.delete<ApiResponse<void>>(
+    `/admin/products/${productId}/images/${imageId}`,
   );
 }

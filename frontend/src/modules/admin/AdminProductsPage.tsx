@@ -32,6 +32,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import TuneIcon from "@mui/icons-material/Tune";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
@@ -48,6 +49,7 @@ import {
   type Category,
 } from "../../services/categoryService";
 import { AdminProductVariantsDialog } from "./AdminProductVariantsDialog";
+import { AdminProductImagesDialog } from "./AdminProductImagesDialog";
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -80,6 +82,11 @@ export function AdminProductsPage() {
   const [selectedProductForVariants, setSelectedProductForVariants] =
     useState<Product | null>(null);
   const [isVariantsDialogOpen, setIsVariantsDialogOpen] = useState(false);
+
+  // Product Images Dialog state
+  const [selectedProductForImages, setSelectedProductForImages] =
+    useState<Product | null>(null);
+  const [isImagesDialogOpen, setIsImagesDialogOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -188,6 +195,16 @@ export function AdminProductsPage() {
   const handleCloseVariantsDialog = () => {
     setIsVariantsDialogOpen(false);
     setSelectedProductForVariants(null);
+  };
+
+  const handleOpenImagesDialog = (product: Product) => {
+    setSelectedProductForImages(product);
+    setIsImagesDialogOpen(true);
+  };
+
+  const handleCloseImagesDialog = () => {
+    setIsImagesDialogOpen(false);
+    setSelectedProductForImages(null);
   };
 
   const filteredProducts = products.filter((p) => {
@@ -316,7 +333,7 @@ export function AdminProductsPage() {
                     </TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Mô tả</TableCell>
                     <TableCell sx={{ fontWeight: 600 }} align="center">
-                      Biến thể
+                      Thao tác
                     </TableCell>
                     <TableCell sx={{ fontWeight: 600 }} align="right">
                       Ngày tạo
@@ -349,14 +366,29 @@ export function AdminProductsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<TuneIcon fontSize="small" />}
-                          onClick={() => handleOpenVariantsDialog(p)}
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="center"
                         >
-                          Biến thể
-                        </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<TuneIcon fontSize="small" />}
+                            onClick={() => handleOpenVariantsDialog(p)}
+                          >
+                            Biến thể
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="info"
+                            startIcon={<CollectionsIcon fontSize="small" />}
+                            onClick={() => handleOpenImagesDialog(p)}
+                          >
+                            Hình ảnh
+                          </Button>
+                        </Stack>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="caption" color="text.secondary">
@@ -520,6 +552,14 @@ export function AdminProductsPage() {
         product={selectedProductForVariants}
         onClose={handleCloseVariantsDialog}
         onVariantsChanged={fetchData}
+      />
+
+      {/* Dialog quản lý hình ảnh */}
+      <AdminProductImagesDialog
+        open={isImagesDialogOpen}
+        product={selectedProductForImages}
+        onClose={handleCloseImagesDialog}
+        onImagesChanged={fetchData}
       />
     </Stack>
   );

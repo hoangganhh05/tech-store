@@ -3,14 +3,15 @@ package com.techstore.exception;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.enums.ErrorCode;
 import jakarta.validation.ConstraintViolationException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.stream.Collectors;
 
@@ -51,6 +52,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiResponse<Void>> handleConstraintViolation(ConstraintViolationException exception) {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), exception.getMessage()));
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiResponse<Void>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        return ResponseEntity.status(ErrorCode.IMAGE_SIZE_EXCEEDED.status())
+                .body(ApiResponse.error(ErrorCode.IMAGE_SIZE_EXCEEDED.name(), "Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 5MB)"));
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,18 +1,22 @@
 package com.techstore.controller.admin;
 
 import com.techstore.dto.request.ProductCreateRequest;
+import com.techstore.dto.request.ProductImageUpdateRequest;
 import com.techstore.dto.request.ProductVariantRequest;
 import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.ProductImageResponse;
 import com.techstore.dto.response.ProductResponse;
 import com.techstore.dto.response.ProductVariantResponse;
 import com.techstore.enums.RoleCode;
 import com.techstore.security.RequireRole;
+import com.techstore.service.ProductImageService;
 import com.techstore.service.ProductService;
 import com.techstore.service.ProductVariantService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +25,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -33,13 +39,16 @@ public class AdminProductController {
 
     private final ProductService productService;
     private final ProductVariantService productVariantService;
+    private final ProductImageService productImageService;
 
     public AdminProductController(
             ProductService productService,
-            ProductVariantService productVariantService
+            ProductVariantService productVariantService,
+            ProductImageService productImageService
     ) {
         this.productService = productService;
         this.productVariantService = productVariantService;
+        this.productImageService = productImageService;
     }
 
     @PostMapping
@@ -117,5 +126,60 @@ public class AdminProductController {
     ) {
         productVariantService.deleteVariant(productId, variantId);
         return ResponseEntity.ok(ApiResponse.success("Xoá biến thể sản phẩm thành công", null));
+    }
+
+    // --- Product Image Endpoints ---
+
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload an image for a product")
+    public ResponseEntity<ApiResponse<ProductImageResponse>> uploadImage(
+            @PathVariable("id") Long productId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "variantId", required = false) Long variantId,
+            @RequestParam(value = "isPrimary", required = false, defaultValue = "false") Boolean isPrimary
+    ) {
+        ProductImageResponse response = productImageService.uploadImage(productId, file, variantId, isPrimary);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Tải lên hình ảnh thành công", response));
+    }
+
+    @GetMapping("/{id}/images")
+    @Operation(summary = "Get all images of a product")
+    public ResponseEntity<ApiResponse<List<ProductImageResponse>>> getImages(
+            @PathVariable("id") Long productId
+    ) {
+        List<ProductImageResponse> response = productImageService.getImagesByProductId(productId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hình ảnh thành công", response));
+    }
+
+    @PutMapping("/{id}/images/{imageId}/primary")
+    @Operation(summary = "Set an image as primary for a product")
+    public ResponseEntity<ApiResponse<ProductImageResponse>> setPrimaryImage(
+            @PathVariable("id") Long productId,
+            @PathVariable("imageId") Long imageId
+    ) {
+        ProductImageResponse response = productImageService.setPrimaryImage(productId, imageId);
+        return ResponseEntity.ok(ApiResponse.success("Đặt ảnh đại diện thành công", response));
+    }
+
+    @PutMapping("/{id}/images/{imageId}")
+    @Operation(summary = "Update product image info (variant, display order)")
+    public ResponseEntity<ApiResponse<ProductImageResponse>> updateImage(
+            @PathVariable("id") Long productId,
+            @PathVariable("imageId") Long imageId,
+            @RequestBody ProductImageUpdateRequest request
+    ) {
+        ProductImageResponse response = productImageService.updateImage(productId, imageId, request);
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật hình ảnh thành công", response));
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @Operation(summary = "Delete an image of a product")
+    public ResponseEntity<ApiResponse<Void>> deleteImage(
+            @PathVariable("id") Long productId,
+            @PathVariable("imageId") Long imageId
+    ) {
+        productImageService.deleteImage(productId, imageId);
+        return ResponseEntity.ok(ApiResponse.success("Xoá hình ảnh thành công", null));
     }
 }

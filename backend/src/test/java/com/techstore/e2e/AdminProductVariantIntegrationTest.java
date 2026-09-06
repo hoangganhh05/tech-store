@@ -14,6 +14,7 @@ import com.techstore.enums.VariantStatus;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
+import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
@@ -60,6 +61,9 @@ class AdminProductVariantIntegrationTest {
     private ProductVariantRepository productVariantRepository;
 
     @Autowired
+    private ProductImageRepository productImageRepository;
+
+    @Autowired
     private ProductRepository productRepository;
 
     @Autowired
@@ -96,6 +100,7 @@ class AdminProductVariantIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        productImageRepository.deleteAll();
         productVariantRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
