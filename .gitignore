@@ -25,3 +25,7 @@ frontend/.env
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Uploads
+uploads/
+**/uploads/

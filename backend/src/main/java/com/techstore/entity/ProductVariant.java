@@ -16,6 +16,8 @@ import jakarta.persistence.UniqueConstraint;
 
 import java.math.BigDecimal;
 import java.util.Objects;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 
 @Entity
 @Table(
@@ -32,6 +34,7 @@ public class ProductVariant extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Product product;
 
     @Column(nullable = false, unique = true, length = 100)

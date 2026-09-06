@@ -12,7 +12,9 @@ import com.techstore.enums.RoleCode;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
+import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.RoleRepository;
 import com.techstore.repository.UserRepository;
@@ -53,6 +55,12 @@ class AdminProductIntegrationTest {
     private ProductRepository productRepository;
 
     @Autowired
+    private ProductVariantRepository productVariantRepository;
+
+    @Autowired
+    private ProductImageRepository productImageRepository;
+
+    @Autowired
     private BrandRepository brandRepository;
 
     @Autowired
@@ -84,6 +92,8 @@ class AdminProductIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        productImageRepository.deleteAll();
+        productVariantRepository.deleteAll();
         productRepository.deleteAll();
         categoryRepository.deleteAll();
         brandRepository.deleteAll();
