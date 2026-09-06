@@ -7,6 +7,7 @@ import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import {
   createAdminProduct,
   getAdminProducts,
+  updateAdminProduct,
   type Product,
 } from "../services/productService";
 import { getAdminBrands, type Brand } from "../services/brandService";
@@ -16,6 +17,7 @@ vi.mock("../services/productService", () => ({
   getAdminProducts: vi.fn(),
   getAdminProductById: vi.fn(),
   createAdminProduct: vi.fn(),
+  updateAdminProduct: vi.fn(),
 }));
 
 vi.mock("../services/brandService", () => ({
@@ -28,6 +30,7 @@ vi.mock("../services/categoryService", () => ({
 
 const mockedGetAdminProducts = vi.mocked(getAdminProducts);
 const mockedCreateAdminProduct = vi.mocked(createAdminProduct);
+const mockedUpdateAdminProduct = vi.mocked(updateAdminProduct);
 const mockedGetAdminBrands = vi.mocked(getAdminBrands);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 
@@ -112,7 +115,7 @@ describe("AdminProductsPage", () => {
     mockedGetAdminCategories.mockResolvedValue(mockCategories);
   });
 
-  it("renders products table with items, brands, categories, and status chips", async () => {
+  it("renders products table with brand and category data", async () => {
     renderAdminProductsPage();
 
     await waitFor(() => {
@@ -120,27 +123,31 @@ describe("AdminProductsPage", () => {
       expect(screen.getByText("Galaxy S25 Ultra")).toBeInTheDocument();
     });
 
-    expect(screen.getByText("Apple")).toBeInTheDocument();
-    expect(screen.getByText("Samsung")).toBeInTheDocument();
+    expect(screen.getAllByText("Apple").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Samsung").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Điện thoại").length).toBeGreaterThan(0);
     expect(screen.getByText("Nháp")).toBeInTheDocument();
     expect(screen.getByText("Đang bán")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /sửa/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /biến thể/i })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /hình ảnh/i })).toHaveLength(2);
   });
 
-  it("filters products list when typing search keyword", async () => {
+  it("filters products using search input", async () => {
     renderAdminProductsPage();
 
     await waitFor(() => {
       expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/tìm kiếm sản phẩm/i);
+    const searchInput = screen.getByPlaceholderText(/tìm kiếm sản phẩm theo tên/i);
     fireEvent.change(searchInput, { target: { value: "Galaxy" } });
 
     expect(screen.queryByText("iPhone 16 Pro Max")).not.toBeInTheDocument();
     expect(screen.getByText("Galaxy S25 Ultra")).toBeInTheDocument();
   });
 
-  it("renders empty state when there are no products", async () => {
+  it("displays empty state when there are no products", async () => {
     mockedGetAdminProducts.mockResolvedValue([]);
 
     renderAdminProductsPage();
@@ -174,7 +181,7 @@ describe("AdminProductsPage", () => {
       expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
     });
 
-    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm/i });
+    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm$/i });
     fireEvent.click(addBtn);
 
     expect(screen.getByText("Tạo sản phẩm mới")).toBeInTheDocument();
@@ -182,7 +189,7 @@ describe("AdminProductsPage", () => {
     const nameInput = screen.getByLabelText(/tên sản phẩm \*/i);
     fireEvent.change(nameInput, { target: { value: "iPhone 16 Plus" } });
 
-    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm/i });
+    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm$/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -197,6 +204,58 @@ describe("AdminProductsPage", () => {
     });
   });
 
+  it("opens edit product dialog with prefilled data and submits successfully", async () => {
+    mockedUpdateAdminProduct.mockResolvedValue({
+      id: 100,
+      name: "iPhone 16 Pro Max (Updated)",
+      description: "Mô tả mới",
+      brandId: 1,
+      brandName: "Apple",
+      categoryId: 10,
+      categoryName: "Điện thoại",
+      status: "DRAFT",
+      createdAt: "2026-09-01T00:00:00Z",
+      updatedAt: "2026-09-03T00:00:00Z",
+    });
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const editBtns = screen.getAllByRole("button", { name: /sửa/i });
+    fireEvent.click(editBtns[0]);
+
+    expect(screen.getByText("Chỉnh sửa thông tin sản phẩm")).toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText(/tên sản phẩm \*/i);
+    expect(nameInput).toHaveValue("iPhone 16 Pro Max");
+
+    fireEvent.change(nameInput, { target: { value: "iPhone 16 Pro Max (Updated)" } });
+
+    const submitBtn = screen.getByRole("button", { name: /cập nhật sản phẩm/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockedUpdateAdminProduct).toHaveBeenCalledWith(
+        100,
+        expect.objectContaining({
+          name: "iPhone 16 Pro Max (Updated)",
+          brandId: 1,
+          categoryId: 10,
+          status: "DRAFT",
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Đã cập nhật sản phẩm "iPhone 16 Pro Max \(Updated\)" thành công/i),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("validates required name field before submitting", async () => {
     renderAdminProductsPage();
 
@@ -204,10 +263,10 @@ describe("AdminProductsPage", () => {
       expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
     });
 
-    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm/i });
+    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm$/i });
     fireEvent.click(addBtn);
 
-    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm/i });
+    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm$/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
@@ -234,13 +293,42 @@ describe("AdminProductsPage", () => {
       expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
     });
 
-    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm/i });
+    const addBtn = screen.getByRole("button", { name: /thêm sản phẩm$/i });
     fireEvent.click(addBtn);
 
     const nameInput = screen.getByLabelText(/tên sản phẩm \*/i);
     fireEvent.change(nameInput, { target: { value: "iPhone 16 Pro Max" } });
 
-    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm/i });
+    const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm$/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Tên sản phẩm đã tồn tại trong cùng thương hiệu/i),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("displays error alert when editing product fails", async () => {
+    mockedUpdateAdminProduct.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          message: "Tên sản phẩm đã tồn tại trong cùng thương hiệu",
+        },
+      },
+    });
+
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    const editBtns = screen.getAllByRole("button", { name: /sửa/i });
+    fireEvent.click(editBtns[0]);
+
+    const submitBtn = screen.getByRole("button", { name: /cập nhật sản phẩm/i });
     fireEvent.click(submitBtn);
 
     await waitFor(() => {

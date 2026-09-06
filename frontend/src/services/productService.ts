@@ -24,6 +24,14 @@ export type ProductCreatePayload = {
   status?: ProductStatus;
 };
 
+export type ProductUpdatePayload = {
+  name: string;
+  description?: string;
+  brandId: number;
+  categoryId: number;
+  status?: ProductStatus;
+};
+
 export type ProductVariant = {
   id: number;
   productId: number;
@@ -93,6 +101,17 @@ export async function createAdminProduct(
 ): Promise<Product> {
   const response = await httpClient.post<ApiResponse<Product>>(
     "/admin/products",
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updateAdminProduct(
+  id: number,
+  payload: ProductUpdatePayload,
+): Promise<Product> {
+  const response = await httpClient.put<ApiResponse<Product>>(
+    `/admin/products/${id}`,
     payload,
   );
   return response.data.data;

@@ -28,6 +28,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -39,6 +40,7 @@ import { PageIntro } from "../../components/common/PageIntro";
 import {
   createAdminProduct,
   getAdminProducts,
+  updateAdminProduct,
   type Product,
   type ProductCreatePayload,
   type ProductStatus,
@@ -62,8 +64,9 @@ export function AdminProductsPage() {
     text: string;
   } | null>(null);
 
-  // Add Product Dialog state
+  // Add / Edit Product Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<ProductCreatePayload>({
     name: "",
@@ -117,6 +120,7 @@ export function AdminProductsPage() {
   }, [fetchData]);
 
   const handleOpenAddDialog = () => {
+    setEditingProduct(null);
     setFormData({
       name: "",
       description: "",
@@ -128,9 +132,23 @@ export function AdminProductsPage() {
     setIsDialogOpen(true);
   };
 
+  const handleOpenEditDialog = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description || "",
+      brandId: product.brandId,
+      categoryId: product.categoryId,
+      status: product.status,
+    });
+    setFormErrors({});
+    setIsDialogOpen(true);
+  };
+
   const handleCloseDialog = () => {
     if (isSubmitting) return;
     setIsDialogOpen(false);
+    setEditingProduct(null);
     setFormErrors({});
   };
 
@@ -159,19 +177,36 @@ export function AdminProductsPage() {
     setFormErrors({});
 
     try {
-      const created = await createAdminProduct({
-        name: trimmedName,
-        description: formData.description?.trim() || undefined,
-        brandId: Number(formData.brandId),
-        categoryId: Number(formData.categoryId),
-        status: formData.status,
-      });
+      if (editingProduct) {
+        const updated = await updateAdminProduct(editingProduct.id, {
+          name: trimmedName,
+          description: formData.description?.trim() || undefined,
+          brandId: Number(formData.brandId),
+          categoryId: Number(formData.categoryId),
+          status: formData.status,
+        });
 
-      setFeedbackMessage({
-        type: "success",
-        text: `Đã tạo sản phẩm "${created.name}" thành công ở trạng thái nháp.`,
-      });
+        setFeedbackMessage({
+          type: "success",
+          text: `Đã cập nhật sản phẩm "${updated.name}" thành công.`,
+        });
+      } else {
+        const created = await createAdminProduct({
+          name: trimmedName,
+          description: formData.description?.trim() || undefined,
+          brandId: Number(formData.brandId),
+          categoryId: Number(formData.categoryId),
+          status: formData.status,
+        });
+
+        setFeedbackMessage({
+          type: "success",
+          text: `Đã tạo sản phẩm "${created.name}" thành công ở trạng thái nháp.`,
+        });
+      }
+
       setIsDialogOpen(false);
+      setEditingProduct(null);
       await fetchData();
     } catch (error: unknown) {
       const message = isAxiosError<{ message?: string }>(error)
@@ -180,7 +215,10 @@ export function AdminProductsPage() {
       setFeedbackMessage({
         type: "error",
         text:
-          message || "Không thể tạo sản phẩm. Vui lòng kiểm tra lại thông tin.",
+          message ||
+          (editingProduct
+            ? "Không thể cập nhật sản phẩm. Vui lòng kiểm tra lại thông tin."
+            : "Không thể tạo sản phẩm. Vui lòng kiểm tra lại thông tin."),
       });
     } finally {
       setIsSubmitting(false);
@@ -374,6 +412,15 @@ export function AdminProductsPage() {
                           <Button
                             variant="outlined"
                             size="small"
+                            color="primary"
+                            startIcon={<EditOutlinedIcon fontSize="small" />}
+                            onClick={() => handleOpenEditDialog(p)}
+                          >
+                            Sửa
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            size="small"
                             startIcon={<TuneIcon fontSize="small" />}
                             onClick={() => handleOpenVariantsDialog(p)}
                           >
@@ -404,7 +451,7 @@ export function AdminProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog tạo sản phẩm mới */}
+      {/* Dialog tạo / sửa sản phẩm */}
       <Dialog
         open={isDialogOpen}
         onClose={handleCloseDialog}
@@ -412,7 +459,9 @@ export function AdminProductsPage() {
         fullWidth
       >
         <form onSubmit={handleSubmit} noValidate>
-          <DialogTitle>Tạo sản phẩm mới</DialogTitle>
+          <DialogTitle>
+            {editingProduct ? "Chỉnh sửa thông tin sản phẩm" : "Tạo sản phẩm mới"}
+          </DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2.5} sx={{ pt: 1 }}>
               <TextField
@@ -449,6 +498,7 @@ export function AdminProductsPage() {
                       brandId: Number(e.target.value),
                     })
                   }
+                  inputProps={{ "data-testid": "brand-select" }}
                 >
                   {brands.map((b) => (
                     <MenuItem key={b.id} value={b.id}>
@@ -478,6 +528,7 @@ export function AdminProductsPage() {
                       categoryId: Number(e.target.value),
                     })
                   }
+                  inputProps={{ "data-testid": "category-select" }}
                 >
                   {categories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
@@ -492,11 +543,15 @@ export function AdminProductsPage() {
 
               <FormControl fullWidth disabled={isSubmitting}>
                 <InputLabel id="status-select-label">
-                  Trạng thái ban đầu
+                  {editingProduct ? "Trạng thái sản phẩm" : "Trạng thái ban đầu"}
                 </InputLabel>
                 <Select
                   labelId="status-select-label"
-                  label="Trạng thái ban đầu"
+                  label={
+                    editingProduct
+                      ? "Trạng thái sản phẩm"
+                      : "Trạng thái ban đầu"
+                  }
                   value={formData.status || "DRAFT"}
                   onChange={(e) =>
                     setFormData({
@@ -504,15 +559,20 @@ export function AdminProductsPage() {
                       status: e.target.value as ProductStatus,
                     })
                   }
+                  inputProps={{ "data-testid": "status-select" }}
                 >
-                  <MenuItem value="DRAFT">Nháp (DRAFT - Khuyên dùng)</MenuItem>
+                  <MenuItem value="DRAFT">Nháp (DRAFT)</MenuItem>
                   <MenuItem value="ACTIVE">
                     Đang bán (ACTIVE - Yêu cầu có ít nhất 1 biến thể)
                   </MenuItem>
+                  {editingProduct && (
+                    <MenuItem value="INACTIVE">Ngừng bán (INACTIVE)</MenuItem>
+                  )}
                 </Select>
                 <FormHelperText>
-                  Sản phẩm mới tạo sẽ ở trạng thái 'Nháp' cho đến khi có ít nhất
-                  một biến thể hợp lệ.
+                  {editingProduct
+                    ? "Chuyển sang Đang bán yêu cầu sản phẩm phải có ít nhất một biến thể hợp lệ."
+                    : "Sản phẩm mới tạo sẽ ở trạng thái 'Nháp' cho đến khi có ít nhất một biến thể hợp lệ."}
                 </FormHelperText>
               </FormControl>
 
@@ -540,7 +600,7 @@ export function AdminProductsPage() {
               disabled={isSubmitting}
               startIcon={isSubmitting ? <CircularProgress size={16} /> : null}
             >
-              Tạo sản phẩm
+              {editingProduct ? "Cập nhật sản phẩm" : "Tạo sản phẩm"}
             </Button>
           </DialogActions>
         </form>
