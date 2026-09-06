@@ -489,18 +489,10 @@ describe("AdminInventoryPage", () => {
 
   test("opens adjust dialog from row and submits adjustment successfully", async () => {
     mockedAdjustInventory.mockResolvedValueOnce({
-      id: 1,
-      variantId: 101,
-      productId: 1,
-      productName: "iPhone 16 Pro",
-      sku: "IP16P-128-BLK",
-      color: "Titan Đen",
-      storage: "128GB",
-      categoryName: "Điện thoại",
+      ...mockItems[0],
       quantityOnHand: 17,
       quantityReserved: 0,
       availableQuantity: 17,
-      lowStockThreshold: 5,
       stockStatus: "IN_STOCK",
       updatedAt: new Date().toISOString(),
     });
