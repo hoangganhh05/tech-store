@@ -1,6 +1,7 @@
 import { httpClient } from "./httpClient";
 
 export type ProductStatus = "DRAFT" | "ACTIVE" | "INACTIVE";
+export type VariantStatus = "ACTIVE" | "INACTIVE";
 
 export type Product = {
   id: number;
@@ -21,6 +22,31 @@ export type ProductCreatePayload = {
   brandId: number;
   categoryId: number;
   status?: ProductStatus;
+};
+
+export type ProductVariant = {
+  id: number;
+  productId: number;
+  productName: string;
+  sku: string;
+  color?: string | null;
+  storage?: string | null;
+  price: number;
+  originalPrice?: number | null;
+  stockQuantity: number;
+  status: VariantStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductVariantPayload = {
+  sku: string;
+  color?: string;
+  storage?: string;
+  price: number;
+  originalPrice?: number;
+  stockQuantity?: number;
+  status?: VariantStatus;
 };
 
 type ApiResponse<T> = {
@@ -52,4 +78,55 @@ export async function createAdminProduct(
     payload,
   );
   return response.data.data;
+}
+
+export async function getProductVariants(
+  productId: number,
+): Promise<ProductVariant[]> {
+  const response = await httpClient.get<ApiResponse<ProductVariant[]>>(
+    `/admin/products/${productId}/variants`,
+  );
+  return response.data.data;
+}
+
+export async function getProductVariantById(
+  productId: number,
+  variantId: number,
+): Promise<ProductVariant> {
+  const response = await httpClient.get<ApiResponse<ProductVariant>>(
+    `/admin/products/${productId}/variants/${variantId}`,
+  );
+  return response.data.data;
+}
+
+export async function createProductVariant(
+  productId: number,
+  payload: ProductVariantPayload,
+): Promise<ProductVariant> {
+  const response = await httpClient.post<ApiResponse<ProductVariant>>(
+    `/admin/products/${productId}/variants`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function updateProductVariant(
+  productId: number,
+  variantId: number,
+  payload: ProductVariantPayload,
+): Promise<ProductVariant> {
+  const response = await httpClient.put<ApiResponse<ProductVariant>>(
+    `/admin/products/${productId}/variants/${variantId}`,
+    payload,
+  );
+  return response.data.data;
+}
+
+export async function deleteProductVariant(
+  productId: number,
+  variantId: number,
+): Promise<void> {
+  await httpClient.delete<ApiResponse<void>>(
+    `/admin/products/${productId}/variants/${variantId}`,
+  );
 }
