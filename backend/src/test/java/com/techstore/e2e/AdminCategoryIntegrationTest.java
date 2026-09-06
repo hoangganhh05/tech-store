@@ -7,13 +7,19 @@ import com.techstore.entity.Category;
 import com.techstore.entity.Role;
 import com.techstore.entity.User;
 import com.techstore.enums.RoleCode;
+import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.PasswordResetTokenRepository;
+import com.techstore.repository.ProductImageRepository;
+import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductSpecificationRepository;
+import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.RefreshTokenRepository;
 import com.techstore.repository.RoleRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.security.IssuedTokenPair;
 import com.techstore.security.TokenIssuer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +54,21 @@ class AdminCategoryIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private ProductSpecificationRepository productSpecificationRepository;
+
+    @Autowired
+    private ProductImageRepository productImageRepository;
+
+    @Autowired
+    private ProductVariantRepository productVariantRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private BrandRepository brandRepository;
+
+    @Autowired
     private CategoryRepository categoryRepository;
 
     @Autowired
@@ -73,11 +94,7 @@ class AdminCategoryIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        categoryRepository.deleteAll();
-        refreshTokenRepository.deleteAll();
-        passwordResetTokenRepository.deleteAll();
-        userRepository.deleteAll();
-        roleRepository.deleteAll();
+        cleanDatabase();
 
         Role adminRole = roleRepository.findByCode(RoleCode.ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleCode.ADMIN, "Quản trị viên")));
@@ -97,6 +114,24 @@ class AdminCategoryIntegrationTest {
 
         IssuedTokenPair customerTokens = tokenIssuer.issue(customer);
         customerToken = customerTokens.accessToken();
+    }
+
+    @AfterEach
+    void tearDown() {
+        cleanDatabase();
+    }
+
+    private void cleanDatabase() {
+        productSpecificationRepository.deleteAll();
+        productImageRepository.deleteAll();
+        productVariantRepository.deleteAll();
+        productRepository.deleteAll();
+        categoryRepository.deleteAll();
+        brandRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
+        passwordResetTokenRepository.deleteAll();
+        userRepository.deleteAll();
+        roleRepository.deleteAll();
     }
 
     @Test

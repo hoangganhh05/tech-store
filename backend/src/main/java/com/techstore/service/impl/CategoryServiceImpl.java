@@ -8,6 +8,7 @@ import com.techstore.entity.Category;
 import com.techstore.enums.ErrorCode;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.CategoryRepository;
+import com.techstore.repository.ProductRepository;
 import com.techstore.service.CategoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +21,11 @@ import java.util.Objects;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
 
-    public CategoryServiceImpl(CategoryRepository categoryRepository) {
+    public CategoryServiceImpl(CategoryRepository categoryRepository, ProductRepository productRepository) {
         this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -109,6 +112,10 @@ public class CategoryServiceImpl implements CategoryService {
 
         if (categoryRepository.existsByParentId(id)) {
             throw new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN, "Không thể xoá danh mục đang có danh mục con gắn với nó");
+        }
+
+        if (productRepository.existsByCategoryId(id)) {
+            throw new BusinessException(ErrorCode.CATEGORY_HAS_PRODUCTS, "Không thể xoá danh mục đang có sản phẩm gắn với nó");
         }
 
         categoryRepository.delete(category);
