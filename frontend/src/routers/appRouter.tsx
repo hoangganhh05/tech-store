@@ -20,6 +20,7 @@ import { AdminUsersPage } from "../modules/admin/AdminUsersPage";
 import { AdminCategoriesPage } from "../modules/admin/AdminCategoriesPage";
 import { AdminBrandsPage } from "../modules/admin/AdminBrandsPage";
 import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
+import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
@@ -81,6 +82,7 @@ export const appRouter = createBrowserRouter([
       { path: "categories", element: <AdminCategoriesPage /> },
       { path: "brands", element: <AdminBrandsPage /> },
       { path: "products", element: <AdminProductsPage /> },
+      { path: "inventory", element: <AdminInventoryPage /> },
       { path: "orders", element: <AdminOrdersPage /> },
     ],
   },

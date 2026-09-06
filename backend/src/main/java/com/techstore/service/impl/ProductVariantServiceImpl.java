@@ -2,11 +2,13 @@ package com.techstore.service.impl;
 
 import com.techstore.dto.request.ProductVariantRequest;
 import com.techstore.dto.response.ProductVariantResponse;
+import com.techstore.entity.Inventory;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductVariant;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.VariantStatus;
 import com.techstore.exception.BusinessException;
+import com.techstore.repository.InventoryRepository;
 import com.techstore.repository.ProductRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.service.ProductVariantService;
@@ -23,14 +25,17 @@ public class ProductVariantServiceImpl implements ProductVariantService {
 
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
+    private final InventoryRepository inventoryRepository;
     private Predicate<Long> orderChecker = id -> false;
 
     public ProductVariantServiceImpl(
             ProductRepository productRepository,
-            ProductVariantRepository productVariantRepository
+            ProductVariantRepository productVariantRepository,
+            InventoryRepository inventoryRepository
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
+        this.inventoryRepository = inventoryRepository;
     }
 
     public void setOrderChecker(Predicate<Long> orderChecker) {
@@ -67,6 +72,10 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         );
 
         ProductVariant saved = productVariantRepository.save(variant);
+        int initialStock = request.stockQuantity() != null ? Math.max(0, request.stockQuantity()) : 0;
+        Inventory inventory = new Inventory(saved, initialStock, 0, 5);
+        inventoryRepository.save(inventory);
+
         return ProductVariantResponse.from(saved);
     }
 

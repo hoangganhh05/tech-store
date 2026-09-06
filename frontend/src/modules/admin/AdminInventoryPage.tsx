@@ -1,0 +1,2153 @@
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  Grid,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Snackbar,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  Tabs,
+  TextField,
+  Typography,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
+import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import HistoryIcon from "@mui/icons-material/History";
+import TuneIcon from "@mui/icons-material/Tune";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
+import { useCallback, useEffect, useState } from "react";
+import { PageIntro } from "../../components/common/PageIntro";
+import {
+  adjustInventory,
+  getInventories,
+  getInventorySummary,
+  getInventoryTransactions,
+  getLowStockInventories,
+  importInventory,
+  updateLowStockThreshold,
+  type InventoryItem,
+  type InventorySummary,
+  type InventoryTransactionItem,
+  type StockStatus,
+} from "../../services/inventoryService";
+import {
+  getAdminCategories,
+  type Category,
+} from "../../services/categoryService";
+
+export function AdminInventoryPage() {
+  const [tabValue, setTabValue] = useState(0);
+
+  // Inventories state
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [summary, setSummary] = useState<InventorySummary | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filters & Pagination
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedStatus, setSelectedStatus] = useState<StockStatus>("ALL");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalElements, setTotalElements] = useState(0);
+
+  // Low Stock Alerts state (Tab 1)
+  const [lowStockItems, setLowStockItems] = useState<InventoryItem[]>([]);
+  const [lowStockLoading, setLowStockLoading] = useState(false);
+  const [lowStockError, setLowStockError] = useState<string | null>(null);
+  const [lowStockSearch, setLowStockSearch] = useState("");
+  const [lowStockCategory, setLowStockCategory] = useState<string>("");
+  const [lowStockPage, setLowStockPage] = useState(0);
+  const [lowStockRowsPerPage, setLowStockRowsPerPage] = useState(10);
+  const [lowStockTotalElements, setLowStockTotalElements] = useState(0);
+
+  // Transactions state (Tab 2)
+  const [transactions, setTransactions] = useState<InventoryTransactionItem[]>(
+    [],
+  );
+  const [txLoading, setTxLoading] = useState(false);
+  const [txPage, setTxPage] = useState(0);
+  const [txRowsPerPage, setTxRowsPerPage] = useState(10);
+  const [txTotalElements, setTxTotalElements] = useState(0);
+  const [txTypeFilter, setTxTypeFilter] = useState<string>("");
+
+  // Import Dialog state
+  const [openImportDialog, setOpenImportDialog] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<number | "">("");
+  const [importQuantity, setImportQuantity] = useState<number | "">(1);
+  const [importNote, setImportNote] = useState("");
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  // Adjust Dialog state
+  const [openAdjustDialog, setOpenAdjustDialog] = useState(false);
+  const [adjustVariantId, setAdjustVariantId] = useState<number | "">("");
+  const [adjustMode, setAdjustMode] = useState<"delta" | "actual">("delta");
+  const [adjustQuantity, setAdjustQuantity] = useState<number | "">("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+
+  // Update Threshold Dialog state
+  const [openThresholdDialog, setOpenThresholdDialog] = useState(false);
+  const [thresholdVariantId, setThresholdVariantId] = useState<number | "">("");
+  const [newThreshold, setNewThreshold] = useState<number | "">(5);
+  const [thresholdSubmitting, setThresholdSubmitting] = useState(false);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
+
+  // Snackbar feedback
+  const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
+  const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error">(
+    "success",
+  );
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const data = await getAdminCategories();
+      setCategories(data);
+    } catch {
+      // Ignore category load error in inventory view
+    }
+  }, []);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await getInventorySummary();
+      setSummary(data);
+    } catch {
+      // Non-blocking summary error
+    }
+  }, []);
+
+  const fetchInventories = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getInventories({
+        search: searchTerm || undefined,
+        categoryId: selectedCategory ? Number(selectedCategory) : undefined,
+        stockStatus: selectedStatus,
+        page,
+        size: rowsPerPage,
+      });
+      setItems(response.items);
+      setTotalElements(response.totalElements);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Không thể tải dữ liệu tồn kho";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, selectedCategory, selectedStatus, page, rowsPerPage]);
+
+  const fetchLowStock = useCallback(async () => {
+    setLowStockLoading(true);
+    setLowStockError(null);
+    try {
+      const response = await getLowStockInventories({
+        search: lowStockSearch || undefined,
+        categoryId: lowStockCategory ? Number(lowStockCategory) : undefined,
+        page: lowStockPage,
+        size: lowStockRowsPerPage,
+      });
+      setLowStockItems(response.items);
+      setLowStockTotalElements(response.totalElements);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Không thể tải danh sách cảnh báo tồn kho";
+      setLowStockError(msg);
+    } finally {
+      setLowStockLoading(false);
+    }
+  }, [lowStockSearch, lowStockCategory, lowStockPage, lowStockRowsPerPage]);
+
+  const fetchTransactions = useCallback(async () => {
+    setTxLoading(true);
+    try {
+      const response = await getInventoryTransactions({
+        type: txTypeFilter || undefined,
+        page: txPage,
+        size: txRowsPerPage,
+      });
+      setTransactions(response.items);
+      setTxTotalElements(response.totalElements);
+    } catch {
+      // Non-blocking
+    } finally {
+      setTxLoading(false);
+    }
+  }, [txTypeFilter, txPage, txRowsPerPage]);
+
+  useEffect(() => {
+    fetchCategories();
+    fetchSummary();
+  }, [fetchCategories, fetchSummary]);
+
+  useEffect(() => {
+    if (tabValue === 0) {
+      fetchInventories();
+    } else if (tabValue === 1) {
+      fetchLowStock();
+    } else {
+      fetchTransactions();
+    }
+  }, [tabValue, fetchInventories, fetchLowStock, fetchTransactions]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(0);
+    fetchInventories();
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("");
+    setSelectedStatus("ALL");
+    setPage(0);
+  };
+
+  const handlePageChange = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const allKnownVariants = Array.from(
+    new Map(
+      [...items, ...lowStockItems].map((it) => [it.variantId, it]),
+    ).values(),
+  );
+
+  const handleOpenImportDialog = (item?: InventoryItem) => {
+    if (item) {
+      setSelectedVariantId(item.variantId);
+    } else if (allKnownVariants.length > 0) {
+      setSelectedVariantId(allKnownVariants[0].variantId);
+    } else {
+      setSelectedVariantId("");
+    }
+    setImportQuantity(1);
+    setImportNote("");
+    setImportError(null);
+    setOpenImportDialog(true);
+  };
+
+  const handleCloseImportDialog = () => {
+    if (importSubmitting) return;
+    setOpenImportDialog(false);
+    setImportError(null);
+  };
+
+  const handleImportSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (!selectedVariantId) {
+      setImportError("Vui lòng chọn biến thể sản phẩm");
+      return;
+    }
+    const qty = Number(importQuantity);
+    if (!qty || qty <= 0) {
+      setImportError("Số lượng nhập phải lớn hơn 0");
+      return;
+    }
+
+    setImportSubmitting(true);
+    setImportError(null);
+    try {
+      await importInventory({
+        variantId: Number(selectedVariantId),
+        quantity: qty,
+        note: importNote.trim() || undefined,
+      });
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage(`Nhập kho thành công ${qty} sản phẩm!`);
+      setOpenImportDialog(false);
+
+      // Refresh data
+      fetchInventories();
+      fetchSummary();
+      if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
+        fetchTransactions();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Nhập kho thất bại";
+      setImportError(msg);
+    } finally {
+      setImportSubmitting(false);
+    }
+  };
+
+  const currentSelectedItem = allKnownVariants.find(
+    (i) => i.variantId === selectedVariantId,
+  );
+
+  const handleOpenAdjustDialog = (item?: InventoryItem) => {
+    if (item) {
+      setAdjustVariantId(item.variantId);
+    } else if (allKnownVariants.length > 0 && !adjustVariantId) {
+      setAdjustVariantId(allKnownVariants[0].variantId);
+    }
+    setAdjustMode("delta");
+    setAdjustQuantity("");
+    setAdjustReason("");
+    setAdjustError(null);
+    setOpenAdjustDialog(true);
+  };
+
+  const handleCloseAdjustDialog = () => {
+    if (adjustSubmitting) return;
+    setOpenAdjustDialog(false);
+    setAdjustError(null);
+  };
+
+  const currentAdjustItem = allKnownVariants.find(
+    (i) => i.variantId === adjustVariantId,
+  );
+  const currentOnHand = currentAdjustItem?.quantityOnHand ?? 0;
+  const currentReserved = currentAdjustItem?.quantityReserved ?? 0;
+
+  const computedDelta =
+    adjustQuantity === ""
+      ? 0
+      : adjustMode === "actual"
+        ? Number(adjustQuantity) - currentOnHand
+        : Number(adjustQuantity);
+
+  const expectedOnHand = currentOnHand + computedDelta;
+  const expectedAvailable = expectedOnHand - currentReserved;
+
+  const handleAdjustSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (!adjustVariantId) {
+      setAdjustError("Vui lòng chọn biến thể sản phẩm");
+      return;
+    }
+    if (adjustQuantity === "" || computedDelta === 0) {
+      setAdjustError("Số lượng điều chỉnh phải khác 0");
+      return;
+    }
+    if (expectedOnHand < 0) {
+      setAdjustError(
+        `Số lượng tồn kho sau điều chỉnh không thể âm (Dự kiến: ${expectedOnHand})`,
+      );
+      return;
+    }
+    if (expectedOnHand < currentReserved) {
+      setAdjustError(
+        `Số lượng tồn kho không thể nhỏ hơn số lượng đang giữ cho đơn hàng (Đang giữ: ${currentReserved})`,
+      );
+      return;
+    }
+    if (!adjustReason.trim()) {
+      setAdjustError("Lý do điều chỉnh không được để trống");
+      return;
+    }
+
+    setAdjustSubmitting(true);
+    setAdjustError(null);
+    try {
+      await adjustInventory({
+        variantId: Number(adjustVariantId),
+        quantityChange: computedDelta,
+        reason: adjustReason.trim(),
+      });
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage(
+        `Điều chỉnh tồn kho thành công! (${computedDelta > 0 ? "+" : ""}${computedDelta} chiếc)`,
+      );
+      setOpenAdjustDialog(false);
+
+      // Refresh data
+      fetchInventories();
+      fetchSummary();
+      if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
+        fetchTransactions();
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Điều chỉnh tồn kho thất bại";
+      setAdjustError(msg);
+    } finally {
+      setAdjustSubmitting(false);
+    }
+  };
+
+  const handleOpenThresholdDialog = (item?: InventoryItem) => {
+    if (item) {
+      setThresholdVariantId(item.variantId);
+      setNewThreshold(item.lowStockThreshold);
+    } else if (allKnownVariants.length > 0) {
+      setThresholdVariantId(allKnownVariants[0].variantId);
+      setNewThreshold(allKnownVariants[0].lowStockThreshold);
+    }
+    setThresholdError(null);
+    setOpenThresholdDialog(true);
+  };
+
+  const handleCloseThresholdDialog = () => {
+    if (thresholdSubmitting) return;
+    setOpenThresholdDialog(false);
+    setThresholdError(null);
+  };
+
+  const handleThresholdSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (!thresholdVariantId) {
+      setThresholdError("Vui lòng chọn biến thể sản phẩm");
+      return;
+    }
+    const val = Number(newThreshold);
+    if (newThreshold === "" || isNaN(val) || val < 0) {
+      setThresholdError(
+        "Ngưỡng cảnh báo phải là số nguyên lớn hơn hoặc bằng 0",
+      );
+      return;
+    }
+
+    setThresholdSubmitting(true);
+    setThresholdError(null);
+    try {
+      await updateLowStockThreshold(Number(thresholdVariantId), val);
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage(
+        `Cập nhật ngưỡng cảnh báo tồn kho thành công (${val} sản phẩm)!`,
+      );
+      setOpenThresholdDialog(false);
+
+      // Refresh data
+      fetchInventories();
+      fetchSummary();
+      if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
+        fetchTransactions();
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Cập nhật ngưỡng cảnh báo thất bại";
+      setThresholdError(msg);
+    } finally {
+      setThresholdSubmitting(false);
+    }
+  };
+
+  const currentThresholdItem = allKnownVariants.find(
+    (i) => i.variantId === thresholdVariantId,
+  );
+
+  const renderStockBadge = (status: StockStatus) => {
+    switch (status) {
+      case "IN_STOCK":
+        return (
+          <Chip
+            label="Còn hàng"
+            color="success"
+            size="small"
+            variant="filled"
+          />
+        );
+      case "LOW_STOCK":
+        return (
+          <Chip label="Sắp hết" color="warning" size="small" variant="filled" />
+        );
+      case "OUT_OF_STOCK":
+        return (
+          <Chip label="Hết hàng" color="error" size="small" variant="filled" />
+        );
+      default:
+        return <Chip label={status} size="small" />;
+    }
+  };
+
+  return (
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        spacing={2}
+        sx={{ mb: 2 }}
+      >
+        <PageIntro
+          title="Quản lý tồn kho"
+          description="Theo dõi và kiểm soát số lượng tồn kho theo từng biến thể sản phẩm theo thời gian thực."
+        />
+        <Stack direction="row" spacing={1.5}>
+          <Button
+            variant="outlined"
+            startIcon={<TuneIcon />}
+            onClick={() => handleOpenAdjustDialog()}
+            data-testid="btn-header-adjust"
+            sx={{ fontWeight: 700, px: 2, py: 1 }}
+          >
+            Điều chỉnh kho
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={() => handleOpenImportDialog()}
+            data-testid="btn-header-import"
+            sx={{ fontWeight: 700, px: 2.5, py: 1 }}
+          >
+            Nhập kho
+          </Button>
+        </Stack>
+      </Stack>
+
+      {/* Overview Stat Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    TỔNG BIẾN THỂ
+                  </Typography>
+                  <Typography variant="h4" fontWeight={800} sx={{ mt: 0.5 }}>
+                    {summary ? summary.totalVariants : "-"}
+                  </Typography>
+                </Box>
+                <Inventory2OutlinedIcon
+                  color="primary"
+                  sx={{ fontSize: 36, opacity: 0.8 }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    CÒN HÀNG
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    color="success.main"
+                    sx={{ mt: 0.5 }}
+                  >
+                    {summary ? summary.inStockCount : "-"}
+                  </Typography>
+                </Box>
+                <CheckCircleOutlineOutlinedIcon
+                  color="success"
+                  sx={{ fontSize: 36, opacity: 0.8 }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            onClick={() => setTabValue(1)}
+            sx={{
+              borderRadius: 2,
+              cursor: "pointer",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              "&:hover": {
+                boxShadow: 3,
+                borderColor: "warning.main",
+              },
+            }}
+          >
+            <CardContent>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    SẮP HẾT HÀNG
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    color="warning.main"
+                    sx={{ mt: 0.5 }}
+                  >
+                    {summary ? summary.lowStockCount : "-"}
+                  </Typography>
+                </Box>
+                <WarningAmberOutlinedIcon
+                  color="warning"
+                  sx={{ fontSize: 36, opacity: 0.8 }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card
+            variant="outlined"
+            onClick={() => setTabValue(1)}
+            sx={{
+              borderRadius: 2,
+              cursor: "pointer",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              "&:hover": {
+                boxShadow: 3,
+                borderColor: "error.main",
+              },
+            }}
+          >
+            <CardContent>
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    HẾT HÀNG
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={800}
+                    color="error.main"
+                    sx={{ mt: 0.5 }}
+                  >
+                    {summary ? summary.outOfStockCount : "-"}
+                  </Typography>
+                </Box>
+                <ErrorOutlineOutlinedIcon
+                  color="error"
+                  sx={{ fontSize: 36, opacity: 0.8 }}
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Tabs Navigation */}
+      <Tabs
+        value={tabValue}
+        onChange={(_, val) => setTabValue(val)}
+        sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}
+      >
+        <Tab
+          icon={<Inventory2OutlinedIcon />}
+          iconPosition="start"
+          label="Danh sách tồn kho"
+          data-testid="tab-inventory-list"
+        />
+        <Tab
+          icon={
+            <Badge
+              badgeContent={
+                (summary?.lowStockCount ?? 0) + (summary?.outOfStockCount ?? 0)
+              }
+              color="error"
+              max={99}
+            >
+              <WarningAmberOutlinedIcon />
+            </Badge>
+          }
+          iconPosition="start"
+          label="Cảnh báo tồn kho"
+          data-testid="tab-inventory-alerts"
+        />
+        <Tab
+          icon={<HistoryIcon />}
+          iconPosition="start"
+          label="Lịch sử nhập kho"
+          data-testid="tab-inventory-history"
+        />
+      </Tabs>
+
+      {tabValue === 0 && (
+        <>
+          {/* Filter and Search Panel */}
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+            <Box component="form" onSubmit={handleSearchSubmit}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, md: 4 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tìm kiếm sản phẩm, SKU..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="category-filter-label">Danh mục</InputLabel>
+                    <Select
+                      labelId="category-filter-label"
+                      label="Danh mục"
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                    >
+                      <MenuItem value="">Tất cả danh mục</MenuItem>
+                      {categories.map((cat) => (
+                        <MenuItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="status-filter-label">
+                      Trạng thái tồn
+                    </InputLabel>
+                    <Select
+                      labelId="status-filter-label"
+                      label="Trạng thái tồn"
+                      value={selectedStatus}
+                      onChange={(e) =>
+                        setSelectedStatus(e.target.value as StockStatus)
+                      }
+                    >
+                      <MenuItem value="ALL">Tất cả mức tồn</MenuItem>
+                      <MenuItem value="IN_STOCK">Còn hàng</MenuItem>
+                      <MenuItem value="LOW_STOCK">Sắp hết hàng</MenuItem>
+                      <MenuItem value="OUT_OF_STOCK">Hết hàng</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 2 }}>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      type="submit"
+                      sx={{ height: 40 }}
+                    >
+                      Lọc
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={handleResetFilters}
+                      sx={{ minWidth: 40, px: 1, height: 40 }}
+                      title="Đặt lại bộ lọc"
+                    >
+                      <RefreshIcon />
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Box>
+          </Paper>
+
+          {/* Error message */}
+          {error && (
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={() => setError(null)}
+              action={
+                <Button color="inherit" size="small" onClick={fetchInventories}>
+                  Thử lại
+                </Button>
+              }
+            >
+              {error}
+            </Alert>
+          )}
+
+          {/* Inventory Table */}
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            <Table>
+              <TableHead sx={{ bgcolor: "grey.50" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>SẢN PHẨM / SKU</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>THUỘC TÍNH</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    KHẢ DỤNG
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    ĐANG GIỮ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    TỒN THỰC TẾ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    NGƯỠNG CẢNH BÁO
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    TRẠNG THÁI
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    THAO TÁC
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={36} />
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1 }}
+                      >
+                        Đang tải dữ liệu tồn kho...
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <Typography variant="body1" color="text.secondary">
+                        Không tìm thấy biến thể nào phù hợp với điều kiện tìm
+                        kiếm.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  items.map((item) => (
+                    <TableRow key={item.id} hover>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {item.productName}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: "monospace",
+                            bgcolor: "grey.100",
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 1,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {item.sku}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {[item.color, item.storage]
+                            .filter(Boolean)
+                            .join(" · ") || "Mặc định"}
+                        </Typography>
+                        {item.categoryName && (
+                          <Typography variant="caption" color="text.secondary">
+                            {item.categoryName}
+                          </Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          color={
+                            item.availableQuantity === 0
+                              ? "error.main"
+                              : item.availableQuantity <= item.lowStockThreshold
+                                ? "warning.main"
+                                : "text.primary"
+                          }
+                        >
+                          {item.availableQuantity.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" color="text.secondary">
+                          {item.quantityReserved.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {item.quantityOnHand.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" color="text.secondary">
+                          {item.lowStockThreshold}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="center">
+                        {renderStockBadge(item.stockStatus)}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="center"
+                        >
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={() => handleOpenImportDialog(item)}
+                            data-testid={`btn-import-row-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Nhập kho
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            startIcon={<TuneIcon />}
+                            onClick={() => handleOpenAdjustDialog(item)}
+                            data-testid={`btn-adjust-row-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Điều chỉnh
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<EditOutlinedIcon />}
+                            onClick={() => handleOpenThresholdDialog(item)}
+                            data-testid={`btn-threshold-row-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Sửa ngưỡng
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 20, 50]}
+              component="div"
+              count={totalElements}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              labelRowsPerPage="Số hàng mỗi trang:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} trong số ${count !== -1 ? count : `hơn ${to}`}`
+              }
+            />
+          </TableContainer>
+        </>
+      )}
+
+      {tabValue === 1 && (
+        <>
+          <Alert
+            severity="warning"
+            icon={<NotificationsActiveOutlinedIcon fontSize="inherit" />}
+            sx={{ mb: 3 }}
+          >
+            <Typography variant="subtitle2" fontWeight={700}>
+              Khu vực cảnh báo tồn kho thấp & hết hàng
+            </Typography>
+            <Typography variant="body2">
+              Hiển thị danh sách các biến thể có số lượng tồn khả dụng (tồn thực
+              tế - đang giữ) nhỏ hơn hoặc bằng ngưỡng cảnh báo được cấu hình.
+            </Typography>
+          </Alert>
+
+          {/* Filter and Search for Low Stock */}
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+            <Box
+              component="form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setLowStockPage(0);
+                fetchLowStock();
+              }}
+            >
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, md: 5 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tìm kiếm sản phẩm, SKU dưới ngưỡng..."
+                    value={lowStockSearch}
+                    onChange={(e) => setLowStockSearch(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="low-stock-category-filter-label">
+                      Danh mục
+                    </InputLabel>
+                    <Select
+                      labelId="low-stock-category-filter-label"
+                      label="Danh mục"
+                      value={lowStockCategory}
+                      onChange={(e) => setLowStockCategory(e.target.value)}
+                    >
+                      <MenuItem value="">Tất cả danh mục</MenuItem>
+                      {categories.map((cat) => (
+                        <MenuItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      type="submit"
+                      sx={{ height: 40 }}
+                    >
+                      Lọc
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setLowStockSearch("");
+                        setLowStockCategory("");
+                        setLowStockPage(0);
+                      }}
+                      sx={{ minWidth: 40, px: 1, height: 40 }}
+                      title="Đặt lại bộ lọc"
+                    >
+                      <RefreshIcon />
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Box>
+          </Paper>
+
+          {lowStockError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={() => setLowStockError(null)}
+              action={
+                <Button color="inherit" size="small" onClick={fetchLowStock}>
+                  Thử lại
+                </Button>
+              }
+            >
+              {lowStockError}
+            </Alert>
+          )}
+
+          {/* Low Stock Table */}
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            <Table>
+              <TableHead sx={{ bgcolor: "grey.50" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>SẢN PHẨM / SKU</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>THUỘC TÍNH</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    KHẢ DỤNG
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    ĐANG GIỮ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    TỒN THỰC TẾ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    NGƯỠNG CẢNH BÁO
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    TRẠNG THÁI
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    THAO TÁC
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {lowStockLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={36} />
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1 }}
+                      >
+                        Đang tải danh sách cảnh báo tồn kho...
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : lowStockItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <CheckCircleOutlineOutlinedIcon
+                        color="success"
+                        sx={{ fontSize: 48, mb: 1, opacity: 0.8 }}
+                      />
+                      <Typography variant="h6" fontWeight={700}>
+                        Tồn kho an toàn!
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Không có biến thể nào có mức tồn khả dụng dưới ngưỡng
+                        cảnh báo.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  lowStockItems.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      hover
+                      sx={{
+                        bgcolor:
+                          item.availableQuantity === 0
+                            ? "error.50"
+                            : "warning.50",
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {item.productName}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: "monospace",
+                            bgcolor: "grey.100",
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 1,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {item.sku}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {[item.color, item.storage]
+                            .filter(Boolean)
+                            .join(" · ") || "Mặc định"}
+                        </Typography>
+                        {item.categoryName && (
+                          <Typography variant="caption" color="text.secondary">
+                            {item.categoryName}
+                          </Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          color={
+                            item.availableQuantity === 0
+                              ? "error.main"
+                              : "warning.dark"
+                          }
+                        >
+                          {item.availableQuantity.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" color="text.secondary">
+                          {item.quantityReserved.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {item.quantityOnHand.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.lowStockThreshold}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="center">
+                        {renderStockBadge(item.stockStatus)}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="center"
+                        >
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color={
+                              item.availableQuantity === 0 ? "error" : "warning"
+                            }
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={() => handleOpenImportDialog(item)}
+                            data-testid={`btn-quick-import-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 700 }}
+                          >
+                            Nhập hàng ngay
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<EditOutlinedIcon />}
+                            onClick={() => handleOpenThresholdDialog(item)}
+                            data-testid={`btn-edit-threshold-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Sửa ngưỡng
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 20, 50]}
+              component="div"
+              count={lowStockTotalElements}
+              rowsPerPage={lowStockRowsPerPage}
+              page={lowStockPage}
+              onPageChange={(_, newPage) => setLowStockPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setLowStockRowsPerPage(parseInt(e.target.value, 10));
+                setLowStockPage(0);
+              }}
+              labelRowsPerPage="Số hàng mỗi trang:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} trong số ${count !== -1 ? count : `hơn ${to}`}`
+              }
+            />
+          </TableContainer>
+        </>
+      )}
+
+      {tabValue === 2 && (
+        <>
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+            >
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+              >
+                <Typography
+                  variant="body2"
+                  fontWeight={600}
+                  color="text.secondary"
+                >
+                  Lọc giao dịch:
+                </Typography>
+                <Chip
+                  label="Tất cả"
+                  color={txTypeFilter === "" ? "primary" : "default"}
+                  variant={txTypeFilter === "" ? "filled" : "outlined"}
+                  onClick={() => {
+                    setTxTypeFilter("");
+                    setTxPage(0);
+                  }}
+                  clickable
+                  size="small"
+                  data-testid="filter-tx-all"
+                />
+                <Chip
+                  label="Nhập kho"
+                  color={txTypeFilter === "IMPORT" ? "success" : "default"}
+                  variant={txTypeFilter === "IMPORT" ? "filled" : "outlined"}
+                  onClick={() => {
+                    setTxTypeFilter("IMPORT");
+                    setTxPage(0);
+                  }}
+                  clickable
+                  size="small"
+                  data-testid="filter-tx-import"
+                />
+                <Chip
+                  label="Điều chỉnh"
+                  color={txTypeFilter === "ADJUSTMENT" ? "warning" : "default"}
+                  variant={
+                    txTypeFilter === "ADJUSTMENT" ? "filled" : "outlined"
+                  }
+                  onClick={() => {
+                    setTxTypeFilter("ADJUSTMENT");
+                    setTxPage(0);
+                  }}
+                  clickable
+                  size="small"
+                  data-testid="filter-tx-adjustment"
+                />
+              </Stack>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={() => fetchTransactions()}
+              >
+                Làm mới
+              </Button>
+            </Stack>
+          </Paper>
+
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            <Table>
+              <TableHead sx={{ bgcolor: "grey.50" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>THỜI GIAN</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    MÃ SKU / SẢN PHẨM
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    LOẠI GIAO DỊCH
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    SỐ LƯỢNG BIẾN ĐỘNG
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    NGƯỜI THỰC HIỆN
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    GHI CHÚ / THAM CHIẾU
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {txLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={36} />
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1 }}
+                      >
+                        Đang tải lịch sử giao dịch kho...
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : transactions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                      <Typography variant="body1" color="text.secondary">
+                        Chưa có lịch sử giao dịch kho nào.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  transactions.map((tx) => (
+                    <TableRow key={tx.id} hover>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {new Date(tx.createdAt).toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {tx.productName || "Sản phẩm"}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: "monospace",
+                            bgcolor: "grey.100",
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 1,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {tx.sku}
+                        </Typography>
+                        {(tx.color || tx.storage) && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: "block" }}
+                          >
+                            {[tx.color, tx.storage].filter(Boolean).join(" · ")}
+                          </Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        {tx.transactionType === "IMPORT" ? (
+                          <Chip
+                            label="Nhập kho"
+                            color="success"
+                            size="small"
+                            variant="filled"
+                          />
+                        ) : tx.transactionType === "ADJUSTMENT" ? (
+                          <Chip
+                            label="Điều chỉnh"
+                            color="warning"
+                            size="small"
+                            variant="filled"
+                          />
+                        ) : (
+                          <Chip
+                            label={tx.transactionType}
+                            size="small"
+                            variant="outlined"
+                          />
+                        )}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          color={
+                            tx.quantityChange > 0
+                              ? "success.main"
+                              : tx.quantityChange < 0
+                                ? "error.main"
+                                : "text.primary"
+                          }
+                        >
+                          {tx.quantityChange > 0
+                            ? `+${tx.quantityChange}`
+                            : tx.quantityChange}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={600}>
+                          {tx.createdByName || "Quản trị viên"}
+                        </Typography>
+                        {tx.createdByEmail && (
+                          <Typography variant="caption" color="text.secondary">
+                            {tx.createdByEmail}
+                          </Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {tx.note ||
+                            (tx.referenceType
+                              ? `Tham chiếu: ${tx.referenceType}`
+                              : "-")}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 20, 50]}
+              component="div"
+              count={txTotalElements}
+              rowsPerPage={txRowsPerPage}
+              page={txPage}
+              onPageChange={(_, newPage) => setTxPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setTxRowsPerPage(parseInt(e.target.value, 10));
+                setTxPage(0);
+              }}
+              labelRowsPerPage="Số hàng mỗi trang:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} trong số ${count !== -1 ? count : `hơn ${to}`}`
+              }
+            />
+          </TableContainer>
+        </>
+      )}
+
+      {/* Dialog Nhập kho */}
+      <Dialog
+        open={openImportDialog}
+        onClose={handleCloseImportDialog}
+        maxWidth="sm"
+        fullWidth
+        data-testid="dialog-import-inventory"
+      >
+        <Box component="form" onSubmit={handleImportSubmit}>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            Nhập kho biến thể sản phẩm
+          </DialogTitle>
+          <Divider />
+
+          <DialogContent sx={{ pt: 2.5 }}>
+            {importError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {importError}
+              </Alert>
+            )}
+
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="select-variant-label">Chọn biến thể</InputLabel>
+                <Select
+                  labelId="select-variant-label"
+                  label="Chọn biến thể"
+                  value={selectedVariantId}
+                  onChange={(e) => setSelectedVariantId(Number(e.target.value))}
+                  data-testid="select-import-variant"
+                >
+                  {allKnownVariants.map((it) => (
+                    <MenuItem key={it.variantId} value={it.variantId}>
+                      {it.productName} ({it.sku}) - Tồn: {it.quantityOnHand}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {currentSelectedItem && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1.5 }}
+                >
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {currentSelectedItem.productName}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Mã SKU: <strong>{currentSelectedItem.sku}</strong> | Thuộc
+                    tính:{" "}
+                    {[currentSelectedItem.color, currentSelectedItem.storage]
+                      .filter(Boolean)
+                      .join(" · ") || "Mặc định"}
+                  </Typography>
+                  <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Tồn hiện tại:{" "}
+                      <strong>{currentSelectedItem.quantityOnHand}</strong>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Khả dụng:{" "}
+                      <strong>{currentSelectedItem.availableQuantity}</strong>
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      color="primary.main"
+                      fontWeight={700}
+                    >
+                      Dự kiến sau nhập:{" "}
+                      <strong>
+                        {currentSelectedItem.quantityOnHand +
+                          (Number(importQuantity) || 0)}
+                      </strong>
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Số lượng nhập"
+                value={importQuantity}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  setImportQuantity(val);
+                }}
+                inputProps={{ min: 1 }}
+                required
+                data-testid="input-import-quantity"
+              />
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Ghi chú nhập hàng (nhà cung cấp, giá nhập...)"
+                value={importNote}
+                onChange={(e) => setImportNote(e.target.value)}
+                placeholder="VD: Nhập hàng từ nhà phân phối FPT Synnex, giá 21.000.000đ"
+                multiline
+                rows={2}
+                data-testid="input-import-note"
+              />
+            </Stack>
+          </DialogContent>
+
+          <Divider />
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              onClick={handleCloseImportDialog}
+              disabled={importSubmitting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              onClick={handleImportSubmit}
+              disabled={importSubmitting}
+              data-testid="btn-submit-import"
+              sx={{ fontWeight: 700, minWidth: 120 }}
+            >
+              {importSubmitting ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Xác nhận nhập kho"
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Dialog Điều chỉnh tồn kho */}
+      <Dialog
+        open={openAdjustDialog}
+        onClose={handleCloseAdjustDialog}
+        maxWidth="sm"
+        fullWidth
+        data-testid="dialog-adjust-inventory"
+      >
+        <Box component="form" onSubmit={handleAdjustSubmit}>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            Điều chỉnh tồn kho kiểm kê
+          </DialogTitle>
+          <Divider />
+
+          <DialogContent sx={{ pt: 2.5 }}>
+            {adjustError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {adjustError}
+              </Alert>
+            )}
+
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="select-adjust-variant-label">
+                  Chọn biến thể
+                </InputLabel>
+                <Select
+                  labelId="select-adjust-variant-label"
+                  label="Chọn biến thể"
+                  value={adjustVariantId}
+                  onChange={(e) => setAdjustVariantId(Number(e.target.value))}
+                  data-testid="select-adjust-variant"
+                >
+                  {allKnownVariants.map((it) => (
+                    <MenuItem key={it.variantId} value={it.variantId}>
+                      {it.productName} ({it.sku}) - Tồn: {it.quantityOnHand}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {currentAdjustItem && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1.5 }}
+                >
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {currentAdjustItem.productName}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Mã SKU: <strong>{currentAdjustItem.sku}</strong> | Thuộc
+                    tính:{" "}
+                    {[currentAdjustItem.color, currentAdjustItem.storage]
+                      .filter(Boolean)
+                      .join(" · ") || "Mặc định"}
+                  </Typography>
+                  <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Tồn hiện tại:{" "}
+                      <strong>{currentAdjustItem.quantityOnHand}</strong>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Đang giữ:{" "}
+                      <strong>{currentAdjustItem.quantityReserved}</strong>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Khả dụng:{" "}
+                      <strong>{currentAdjustItem.availableQuantity}</strong>
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+
+              {/* Mode: Nhập độ lệch (+/-) hay Số lượng kiểm kê thực tế */}
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={600}
+                  sx={{ mb: 1, display: "block" }}
+                >
+                  PHƯƠNG THỨC ĐIỀU CHỈNH
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Chip
+                    label="Nhập số lượng lệch (+ / -)"
+                    color={adjustMode === "delta" ? "primary" : "default"}
+                    variant={adjustMode === "delta" ? "filled" : "outlined"}
+                    onClick={() => {
+                      setAdjustMode("delta");
+                      setAdjustQuantity("");
+                    }}
+                    clickable
+                  />
+                  <Chip
+                    label="Nhập tồn thực tế kiểm kê"
+                    color={adjustMode === "actual" ? "primary" : "default"}
+                    variant={adjustMode === "actual" ? "filled" : "outlined"}
+                    onClick={() => {
+                      setAdjustMode("actual");
+                      setAdjustQuantity(
+                        currentAdjustItem
+                          ? currentAdjustItem.quantityOnHand
+                          : "",
+                      );
+                    }}
+                    clickable
+                  />
+                </Stack>
+              </Box>
+
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label={
+                  adjustMode === "delta"
+                    ? "Số lượng điều chỉnh (nhập số âm để giảm, dương để tăng)"
+                    : "Số lượng tồn thực tế sau kiểm kê"
+                }
+                value={adjustQuantity}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  setAdjustQuantity(val);
+                }}
+                required
+                data-testid="input-adjust-quantity"
+                helperText={
+                  adjustMode === "delta"
+                    ? "VD: nhập -3 để giảm 3 chiếc, nhập 5 để tăng 5 chiếc"
+                    : "Hệ thống sẽ tự động tính số lượng chênh lệch"
+                }
+              />
+
+              {/* Preview preview card */}
+              {currentAdjustItem && adjustQuantity !== "" && (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    bgcolor:
+                      expectedOnHand < 0 ||
+                      expectedOnHand < currentAdjustItem.quantityReserved
+                        ? "error.50"
+                        : "info.50",
+                    borderColor:
+                      expectedOnHand < 0 ||
+                      expectedOnHand < currentAdjustItem.quantityReserved
+                        ? "error.light"
+                        : "info.light",
+                    borderRadius: 1.5,
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                    justifyContent="space-between"
+                  >
+                    <Typography variant="body2">
+                      Độ lệch thay đổi:{" "}
+                      <strong
+                        style={{
+                          color:
+                            computedDelta > 0
+                              ? "green"
+                              : computedDelta < 0
+                                ? "red"
+                                : "inherit",
+                        }}
+                      >
+                        {computedDelta > 0
+                          ? `+${computedDelta}`
+                          : computedDelta}
+                      </strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Tồn dự kiến sau điều chỉnh:{" "}
+                      <strong>{expectedOnHand}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Khả dụng dự kiến: <strong>{expectedAvailable}</strong>
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+
+              {/* Quick reason suggestions */}
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={600}
+                  sx={{ mb: 1, display: "block" }}
+                >
+                  GỢI Ý LÝ DO NHANH
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {[
+                    "Kiểm kê định kỳ phát hiện sai lệch",
+                    "Hàng hư hỏng / bể vỡ trong kho",
+                    "Thất thoát / mất mát",
+                    "Hàng trả lại nhà cung cấp",
+                    "Điều chỉnh bù tồn kho ảo",
+                  ].map((preset) => (
+                    <Chip
+                      key={preset}
+                      label={preset}
+                      size="small"
+                      variant={adjustReason === preset ? "filled" : "outlined"}
+                      color={adjustReason === preset ? "primary" : "default"}
+                      onClick={() => setAdjustReason(preset)}
+                      clickable
+                    />
+                  ))}
+                </Stack>
+              </Box>
+
+              <TextField
+                fullWidth
+                size="small"
+                label="Lý do điều chỉnh (bắt buộc)"
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder="VD: Kiểm kê định kỳ phát hiện thiếu 2 chiếc do rơi vỡ..."
+                multiline
+                rows={2}
+                required
+                data-testid="input-adjust-reason"
+              />
+            </Stack>
+          </DialogContent>
+
+          <Divider />
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              onClick={handleCloseAdjustDialog}
+              disabled={adjustSubmitting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              onClick={handleAdjustSubmit}
+              disabled={adjustSubmitting}
+              data-testid="btn-submit-adjust"
+              color="warning"
+              sx={{ fontWeight: 700, minWidth: 140 }}
+            >
+              {adjustSubmitting ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Xác nhận điều chỉnh"
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Dialog Cài đặt ngưỡng cảnh báo */}
+      <Dialog
+        open={openThresholdDialog}
+        onClose={handleCloseThresholdDialog}
+        maxWidth="xs"
+        fullWidth
+        data-testid="dialog-update-threshold"
+      >
+        <Box component="form" onSubmit={handleThresholdSubmit}>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            Cấu hình ngưỡng cảnh báo tồn kho
+          </DialogTitle>
+          <Divider />
+
+          <DialogContent sx={{ pt: 2.5 }}>
+            {thresholdError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {thresholdError}
+              </Alert>
+            )}
+
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="select-threshold-variant-label">
+                  Chọn biến thể
+                </InputLabel>
+                <Select
+                  labelId="select-threshold-variant-label"
+                  label="Chọn biến thể"
+                  value={thresholdVariantId}
+                  onChange={(e) => {
+                    const vId = Number(e.target.value);
+                    setThresholdVariantId(vId);
+                    const vItem = allKnownVariants.find(
+                      (i) => i.variantId === vId,
+                    );
+                    if (vItem) {
+                      setNewThreshold(vItem.lowStockThreshold);
+                    }
+                  }}
+                  data-testid="select-threshold-variant"
+                >
+                  {allKnownVariants.map((it) => (
+                    <MenuItem key={it.variantId} value={it.variantId}>
+                      {it.productName} ({it.sku}) - Ngưỡng hiện tại:{" "}
+                      {it.lowStockThreshold}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {currentThresholdItem && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1.5 }}
+                >
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {currentThresholdItem.productName}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Mã SKU: <strong>{currentThresholdItem.sku}</strong> | Thuộc
+                    tính:{" "}
+                    {[currentThresholdItem.color, currentThresholdItem.storage]
+                      .filter(Boolean)
+                      .join(" · ") || "Mặc định"}
+                  </Typography>
+                  <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Tồn khả dụng:{" "}
+                      <strong
+                        style={{
+                          color:
+                            currentThresholdItem.availableQuantity <=
+                            currentThresholdItem.lowStockThreshold
+                              ? "red"
+                              : "inherit",
+                        }}
+                      >
+                        {currentThresholdItem.availableQuantity}
+                      </strong>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Ngưỡng hiện tại:{" "}
+                      <strong>{currentThresholdItem.lowStockThreshold}</strong>
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Ngưỡng cảnh báo tồn kho thấp"
+                value={newThreshold}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  setNewThreshold(val);
+                }}
+                inputProps={{ min: 0 }}
+                required
+                data-testid="input-low-stock-threshold"
+                helperText="Hệ thống sẽ gửi cảnh báo khi số lượng tồn khả dụng (tồn thực tế - đang giữ) nhỏ hơn hoặc bằng giá trị này."
+              />
+            </Stack>
+          </DialogContent>
+
+          <Divider />
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              onClick={handleCloseThresholdDialog}
+              disabled={thresholdSubmitting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              onClick={handleThresholdSubmit}
+              disabled={thresholdSubmitting}
+              data-testid="btn-submit-threshold"
+              sx={{ fontWeight: 700, minWidth: 120 }}
+            >
+              {thresholdSubmitting ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Lưu cấu hình"
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Snackbar feedback */}
+      <Snackbar
+        open={Boolean(snackbarMessage)}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarMessage(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          severity={snackbarSeverity}
+          onClose={() => setSnackbarMessage(null)}
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+}
