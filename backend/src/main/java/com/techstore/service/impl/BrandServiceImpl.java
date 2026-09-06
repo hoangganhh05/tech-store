@@ -6,6 +6,7 @@ import com.techstore.entity.Brand;
 import com.techstore.enums.ErrorCode;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.BrandRepository;
+import com.techstore.repository.ProductRepository;
 import com.techstore.service.BrandService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,11 @@ import java.util.List;
 public class BrandServiceImpl implements BrandService {
 
     private final BrandRepository brandRepository;
+    private final ProductRepository productRepository;
 
-    public BrandServiceImpl(BrandRepository brandRepository) {
+    public BrandServiceImpl(BrandRepository brandRepository, ProductRepository productRepository) {
         this.brandRepository = brandRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -89,7 +92,6 @@ public class BrandServiceImpl implements BrandService {
     }
 
     private boolean hasAssociatedProducts(Long brandId) {
-        // Thực thể Product sẽ được liên kết ở Epic 03.
-        return false;
+        return productRepository.existsByBrandId(brandId);
     }
 }
