@@ -63,6 +63,35 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             Pageable pageable
     );
 
+    @Query(value = """
+            SELECT i FROM Inventory i
+            JOIN i.variant pv
+            JOIN pv.product p
+            LEFT JOIN p.category c
+            LEFT JOIN p.brand b
+            WHERE pv.isDeleted = false
+              AND p.isDeleted = false
+              AND (i.quantityOnHand - i.quantityReserved) <= i.lowStockThreshold
+              AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(pv.sku) LIKE LOWER(CONCAT('%', :search, '%')))
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+            """,
+            countQuery = """
+            SELECT COUNT(i) FROM Inventory i
+            JOIN i.variant pv
+            JOIN pv.product p
+            LEFT JOIN p.category c
+            WHERE pv.isDeleted = false
+              AND p.isDeleted = false
+              AND (i.quantityOnHand - i.quantityReserved) <= i.lowStockThreshold
+              AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR LOWER(pv.sku) LIKE LOWER(CONCAT('%', :search, '%')))
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+            """)
+    Page<Inventory> findLowStockWithFilters(
+            @Param("search") String search,
+            @Param("categoryId") Long categoryId,
+            Pageable pageable
+    );
+
     @Query("""
             SELECT COUNT(i) FROM Inventory i
             JOIN i.variant pv

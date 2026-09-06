@@ -5,6 +5,7 @@ import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.request.OrderItemStockRequest;
+import com.techstore.dto.request.UpdateThresholdRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
 import com.techstore.dto.response.InventoryTransactionResponse;
@@ -326,6 +327,38 @@ public class InventoryServiceImpl implements InventoryService {
             transaction.setCreatedAt(Instant.now());
             inventoryTransactionRepository.save(transaction);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<InventoryResponse> getLowStockInventories(String search, Long categoryId, Pageable pageable) {
+        String trimmedSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        Page<Inventory> page = inventoryRepository.findLowStockWithFilters(trimmedSearch, categoryId, pageable);
+        return PageResponse.of(page.map(InventoryResponse::from));
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse updateLowStockThreshold(Long variantId, UpdateThresholdRequest request) {
+        if (request == null || request.lowStockThreshold() == null || request.lowStockThreshold() < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Ngưỡng tồn kho thấp phải lớn hơn hoặc bằng 0");
+        }
+
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND,
+                        "Không tìm thấy biến thể sản phẩm với ID: " + variantId));
+
+        Inventory inventory = inventoryRepository.findByVariantId(variantId)
+                .orElseGet(() -> {
+                    Inventory newInv = new Inventory(variant, 0, 0, request.lowStockThreshold());
+                    return inventoryRepository.save(newInv);
+                });
+
+        inventory.setLowStockThreshold(request.lowStockThreshold());
+        inventory.setUpdatedAt(Instant.now());
+        inventory = inventoryRepository.save(inventory);
+
+        return InventoryResponse.from(inventory);
     }
 
     @Override

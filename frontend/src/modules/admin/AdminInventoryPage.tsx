@@ -1,5 +1,6 @@
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -41,6 +42,8 @@ import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutli
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import HistoryIcon from "@mui/icons-material/History";
 import TuneIcon from "@mui/icons-material/Tune";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import NotificationsActiveOutlinedIcon from "@mui/icons-material/NotificationsActiveOutlined";
 import { useCallback, useEffect, useState } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
 import {
@@ -48,7 +51,9 @@ import {
   getInventories,
   getInventorySummary,
   getInventoryTransactions,
+  getLowStockInventories,
   importInventory,
+  updateLowStockThreshold,
   type InventoryItem,
   type InventorySummary,
   type InventoryTransactionItem,
@@ -77,7 +82,17 @@ export function AdminInventoryPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Transactions state
+  // Low Stock Alerts state (Tab 1)
+  const [lowStockItems, setLowStockItems] = useState<InventoryItem[]>([]);
+  const [lowStockLoading, setLowStockLoading] = useState(false);
+  const [lowStockError, setLowStockError] = useState<string | null>(null);
+  const [lowStockSearch, setLowStockSearch] = useState("");
+  const [lowStockCategory, setLowStockCategory] = useState<string>("");
+  const [lowStockPage, setLowStockPage] = useState(0);
+  const [lowStockRowsPerPage, setLowStockRowsPerPage] = useState(10);
+  const [lowStockTotalElements, setLowStockTotalElements] = useState(0);
+
+  // Transactions state (Tab 2)
   const [transactions, setTransactions] = useState<InventoryTransactionItem[]>(
     [],
   );
@@ -103,6 +118,13 @@ export function AdminInventoryPage() {
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
+
+  // Update Threshold Dialog state
+  const [openThresholdDialog, setOpenThresholdDialog] = useState(false);
+  const [thresholdVariantId, setThresholdVariantId] = useState<number | "">("");
+  const [newThreshold, setNewThreshold] = useState<number | "">(5);
+  const [thresholdSubmitting, setThresholdSubmitting] = useState(false);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
 
   // Snackbar feedback
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
@@ -150,6 +172,29 @@ export function AdminInventoryPage() {
     }
   }, [searchTerm, selectedCategory, selectedStatus, page, rowsPerPage]);
 
+  const fetchLowStock = useCallback(async () => {
+    setLowStockLoading(true);
+    setLowStockError(null);
+    try {
+      const response = await getLowStockInventories({
+        search: lowStockSearch || undefined,
+        categoryId: lowStockCategory ? Number(lowStockCategory) : undefined,
+        page: lowStockPage,
+        size: lowStockRowsPerPage,
+      });
+      setLowStockItems(response.items);
+      setLowStockTotalElements(response.totalElements);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Không thể tải danh sách cảnh báo tồn kho";
+      setLowStockError(msg);
+    } finally {
+      setLowStockLoading(false);
+    }
+  }, [lowStockSearch, lowStockCategory, lowStockPage, lowStockRowsPerPage]);
+
   const fetchTransactions = useCallback(async () => {
     setTxLoading(true);
     try {
@@ -175,10 +220,12 @@ export function AdminInventoryPage() {
   useEffect(() => {
     if (tabValue === 0) {
       fetchInventories();
+    } else if (tabValue === 1) {
+      fetchLowStock();
     } else {
       fetchTransactions();
     }
-  }, [tabValue, fetchInventories, fetchTransactions]);
+  }, [tabValue, fetchInventories, fetchLowStock, fetchTransactions]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,11 +251,17 @@ export function AdminInventoryPage() {
     setPage(0);
   };
 
+  const allKnownVariants = Array.from(
+    new Map(
+      [...items, ...lowStockItems].map((it) => [it.variantId, it]),
+    ).values(),
+  );
+
   const handleOpenImportDialog = (item?: InventoryItem) => {
     if (item) {
       setSelectedVariantId(item.variantId);
-    } else if (items.length > 0) {
-      setSelectedVariantId(items[0].variantId);
+    } else if (allKnownVariants.length > 0) {
+      setSelectedVariantId(allKnownVariants[0].variantId);
     } else {
       setSelectedVariantId("");
     }
@@ -255,6 +308,8 @@ export function AdminInventoryPage() {
       fetchInventories();
       fetchSummary();
       if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
         fetchTransactions();
       }
     } catch (err: unknown) {
@@ -265,15 +320,15 @@ export function AdminInventoryPage() {
     }
   };
 
-  const currentSelectedItem = items.find(
+  const currentSelectedItem = allKnownVariants.find(
     (i) => i.variantId === selectedVariantId,
   );
 
   const handleOpenAdjustDialog = (item?: InventoryItem) => {
     if (item) {
       setAdjustVariantId(item.variantId);
-    } else if (items.length > 0 && !adjustVariantId) {
-      setAdjustVariantId(items[0].variantId);
+    } else if (allKnownVariants.length > 0 && !adjustVariantId) {
+      setAdjustVariantId(allKnownVariants[0].variantId);
     }
     setAdjustMode("delta");
     setAdjustQuantity("");
@@ -288,7 +343,9 @@ export function AdminInventoryPage() {
     setAdjustError(null);
   };
 
-  const currentAdjustItem = items.find((i) => i.variantId === adjustVariantId);
+  const currentAdjustItem = allKnownVariants.find(
+    (i) => i.variantId === adjustVariantId,
+  );
   const currentOnHand = currentAdjustItem?.quantityOnHand ?? 0;
   const currentReserved = currentAdjustItem?.quantityReserved ?? 0;
 
@@ -350,6 +407,8 @@ export function AdminInventoryPage() {
       fetchInventories();
       fetchSummary();
       if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
         fetchTransactions();
       }
     } catch (err: unknown) {
@@ -360,6 +419,74 @@ export function AdminInventoryPage() {
       setAdjustSubmitting(false);
     }
   };
+
+  const handleOpenThresholdDialog = (item?: InventoryItem) => {
+    if (item) {
+      setThresholdVariantId(item.variantId);
+      setNewThreshold(item.lowStockThreshold);
+    } else if (allKnownVariants.length > 0) {
+      setThresholdVariantId(allKnownVariants[0].variantId);
+      setNewThreshold(allKnownVariants[0].lowStockThreshold);
+    }
+    setThresholdError(null);
+    setOpenThresholdDialog(true);
+  };
+
+  const handleCloseThresholdDialog = () => {
+    if (thresholdSubmitting) return;
+    setOpenThresholdDialog(false);
+    setThresholdError(null);
+  };
+
+  const handleThresholdSubmit = async (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (!thresholdVariantId) {
+      setThresholdError("Vui lòng chọn biến thể sản phẩm");
+      return;
+    }
+    const val = Number(newThreshold);
+    if (newThreshold === "" || isNaN(val) || val < 0) {
+      setThresholdError(
+        "Ngưỡng cảnh báo phải là số nguyên lớn hơn hoặc bằng 0",
+      );
+      return;
+    }
+
+    setThresholdSubmitting(true);
+    setThresholdError(null);
+    try {
+      await updateLowStockThreshold(Number(thresholdVariantId), val);
+
+      setSnackbarSeverity("success");
+      setSnackbarMessage(
+        `Cập nhật ngưỡng cảnh báo tồn kho thành công (${val} sản phẩm)!`,
+      );
+      setOpenThresholdDialog(false);
+
+      // Refresh data
+      fetchInventories();
+      fetchSummary();
+      if (tabValue === 1) {
+        fetchLowStock();
+      } else if (tabValue === 2) {
+        fetchTransactions();
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Cập nhật ngưỡng cảnh báo thất bại";
+      setThresholdError(msg);
+    } finally {
+      setThresholdSubmitting(false);
+    }
+  };
+
+  const currentThresholdItem = allKnownVariants.find(
+    (i) => i.variantId === thresholdVariantId,
+  );
 
   const renderStockBadge = (status: StockStatus) => {
     switch (status) {
@@ -486,7 +613,19 @@ export function AdminInventoryPage() {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+          <Card
+            variant="outlined"
+            onClick={() => setTabValue(1)}
+            sx={{
+              borderRadius: 2,
+              cursor: "pointer",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              "&:hover": {
+                boxShadow: 3,
+                borderColor: "warning.main",
+              },
+            }}
+          >
             <CardContent>
               <Stack
                 direction="row"
@@ -520,7 +659,19 @@ export function AdminInventoryPage() {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+          <Card
+            variant="outlined"
+            onClick={() => setTabValue(1)}
+            sx={{
+              borderRadius: 2,
+              cursor: "pointer",
+              transition: "transform 0.15s, box-shadow 0.15s",
+              "&:hover": {
+                boxShadow: 3,
+                borderColor: "error.main",
+              },
+            }}
+          >
             <CardContent>
               <Stack
                 direction="row"
@@ -565,6 +716,22 @@ export function AdminInventoryPage() {
           iconPosition="start"
           label="Danh sách tồn kho"
           data-testid="tab-inventory-list"
+        />
+        <Tab
+          icon={
+            <Badge
+              badgeContent={
+                (summary?.lowStockCount ?? 0) + (summary?.outOfStockCount ?? 0)
+              }
+              color="error"
+              max={99}
+            >
+              <WarningAmberOutlinedIcon />
+            </Badge>
+          }
+          iconPosition="start"
+          label="Cảnh báo tồn kho"
+          data-testid="tab-inventory-alerts"
         />
         <Tab
           icon={<HistoryIcon />}
@@ -832,6 +999,17 @@ export function AdminInventoryPage() {
                           >
                             Điều chỉnh
                           </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<EditOutlinedIcon />}
+                            onClick={() => handleOpenThresholdDialog(item)}
+                            data-testid={`btn-threshold-row-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Sửa ngưỡng
+                          </Button>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -858,6 +1036,318 @@ export function AdminInventoryPage() {
       )}
 
       {tabValue === 1 && (
+        <>
+          <Alert
+            severity="warning"
+            icon={<NotificationsActiveOutlinedIcon fontSize="inherit" />}
+            sx={{ mb: 3 }}
+          >
+            <Typography variant="subtitle2" fontWeight={700}>
+              Khu vực cảnh báo tồn kho thấp & hết hàng
+            </Typography>
+            <Typography variant="body2">
+              Hiển thị danh sách các biến thể có số lượng tồn khả dụng (tồn thực
+              tế - đang giữ) nhỏ hơn hoặc bằng ngưỡng cảnh báo được cấu hình.
+            </Typography>
+          </Alert>
+
+          {/* Filter and Search for Low Stock */}
+          <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+            <Box
+              component="form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setLowStockPage(0);
+                fetchLowStock();
+              }}
+            >
+              <Grid container spacing={2} alignItems="center">
+                <Grid size={{ xs: 12, md: 5 }}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Tìm kiếm sản phẩm, SKU dưới ngưỡng..."
+                    value={lowStockSearch}
+                    onChange={(e) => setLowStockSearch(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon color="action" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="low-stock-category-filter-label">
+                      Danh mục
+                    </InputLabel>
+                    <Select
+                      labelId="low-stock-category-filter-label"
+                      label="Danh mục"
+                      value={lowStockCategory}
+                      onChange={(e) => setLowStockCategory(e.target.value)}
+                    >
+                      <MenuItem value="">Tất cả danh mục</MenuItem>
+                      {categories.map((cat) => (
+                        <MenuItem key={cat.id} value={String(cat.id)}>
+                          {cat.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      type="submit"
+                      sx={{ height: 40 }}
+                    >
+                      Lọc
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setLowStockSearch("");
+                        setLowStockCategory("");
+                        setLowStockPage(0);
+                      }}
+                      sx={{ minWidth: 40, px: 1, height: 40 }}
+                      title="Đặt lại bộ lọc"
+                    >
+                      <RefreshIcon />
+                    </Button>
+                  </Stack>
+                </Grid>
+              </Grid>
+            </Box>
+          </Paper>
+
+          {lowStockError && (
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={() => setLowStockError(null)}
+              action={
+                <Button color="inherit" size="small" onClick={fetchLowStock}>
+                  Thử lại
+                </Button>
+              }
+            >
+              {lowStockError}
+            </Alert>
+          )}
+
+          {/* Low Stock Table */}
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
+            <Table>
+              <TableHead sx={{ bgcolor: "grey.50" }}>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>SẢN PHẨM / SKU</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>THUỘC TÍNH</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    KHẢ DỤNG
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    ĐANG GIỮ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    TỒN THỰC TẾ
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    NGƯỠNG CẢNH BÁO
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    TRẠNG THÁI
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    THAO TÁC
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {lowStockLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <CircularProgress size={36} />
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 1 }}
+                      >
+                        Đang tải danh sách cảnh báo tồn kho...
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : lowStockItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <CheckCircleOutlineOutlinedIcon
+                        color="success"
+                        sx={{ fontSize: 48, mb: 1, opacity: 0.8 }}
+                      />
+                      <Typography variant="h6" fontWeight={700}>
+                        Tồn kho an toàn!
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Không có biến thể nào có mức tồn khả dụng dưới ngưỡng
+                        cảnh báo.
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  lowStockItems.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      hover
+                      sx={{
+                        bgcolor:
+                          item.availableQuantity === 0
+                            ? "error.50"
+                            : "warning.50",
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {item.productName}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            fontFamily: "monospace",
+                            bgcolor: "grey.100",
+                            px: 0.8,
+                            py: 0.2,
+                            borderRadius: 1,
+                            color: "text.secondary",
+                          }}
+                        >
+                          {item.sku}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        <Typography variant="body2">
+                          {[item.color, item.storage]
+                            .filter(Boolean)
+                            .join(" · ") || "Mặc định"}
+                        </Typography>
+                        {item.categoryName && (
+                          <Typography variant="caption" color="text.secondary">
+                            {item.categoryName}
+                          </Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography
+                          variant="body2"
+                          fontWeight={800}
+                          color={
+                            item.availableQuantity === 0
+                              ? "error.main"
+                              : "warning.dark"
+                          }
+                        >
+                          {item.availableQuantity.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" color="text.secondary">
+                          {item.quantityReserved.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {item.quantityOnHand.toLocaleString("vi-VN")}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={600}>
+                          {item.lowStockThreshold}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell align="center">
+                        {renderStockBadge(item.stockStatus)}
+                      </TableCell>
+
+                      <TableCell align="center">
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="center"
+                        >
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color={
+                              item.availableQuantity === 0 ? "error" : "warning"
+                            }
+                            startIcon={<AddCircleOutlineIcon />}
+                            onClick={() => handleOpenImportDialog(item)}
+                            data-testid={`btn-quick-import-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 700 }}
+                          >
+                            Nhập hàng ngay
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            startIcon={<EditOutlinedIcon />}
+                            onClick={() => handleOpenThresholdDialog(item)}
+                            data-testid={`btn-edit-threshold-${item.variantId}`}
+                            sx={{ textTransform: "none", fontWeight: 600 }}
+                          >
+                            Sửa ngưỡng
+                          </Button>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 20, 50]}
+              component="div"
+              count={lowStockTotalElements}
+              rowsPerPage={lowStockRowsPerPage}
+              page={lowStockPage}
+              onPageChange={(_, newPage) => setLowStockPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setLowStockRowsPerPage(parseInt(e.target.value, 10));
+                setLowStockPage(0);
+              }}
+              labelRowsPerPage="Số hàng mỗi trang:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `${from}–${to} trong số ${count !== -1 ? count : `hơn ${to}`}`
+              }
+            />
+          </TableContainer>
+        </>
+      )}
+
+      {tabValue === 2 && (
         <>
           <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 2 }}>
             <Stack
@@ -1133,7 +1623,7 @@ export function AdminInventoryPage() {
                   onChange={(e) => setSelectedVariantId(Number(e.target.value))}
                   data-testid="select-import-variant"
                 >
-                  {items.map((it) => (
+                  {allKnownVariants.map((it) => (
                     <MenuItem key={it.variantId} value={it.variantId}>
                       {it.productName} ({it.sku}) - Tồn: {it.quantityOnHand}
                     </MenuItem>
@@ -1273,7 +1763,7 @@ export function AdminInventoryPage() {
                   onChange={(e) => setAdjustVariantId(Number(e.target.value))}
                   data-testid="select-adjust-variant"
                 >
-                  {items.map((it) => (
+                  {allKnownVariants.map((it) => (
                     <MenuItem key={it.variantId} value={it.variantId}>
                       {it.productName} ({it.sku}) - Tồn: {it.quantityOnHand}
                     </MenuItem>
@@ -1498,6 +1988,144 @@ export function AdminInventoryPage() {
                 <CircularProgress size={22} color="inherit" />
               ) : (
                 "Xác nhận điều chỉnh"
+              )}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+
+      {/* Dialog Cài đặt ngưỡng cảnh báo */}
+      <Dialog
+        open={openThresholdDialog}
+        onClose={handleCloseThresholdDialog}
+        maxWidth="xs"
+        fullWidth
+        data-testid="dialog-update-threshold"
+      >
+        <Box component="form" onSubmit={handleThresholdSubmit}>
+          <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>
+            Cấu hình ngưỡng cảnh báo tồn kho
+          </DialogTitle>
+          <Divider />
+
+          <DialogContent sx={{ pt: 2.5 }}>
+            {thresholdError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {thresholdError}
+              </Alert>
+            )}
+
+            <Stack spacing={2.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="select-threshold-variant-label">
+                  Chọn biến thể
+                </InputLabel>
+                <Select
+                  labelId="select-threshold-variant-label"
+                  label="Chọn biến thể"
+                  value={thresholdVariantId}
+                  onChange={(e) => {
+                    const vId = Number(e.target.value);
+                    setThresholdVariantId(vId);
+                    const vItem = allKnownVariants.find(
+                      (i) => i.variantId === vId,
+                    );
+                    if (vItem) {
+                      setNewThreshold(vItem.lowStockThreshold);
+                    }
+                  }}
+                  data-testid="select-threshold-variant"
+                >
+                  {allKnownVariants.map((it) => (
+                    <MenuItem key={it.variantId} value={it.variantId}>
+                      {it.productName} ({it.sku}) - Ngưỡng hiện tại:{" "}
+                      {it.lowStockThreshold}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {currentThresholdItem && (
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, bgcolor: "grey.50", borderRadius: 1.5 }}
+                >
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    {currentThresholdItem.productName}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 0.5 }}
+                  >
+                    Mã SKU: <strong>{currentThresholdItem.sku}</strong> | Thuộc
+                    tính:{" "}
+                    {[currentThresholdItem.color, currentThresholdItem.storage]
+                      .filter(Boolean)
+                      .join(" · ") || "Mặc định"}
+                  </Typography>
+                  <Stack direction="row" spacing={3} sx={{ mt: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Tồn khả dụng:{" "}
+                      <strong
+                        style={{
+                          color:
+                            currentThresholdItem.availableQuantity <=
+                            currentThresholdItem.lowStockThreshold
+                              ? "red"
+                              : "inherit",
+                        }}
+                      >
+                        {currentThresholdItem.availableQuantity}
+                      </strong>
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Ngưỡng hiện tại:{" "}
+                      <strong>{currentThresholdItem.lowStockThreshold}</strong>
+                    </Typography>
+                  </Stack>
+                </Paper>
+              )}
+
+              <TextField
+                fullWidth
+                size="small"
+                type="number"
+                label="Ngưỡng cảnh báo tồn kho thấp"
+                value={newThreshold}
+                onChange={(e) => {
+                  const val =
+                    e.target.value === "" ? "" : Number(e.target.value);
+                  setNewThreshold(val);
+                }}
+                inputProps={{ min: 0 }}
+                required
+                data-testid="input-low-stock-threshold"
+                helperText="Hệ thống sẽ gửi cảnh báo khi số lượng tồn khả dụng (tồn thực tế - đang giữ) nhỏ hơn hoặc bằng giá trị này."
+              />
+            </Stack>
+          </DialogContent>
+
+          <Divider />
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button
+              onClick={handleCloseThresholdDialog}
+              disabled={thresholdSubmitting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              type="submit"
+              onClick={handleThresholdSubmit}
+              disabled={thresholdSubmitting}
+              data-testid="btn-submit-threshold"
+              sx={{ fontWeight: 700, minWidth: 120 }}
+            >
+              {thresholdSubmitting ? (
+                <CircularProgress size={22} color="inherit" />
+              ) : (
+                "Lưu cấu hình"
               )}
             </Button>
           </DialogActions>

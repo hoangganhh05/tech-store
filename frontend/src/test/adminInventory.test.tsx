@@ -14,7 +14,9 @@ import {
   getInventories,
   getInventorySummary,
   getInventoryTransactions,
+  getLowStockInventories,
   importInventory,
+  updateLowStockThreshold,
   type InventoryItem,
   type InventorySummary,
   type InventoryTransactionItem,
@@ -26,8 +28,10 @@ vi.mock("../services/inventoryService", () => ({
   getInventorySummary: vi.fn(),
   getInventoryByVariantId: vi.fn(),
   getInventoryTransactions: vi.fn(),
+  getLowStockInventories: vi.fn(),
   importInventory: vi.fn(),
   adjustInventory: vi.fn(),
+  updateLowStockThreshold: vi.fn(),
 }));
 
 vi.mock("../services/categoryService", () => ({
@@ -38,8 +42,10 @@ const mockedGetInventories = vi.mocked(getInventories);
 const mockedGetInventorySummary = vi.mocked(getInventorySummary);
 const mockedGetAdminCategories = vi.mocked(getAdminCategories);
 const mockedGetInventoryTransactions = vi.mocked(getInventoryTransactions);
+const mockedGetLowStockInventories = vi.mocked(getLowStockInventories);
 const mockedImportInventory = vi.mocked(importInventory);
 const mockedAdjustInventory = vi.mocked(adjustInventory);
+const mockedUpdateLowStockThreshold = vi.mocked(updateLowStockThreshold);
 
 const mockCategories: Category[] = [
   {
@@ -184,6 +190,19 @@ describe("AdminInventoryPage", () => {
       ...mockItems[0],
       quantityOnHand: 30,
       availableQuantity: 28,
+    });
+    mockedGetLowStockInventories.mockResolvedValue({
+      items: [mockItems[1], mockItems[2]],
+      page: 0,
+      size: 10,
+      totalElements: 2,
+      totalPages: 1,
+      first: true,
+      last: true,
+    });
+    mockedUpdateLowStockThreshold.mockResolvedValue({
+      ...mockItems[0],
+      lowStockThreshold: 10,
     });
   });
 
@@ -470,18 +489,10 @@ describe("AdminInventoryPage", () => {
 
   test("opens adjust dialog from row and submits adjustment successfully", async () => {
     mockedAdjustInventory.mockResolvedValueOnce({
-      id: 1,
-      variantId: 101,
-      productId: 1,
-      productName: "iPhone 16 Pro",
-      sku: "IP16P-128-BLK",
-      color: "Titan Đen",
-      storage: "128GB",
-      categoryName: "Điện thoại",
+      ...mockItems[0],
       quantityOnHand: 17,
       quantityReserved: 0,
       availableQuantity: 17,
-      lowStockThreshold: 5,
       stockStatus: "IN_STOCK",
       updatedAt: new Date().toISOString(),
     });
@@ -619,5 +630,173 @@ describe("AdminInventoryPage", () => {
         screen.getByText("Hàng hư hỏng vỡ kính khi vận chuyển"),
       ).toBeInTheDocument();
     });
+  });
+
+  test("switches to Cảnh báo tồn kho tab and displays low stock variants", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const alertsTab = screen.getByTestId("tab-inventory-alerts");
+    expect(alertsTab).toBeInTheDocument();
+    fireEvent.click(alertsTab);
+
+    await waitFor(() => {
+      expect(mockedGetLowStockInventories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page: 0,
+          size: 10,
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Khu vực cảnh báo tồn kho thấp & hết hàng"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("IP16P-256-WHT")).toBeInTheDocument();
+      expect(screen.getByText("MBP-M3-SILVER")).toBeInTheDocument();
+      expect(screen.getByTestId("btn-quick-import-102")).toBeInTheDocument();
+      expect(screen.getByTestId("btn-edit-threshold-102")).toBeInTheDocument();
+    });
+  });
+
+  test("navigates to Cảnh báo tồn kho tab when clicking on SẮP HẾT HÀNG stat card", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("SẮP HẾT HÀNG")).toBeInTheDocument();
+    });
+
+    const lowStockCard = screen
+      .getByText("SẮP HẾT HÀNG")
+      .closest(".MuiCard-root")!;
+    fireEvent.click(lowStockCard);
+
+    await waitFor(() => {
+      expect(mockedGetLowStockInventories).toHaveBeenCalled();
+      expect(
+        screen.getByText("Khu vực cảnh báo tồn kho thấp & hết hàng"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("filters low stock variants by search keyword in alerts tab", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tab-inventory-alerts"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/Tìm kiếm sản phẩm, SKU dưới ngưỡng.../i),
+      ).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByLabelText(
+      /Tìm kiếm sản phẩm, SKU dưới ngưỡng.../i,
+    );
+    fireEvent.change(searchInput, { target: { value: "MBP" } });
+
+    const filterButton = screen.getAllByRole("button", { name: /^Lọc$/i })[0];
+    fireEvent.click(filterButton);
+
+    await waitFor(() => {
+      expect(mockedGetLowStockInventories).toHaveBeenCalledWith(
+        expect.objectContaining({
+          search: "MBP",
+        }),
+      );
+    });
+  });
+
+  test("opens quick import dialog from low stock table row", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tab-inventory-alerts"));
+
+    const quickImportBtn = await screen.findByTestId("btn-quick-import-102");
+    fireEvent.click(quickImportBtn);
+
+    const dialog = screen.getByTestId("dialog-import-inventory");
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByText("Nhập kho biến thể sản phẩm")).toBeInTheDocument();
+  });
+
+  test("opens threshold dialog and updates low stock threshold successfully", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    // Open threshold dialog from row in Tab 0
+    const thresholdBtn = screen.getByTestId("btn-threshold-row-101");
+    fireEvent.click(thresholdBtn);
+
+    const dialog = screen.getByTestId("dialog-update-threshold");
+    expect(dialog).toBeInTheDocument();
+    expect(
+      screen.getByText("Cấu hình ngưỡng cảnh báo tồn kho"),
+    ).toBeInTheDocument();
+
+    const thresholdInput = screen
+      .getByTestId("input-low-stock-threshold")
+      .querySelector("input")!;
+    fireEvent.change(thresholdInput, { target: { value: "12" } });
+
+    const submitBtn = screen.getByTestId("btn-submit-threshold");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockedUpdateLowStockThreshold).toHaveBeenCalledWith(101, 12);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Cập nhật ngưỡng cảnh báo tồn kho thành công/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test("validates invalid negative threshold preventing update submission", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("IP16P-128-BLK")).toBeInTheDocument();
+    });
+
+    const thresholdBtn = screen.getByTestId("btn-threshold-row-101");
+    fireEvent.click(thresholdBtn);
+
+    const dialog = screen.getByTestId("dialog-update-threshold");
+    expect(dialog).toBeInTheDocument();
+
+    const thresholdInput = screen
+      .getByTestId("input-low-stock-threshold")
+      .querySelector("input")!;
+    fireEvent.change(thresholdInput, { target: { value: "-5" } });
+
+    const submitBtn = screen.getByTestId("btn-submit-threshold");
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Ngưỡng cảnh báo phải là số nguyên lớn hơn hoặc bằng 0",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(mockedUpdateLowStockThreshold).not.toHaveBeenCalled();
   });
 });

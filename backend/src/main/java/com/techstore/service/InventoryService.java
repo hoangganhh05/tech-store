@@ -4,6 +4,7 @@ import com.techstore.dto.request.InventoryAdjustmentRequest;
 import com.techstore.dto.request.InventoryImportRequest;
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.OrderInventoryRestoreRequest;
+import com.techstore.dto.request.UpdateThresholdRequest;
 import com.techstore.dto.response.InventoryResponse;
 import com.techstore.dto.response.InventorySummaryResponse;
 import com.techstore.dto.response.InventoryTransactionResponse;
@@ -28,6 +29,10 @@ public interface InventoryService {
     void deductInventoryForOrder(Long currentUserId, OrderInventoryDeductionRequest request);
 
     void restoreInventoryForOrder(Long currentUserId, OrderInventoryRestoreRequest request);
+
+    PageResponse<InventoryResponse> getLowStockInventories(String search, Long categoryId, Pageable pageable);
+
+    InventoryResponse updateLowStockThreshold(Long variantId, UpdateThresholdRequest request);
 
     PageResponse<InventoryTransactionResponse> getTransactions(Long variantId, InventoryTransactionType type, Pageable pageable);
 
