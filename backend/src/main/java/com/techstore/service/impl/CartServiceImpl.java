@@ -1,0 +1,218 @@
+package com.techstore.service.impl;
+
+import com.techstore.dto.request.AddToCartRequest;
+import com.techstore.dto.response.CartItemResponse;
+import com.techstore.dto.response.CartResponse;
+import com.techstore.entity.Cart;
+import com.techstore.entity.CartItem;
+import com.techstore.entity.Inventory;
+import com.techstore.entity.Product;
+import com.techstore.entity.ProductImage;
+import com.techstore.entity.ProductVariant;
+import com.techstore.entity.User;
+import com.techstore.enums.ErrorCode;
+import com.techstore.enums.ProductStatus;
+import com.techstore.exception.BusinessException;
+import com.techstore.repository.CartItemRepository;
+import com.techstore.repository.CartRepository;
+import com.techstore.repository.InventoryRepository;
+import com.techstore.repository.ProductImageRepository;
+import com.techstore.repository.ProductVariantRepository;
+import com.techstore.repository.UserRepository;
+import com.techstore.service.CartService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+public class CartServiceImpl implements CartService {
+
+    private final CartRepository cartRepository;
+    private final CartItemRepository cartItemRepository;
+    private final UserRepository userRepository;
+    private final ProductVariantRepository productVariantRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ProductImageRepository productImageRepository;
+
+    public CartServiceImpl(
+            CartRepository cartRepository,
+            CartItemRepository cartItemRepository,
+            UserRepository userRepository,
+            ProductVariantRepository productVariantRepository,
+            InventoryRepository inventoryRepository,
+            ProductImageRepository productImageRepository
+    ) {
+        this.cartRepository = cartRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.userRepository = userRepository;
+        this.productVariantRepository = productVariantRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.productImageRepository = productImageRepository;
+    }
+
+    @Override
+    @Transactional
+    public CartResponse addToCart(Long userId, String sessionId, AddToCartRequest request) {
+        if (request == null || request.getVariantId() == null || request.getVariantId() <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã biến thể không hợp lệ");
+        }
+        int quantityToAdd = request.getQuantity() != null ? request.getQuantity() : 1;
+        if (quantityToAdd <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số lượng phải lớn hơn 0");
+        }
+
+        // 1. Tìm hoặc tạo giỏ hàng
+        Cart cart = getOrCreateCart(userId, sessionId);
+
+        // 2. Kiểm tra biến thể sản phẩm
+        ProductVariant variant = productVariantRepository.findById(request.getVariantId())
+                .filter(v -> !v.isDeleted())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể sản phẩm không tồn tại hoặc đã bị xoá"));
+
+        Product product = variant.getProduct();
+        if (product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm không tồn tại hoặc đã ngừng kinh doanh");
+        }
+
+        // 3. Kiểm tra tồn kho khả dụng
+        int availableStock = getAvailableStock(variant);
+        if (availableStock <= 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Sản phẩm đã hết hàng");
+        }
+
+        // 4. Kiểm tra dòng sản phẩm đã có trong giỏ chưa
+        Optional<CartItem> existingItemOpt = cartItemRepository.findByCartIdAndVariantId(cart.getId(), variant.getId());
+        int currentQuantityInCart = existingItemOpt.map(CartItem::getQuantity).orElse(0);
+        int targetQuantity = currentQuantityInCart + quantityToAdd;
+
+        if (targetQuantity > availableStock) {
+            int canAddMore = Math.max(0, availableStock - currentQuantityInCart);
+            throw new BusinessException(
+                    ErrorCode.INSUFFICIENT_STOCK,
+                    String.format("Số lượng vượt quá tồn kho khả dụng. Kho chỉ còn %d sản phẩm (trong giỏ đã có %d, có thể thêm tối đa %d).",
+                            availableStock, currentQuantityInCart, canAddMore)
+            );
+        }
+
+        // 5. Cập nhật hoặc tạo mới CartItem
+        if (existingItemOpt.isPresent()) {
+            CartItem item = existingItemOpt.get();
+            item.setQuantity(targetQuantity);
+            cartItemRepository.save(item);
+        } else {
+            CartItem newItem = new CartItem(cart, variant, quantityToAdd);
+            cartItemRepository.save(newItem);
+            cart.getItems().add(newItem);
+        }
+
+        return mapToCartResponse(cart);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartResponse getCart(Long userId, String sessionId) {
+        Optional<Cart> cartOpt = findCart(userId, sessionId);
+        if (cartOpt.isEmpty()) {
+            return new CartResponse(null, 0, BigDecimal.ZERO, List.of());
+        }
+        return mapToCartResponse(cartOpt.get());
+    }
+
+    private Cart getOrCreateCart(Long userId, String sessionId) {
+        Optional<Cart> cartOpt = findCart(userId, sessionId);
+        if (cartOpt.isPresent()) {
+            return cartOpt.get();
+        }
+
+        Cart newCart = new Cart();
+        if (userId != null) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Người dùng không tồn tại"));
+            newCart.setUser(user);
+        } else {
+            newCart.setSessionId(sessionId != null && !sessionId.isBlank() ? sessionId : UUID.randomUUID().toString());
+        }
+        return cartRepository.save(newCart);
+    }
+
+    private Optional<Cart> findCart(Long userId, String sessionId) {
+        if (userId != null) {
+            return cartRepository.findByUserId(userId);
+        }
+        if (sessionId != null && !sessionId.isBlank()) {
+            return cartRepository.findBySessionId(sessionId);
+        }
+        return Optional.empty();
+    }
+
+    private int getAvailableStock(ProductVariant variant) {
+        Optional<Inventory> inventoryOpt = inventoryRepository.findByVariantId(variant.getId());
+        if (inventoryOpt.isPresent()) {
+            return inventoryOpt.get().getAvailableQuantity();
+        }
+        return variant.getStockQuantity() != null ? Math.max(0, variant.getStockQuantity()) : 0;
+    }
+
+    private CartResponse mapToCartResponse(Cart cart) {
+        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        List<CartItemResponse> itemResponses = new ArrayList<>();
+        int totalItems = 0;
+        BigDecimal subtotal = BigDecimal.ZERO;
+
+        for (CartItem item : items) {
+            ProductVariant variant = item.getVariant();
+            Product product = variant.getProduct();
+            int qty = item.getQuantity();
+            int stock = getAvailableStock(variant);
+
+            BigDecimal price = variant.getPrice() != null ? variant.getPrice() : BigDecimal.ZERO;
+            BigDecimal lineSubtotal = price.multiply(BigDecimal.valueOf(qty));
+
+            totalItems += qty;
+            subtotal = subtotal.add(lineSubtotal);
+
+            String imageUrl = resolveVariantImageUrl(variant, product);
+
+            itemResponses.add(new CartItemResponse(
+                    item.getId(),
+                    variant.getId(),
+                    product != null ? product.getId() : null,
+                    product != null ? product.getName() : "Sản phẩm",
+                    variant.getSku(),
+                    variant.getColor(),
+                    variant.getStorage(),
+                    price,
+                    variant.getOriginalPrice(),
+                    imageUrl,
+                    qty,
+                    stock,
+                    lineSubtotal
+            ));
+        }
+
+        return new CartResponse(cart.getId(), totalItems, subtotal, itemResponses);
+    }
+
+    private String resolveVariantImageUrl(ProductVariant variant, Product product) {
+        if (variant != null) {
+            List<ProductImage> variantImages = productImageRepository.findByVariantId(variant.getId());
+            if (!variantImages.isEmpty()) {
+                return variantImages.get(0).getImageUrl();
+            }
+        }
+        if (product != null) {
+            List<ProductImage> productImages = productImageRepository.findByProductIdOrderByIsPrimaryDescDisplayOrderAscIdAsc(product.getId());
+            if (!productImages.isEmpty()) {
+                return productImages.get(0).getImageUrl();
+            }
+        }
+        return null;
+    }
+}
+
