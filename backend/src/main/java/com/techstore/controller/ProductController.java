@@ -1,6 +1,7 @@
 package com.techstore.controller;
 
 import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 import com.techstore.service.StorefrontProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,18 +45,26 @@ public class ProductController {
     }
 
     @GetMapping
-    @Operation(summary = "Get products with optional combined filters (categoryId, brandIds, priceMin, priceMax)")
-    @Operation(summary = "Get products with optional combined filters and sorting (categoryId, brandIds, priceMin, priceMax, sortBy, sortDir)")
-    public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getProducts(
+    @Operation(summary = "Get products with optional combined filters, sorting, and pagination")
+    public ResponseEntity<ApiResponse<?>> getProducts(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) List<Long> brandIds,
             @RequestParam(required = false) BigDecimal priceMin,
-            @RequestParam(required = false) BigDecimal priceMax
             @RequestParam(required = false) BigDecimal priceMax,
             @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortDir
+            @RequestParam(required = false) String sortDir,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
     ) {
-        List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId, brandIds, priceMin, priceMax);
+        if (page != null || size != null) {
+            int pageNum = page != null ? page : 0;
+            int pageSize = size != null ? size : 12;
+            PageResponse<StorefrontProductResponse> response = storefrontProductService.getPaginatedProducts(
+                    categoryId, brandIds, priceMin, priceMax, sortBy, sortDir, pageNum, pageSize
+            );
+            return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
+        }
+
         List<StorefrontProductResponse> response = storefrontProductService.getProducts(
                 categoryId, brandIds, priceMin, priceMax, sortBy, sortDir
         );

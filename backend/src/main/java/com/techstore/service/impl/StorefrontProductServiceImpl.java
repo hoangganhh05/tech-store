@@ -2,6 +2,7 @@ package com.techstore.service.impl;
 
 import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
+import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 import com.techstore.entity.Category;
@@ -269,6 +270,38 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         }
 
         return responses;
+    }
+
+    @Override
+    public PageResponse<StorefrontProductResponse> getPaginatedProducts(
+            Long categoryId,
+            List<Long> brandIds,
+            BigDecimal priceMin,
+            BigDecimal priceMax,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size
+    ) {
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số trang không được âm");
+        }
+        if (size <= 0 || size > 100) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Kích thước trang phải từ 1 đến 100");
+        }
+
+        List<StorefrontProductResponse> allProducts = getProducts(categoryId, brandIds, priceMin, priceMax, sortBy, sortDir);
+        long totalElements = allProducts.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+
+        int fromIndex = Math.min(page * size, (int) totalElements);
+        int toIndex = Math.min(fromIndex + size, (int) totalElements);
+        List<StorefrontProductResponse> pagedItems = allProducts.subList(fromIndex, toIndex);
+
+        boolean isFirst = page == 0;
+        boolean isLast = totalPages == 0 || page >= totalPages - 1;
+
+        return new PageResponse<>(pagedItems, page, size, totalElements, totalPages, isFirst, isLast);
     }
 
     @Override
