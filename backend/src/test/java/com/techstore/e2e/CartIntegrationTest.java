@@ -44,6 +44,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -404,6 +405,103 @@ class CartIntegrationTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", equalTo("CART_ITEM_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("US-07.3: Xoá sản phẩm khỏi giỏ hàng thành công và cập nhật lại tổng tiền")
+    void removeCartItem_success() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 3);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findByUserId(testUser.getId()).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        mockMvc.perform(delete("/api/v1/cart/items/" + cartItem.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.message", equalTo("Xoá sản phẩm khỏi giỏ hàng thành công")))
+                .andExpect(jsonPath("$.data.totalItems", equalTo(0)))
+                .andExpect(jsonPath("$.data.subtotal", equalTo(0)))
+                .andExpect(jsonPath("$.data.items", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("US-07.3: Khách vãng lai xoá sản phẩm qua X-Session-Id thành công")
+    void removeCartItem_guestUser_success() throws Exception {
+        String sessionId = UUID.randomUUID().toString();
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findBySessionId(sessionId).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        mockMvc.perform(delete("/api/v1/cart/items/" + cartItem.getId())
+                        .header("X-Session-Id", sessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.data.totalItems", equalTo(0)))
+                .andExpect(jsonPath("$.data.items", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("US-07.3: Xoá sản phẩm không tồn tại trả về CART_ITEM_NOT_FOUND (404)")
+    void removeCartItem_itemNotFound_returns404() throws Exception {
+        mockMvc.perform(delete("/api/v1/cart/items/999999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", equalTo("CART_NOT_FOUND"))); // Không có giỏ hàng -> CART_NOT_FOUND
+
+        // Tạo giỏ trước rồi xoá item không tồn tại
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/cart/items/888888")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", equalTo("CART_ITEM_NOT_FOUND")));
+    }
+
+    @Test
+    @DisplayName("US-07.3: Xoá sản phẩm thuộc giỏ hàng khác trả về CART_ITEM_NOT_FOUND (404)")
+    void removeCartItem_notOwner_returns404() throws Exception {
+        // Tạo giỏ cho user A
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cartA = cartRepository.findByUserId(testUser.getId()).orElseThrow();
+        CartItem itemA = cartItemRepository.findByCartId(cartA.getId()).get(0);
+
+        // Khách B với session khác cố xoá item của user A
+        String sessionIdB = UUID.randomUUID().toString();
+        // Tạo giỏ B
+        AddToCartRequest addReqB = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", sessionIdB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReqB)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(delete("/api/v1/cart/items/" + itemA.getId())
+                        .header("X-Session-Id", sessionIdB))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code", equalTo("CART_ITEM_NOT_FOUND")));
     }

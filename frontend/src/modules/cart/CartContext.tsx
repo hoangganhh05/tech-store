@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { getCart, addToCart as apiAddToCart, updateCartItemQuantity as apiUpdateCartItemQuantity, type Cart } from '../../services/cartService'
+import {
+  getCart,
+  addToCart as apiAddToCart,
+  updateCartItemQuantity as apiUpdateCartItemQuantity,
+  removeCartItem as apiRemoveCartItem,
+  type Cart,
+} from '../../services/cartService'
 import { useAuth } from '../../hooks/useAuth'
 import { CartContext } from './CartStore'
 
@@ -43,10 +49,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const removeCartItem = useCallback(async (itemId: number) => {
+    setLoading(true)
+    try {
+      const updatedCart = await apiRemoveCartItem(itemId)
+      setCart(updatedCart)
+      return updatedCart
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const cartCount = cart?.totalItems ?? 0
 
   return (
-    <CartContext.Provider value={{ cart, cartCount, loading, addToCart, updateQuantity, refreshCart }}>
+    <CartContext.Provider
+      value={{ cart, cartCount, loading, addToCart, updateQuantity, removeCartItem, refreshCart }}
+    >
       {children}
     </CartContext.Provider>
   )

@@ -15,6 +15,7 @@ vi.mock("../services/cartService", () => ({
   getCart: vi.fn(),
   addToCart: vi.fn(),
   updateCartItemQuantity: vi.fn(),
+  removeCartItem: vi.fn(),
 }));
 
 vi.mock("../services/storefrontService", () => ({
@@ -34,6 +35,7 @@ vi.mock("../services/storefrontService", () => ({
 const mockedGetCart = vi.mocked(cartService.getCart);
 const mockedAddToCart = vi.mocked(cartService.addToCart);
 const mockedUpdateCartItemQuantity = vi.mocked(cartService.updateCartItemQuantity);
+const mockedRemoveCartItem = vi.mocked(cartService.removeCartItem);
 const mockedGetProductDetail = vi.mocked(
   storefrontService.getStorefrontProductDetail,
 );
@@ -572,3 +574,156 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     });
   });
 });
+
+describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Remove Cart Item)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockCartWithItems: cartService.Cart = {
+    id: 1,
+    totalItems: 2,
+    subtotal: 51980000,
+    items: [
+      {
+        id: 1,
+        variantId: 101,
+        productId: 1,
+        productName: "iPhone 15 Pro",
+        sku: "IP15P-TITAN-128",
+        color: "Titan Tự Nhiên",
+        storage: "128GB",
+        price: 25990000,
+        originalPrice: 28990000,
+        imageUrl: "https://example.com/ip15p.png",
+        quantity: 2,
+        availableStock: 5,
+        subtotal: 51980000,
+      },
+    ],
+  };
+
+  it("displays delete button for each item and opens confirmation dialog when clicked", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("remove-item-btn-1")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("remove-item-btn-1"));
+
+    expect(screen.getByTestId("delete-confirm-dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Bạn có chắc chắn muốn xoá sản phẩm/i)).toBeInTheDocument();
+    expect(screen.getByTestId("cancel-delete-btn")).toBeInTheDocument();
+    expect(screen.getByTestId("confirm-delete-btn")).toBeInTheDocument();
+
+    // Clicking cancel closes the dialog without calling API
+    fireEvent.click(screen.getByTestId("cancel-delete-btn"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("delete-confirm-dialog")).not.toBeInTheDocument();
+    });
+    expect(mockedRemoveCartItem).not.toHaveBeenCalled();
+  });
+
+  it("confirms item deletion, calls API, updates cart to empty state and shows toast", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+    mockedRemoveCartItem.mockResolvedValue({
+      id: 1,
+      totalItems: 0,
+      subtotal: 0,
+      items: [],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("remove-item-btn-1")).toBeInTheDocument();
+    });
+
+    // Open confirmation dialog
+    fireEvent.click(screen.getByTestId("remove-item-btn-1"));
+
+    // Click confirm delete
+    fireEvent.click(screen.getByTestId("confirm-delete-btn"));
+
+    await waitFor(() => {
+      expect(mockedRemoveCartItem).toHaveBeenCalledWith(1);
+    });
+
+    // Verify success toast notification
+    await waitFor(() => {
+      const toast = screen.getByTestId("cart-toast");
+      expect(toast).toBeInTheDocument();
+      expect(toast).toHaveTextContent("Đã xoá sản phẩm khỏi giỏ hàng thành công!");
+    });
+
+    // Verify cart switches to empty state
+    await waitFor(() => {
+      expect(screen.getByTestId("empty-cart-card")).toBeInTheDocument();
+      expect(screen.getByTestId("empty-cart-message")).toHaveTextContent("Giỏ hàng của bạn đang trống.");
+    });
+  });
+
+  it("displays error alert when remove cart item API fails", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+    mockedRemoveCartItem.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          success: false,
+          code: "CART_ITEM_NOT_FOUND",
+          message: "Sản phẩm không có trong giỏ hàng",
+        },
+      },
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("remove-item-btn-1")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("remove-item-btn-1"));
+    fireEvent.click(screen.getByTestId("confirm-delete-btn"));
+
+    await waitFor(() => {
+      const alert = screen.getByTestId("cart-error-alert");
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent("Sản phẩm không có trong giỏ hàng");
+    });
+  });
+});
+

@@ -11,6 +11,7 @@ import {
   Typography,
   Chip,
   Alert,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
@@ -18,24 +19,35 @@ import {
   TableHead,
   TableRow,
   Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Tooltip,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Link } from 'react-router-dom'
 import { PageIntro } from '../../components/common/PageIntro'
 import { ROUTES } from '../../constants/routes'
 import { useCart } from '../../hooks/useCart'
+import type { CartItem } from '../../services/cartService'
 
 function formatPrice(val: number): string {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
 }
 
 export function CartPage() {
-  const { cart, updateQuantity } = useCart()
+  const { cart, updateQuantity, removeCartItem } = useCart()
   const [updatingItemId, setUpdatingItemId] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState<boolean>(false)
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
 
   const handleUpdateQuantity = async (itemId: number, newQty: number, maxStock: number) => {
     if (newQty < 1) return
@@ -56,6 +68,31 @@ export function CartPage() {
     }
   }
 
+  const handleOpenDeleteDialog = (item: CartItem) => {
+    setItemToDelete(item)
+  }
+
+  const handleCloseDeleteDialog = () => {
+    if (deleting) return
+    setItemToDelete(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return
+    setDeleting(true)
+    setErrorMessage(null)
+    try {
+      await removeCartItem(itemToDelete.id)
+      setToastMessage('Đã xoá sản phẩm khỏi giỏ hàng thành công!')
+      setItemToDelete(null)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } }
+      setErrorMessage(axiosErr?.response?.data?.message || 'Không thể xoá sản phẩm. Vui lòng thử lại.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const isEmpty = !cart || !cart.items || cart.items.length === 0
 
   return (
@@ -67,6 +104,17 @@ export function CartPage() {
           {errorMessage}
         </Alert>
       )}
+
+      <Snackbar
+        open={!!toastMessage}
+        autoHideDuration={4000}
+        onClose={() => setToastMessage(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setToastMessage(null)} severity="success" sx={{ width: '100%' }} data-testid="cart-toast">
+          {toastMessage}
+        </Alert>
+      </Snackbar>
 
       {isEmpty ? (
         <Card data-testid="empty-cart-card">
@@ -101,6 +149,7 @@ export function CartPage() {
                       <TableCell align="center">Đơn giá</TableCell>
                       <TableCell align="center">Số lượng</TableCell>
                       <TableCell align="right">Thành tiền</TableCell>
+                      <TableCell align="center" sx={{ width: 60 }}></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -207,6 +256,19 @@ export function CartPage() {
                               {formatPrice(item.subtotal)}
                             </Typography>
                           </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Xoá sản phẩm">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleOpenDeleteDialog(item)}
+                                data-testid={`remove-item-btn-${item.id}`}
+                                aria-label={`Xoá ${item.productName}`}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -278,6 +340,38 @@ export function CartPage() {
           </Grid>
         </Grid>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={!!itemToDelete}
+        onClose={handleCloseDeleteDialog}
+        data-testid="delete-confirm-dialog"
+      >
+        <DialogTitle>Xác nhận xoá sản phẩm</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc chắn muốn xoá sản phẩm <strong>{itemToDelete?.productName}</strong>
+            {itemToDelete && (itemToDelete.color || itemToDelete.storage) ? (
+              <> ({[itemToDelete.color, itemToDelete.storage].filter(Boolean).join(' - ')})</>
+            ) : null}{' '}
+            khỏi giỏ hàng không?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={handleCloseDeleteDialog} disabled={deleting} data-testid="cancel-delete-btn">
+            Huỷ
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            data-testid="confirm-delete-btn"
+          >
+            {deleting ? 'Đang xoá...' : 'Xác nhận xoá'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

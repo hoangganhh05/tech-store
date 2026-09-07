@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -67,6 +68,18 @@ public class CartController {
         Long userId = resolveUserId(authorizationHeader);
         CartResponse response = cartService.updateCartItemQuantity(userId, sessionId, itemId, request);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật số lượng giỏ hàng thành công", response));
+    }
+
+    @DeleteMapping("/items/{id}")
+    @Operation(summary = "Xoá dòng sản phẩm khỏi giỏ hàng")
+    public ResponseEntity<ApiResponse<CartResponse>> removeCartItem(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+            @PathVariable("id") Long itemId
+    ) {
+        Long userId = resolveUserId(authorizationHeader);
+        CartResponse response = cartService.removeCartItem(userId, sessionId, itemId);
+        return ResponseEntity.ok(ApiResponse.success("Xoá sản phẩm khỏi giỏ hàng thành công", response));
     }
 
     private Long resolveUserId(String authorizationHeader) {
