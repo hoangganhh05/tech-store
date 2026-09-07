@@ -465,8 +465,7 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     });
   });
 
-  it("disables '-' when quantity is 1 and disables '+' when quantity reaches availableStock", async () => {
-    // Quantity is 1 -> decrease button should be disabled
+  it("disables '-' button when quantity is 1", async () => {
     const cartQty1: cartService.Cart = {
       id: 1,
       totalItems: 1,
@@ -475,13 +474,13 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
         {
           ...mockCartWithItems.items[0],
           quantity: 1,
-          availableStock: 3,
+          availableStock: 5,
         },
       ],
     };
     mockedGetCart.mockResolvedValue(cartQty1);
 
-    const { rerender } = render(
+    render(
       <ThemeProvider theme={appTheme}>
         <AuthContext.Provider value={mockAuthValue}>
           <CartProvider>
@@ -499,8 +498,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       const increaseBtn = screen.getByTestId("increase-qty-btn-1");
       expect(increaseBtn).toBeEnabled();
     });
+  });
 
-    // When quantity reaches availableStock (3 of 3) -> increase button should be disabled
+  it("disables '+' button and shows warning when quantity reaches availableStock", async () => {
     const cartMaxStock: cartService.Cart = {
       id: 1,
       totalItems: 3,
@@ -515,7 +515,7 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     };
     mockedGetCart.mockResolvedValue(cartMaxStock);
 
-    rerender(
+    render(
       <ThemeProvider theme={appTheme}>
         <AuthContext.Provider value={mockAuthValue}>
           <CartProvider>
