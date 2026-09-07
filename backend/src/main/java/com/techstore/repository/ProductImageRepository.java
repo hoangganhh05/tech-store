@@ -15,6 +15,8 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, Long
 
     List<ProductImage> findByProductIdOrderByIsPrimaryDescDisplayOrderAscIdAsc(Long productId);
 
+    List<ProductImage> findByProductIdInOrderByIsPrimaryDescDisplayOrderAscIdAsc(java.util.Collection<Long> productIds);
+
     Optional<ProductImage> findByIdAndProductId(Long id, Long productId);
 
     boolean existsByProductIdAndIsPrimaryTrue(Long productId);
