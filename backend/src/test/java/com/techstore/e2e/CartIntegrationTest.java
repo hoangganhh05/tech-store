@@ -41,6 +41,7 @@ import java.math.BigDecimal;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
@@ -683,6 +684,125 @@ class CartIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.valid", equalTo(true)))
                 .andExpect(jsonPath("$.data.issues", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("US-07.6: Gộp giỏ hàng tạm của khách vãng lai vào giỏ hàng trống của user thành công")
+    void syncCart_guestCartMergedIntoEmptyUserCart_success() throws Exception {
+        String guestSessionId = UUID.randomUUID().toString();
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+
+        // Khách vãng lai thêm vào giỏ
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", guestSessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        // Đăng nhập và gọi đồng bộ
+        mockMvc.perform(post("/api/v1/cart/sync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .header("X-Session-Id", guestSessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.data.mergedItemsCount", equalTo(1)))
+                .andExpect(jsonPath("$.data.hasStockAdjusted", equalTo(false)))
+                .andExpect(jsonPath("$.data.cart.totalItems", equalTo(2)))
+                .andExpect(jsonPath("$.data.cart.items", hasSize(1)));
+
+        // Giỏ tạm phải bị xoá
+        mockMvc.perform(get("/api/v1/cart")
+                        .header("X-Session-Id", guestSessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalItems", equalTo(0)));
+    }
+
+    @Test
+    @DisplayName("US-07.6: Gộp giỏ hàng tạm có sản phẩm trùng với giỏ của user -> cộng dồn số lượng")
+    void syncCart_overlappingVariants_combinesQuantity() throws Exception {
+        // User đã có sẵn 2 sản phẩm
+        AddToCartRequest userReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userReq)))
+                .andExpect(status().isOk());
+
+        // Khách vãng lai thêm 3 sản phẩm cùng biến thể
+        String guestSessionId = UUID.randomUUID().toString();
+        AddToCartRequest guestReq = new AddToCartRequest(testVariant.getId(), 3);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", guestSessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(guestReq)))
+                .andExpect(status().isOk());
+
+        // Đồng bộ
+        mockMvc.perform(post("/api/v1/cart/sync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .header("X-Session-Id", guestSessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mergedItemsCount", equalTo(1)))
+                .andExpect(jsonPath("$.data.hasStockAdjusted", equalTo(false)))
+                .andExpect(jsonPath("$.data.cart.totalItems", equalTo(5)))
+                .andExpect(jsonPath("$.data.cart.items[0].quantity", equalTo(5)));
+    }
+
+    @Test
+    @DisplayName("US-07.6: Gộp giỏ hàng tạm khi tổng số lượng vượt tồn kho -> giới hạn theo tồn kho tối đa")
+    void syncCart_exceedsStock_capsAtAvailableStock() throws Exception {
+        // Tồn kho là 10. Giảm tồn kho xuống 6.
+        Inventory inv = inventoryRepository.findByVariantId(testVariant.getId()).orElseThrow();
+        inv.setQuantityOnHand(6);
+        inventoryRepository.save(inv);
+
+        // User đã có sẵn 3 sản phẩm
+        AddToCartRequest userReq = new AddToCartRequest(testVariant.getId(), 3);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(userReq)))
+                .andExpect(status().isOk());
+
+        // Khách vãng lai có 5 sản phẩm (3 + 5 = 8 > 6)
+        String guestSessionId = UUID.randomUUID().toString();
+        AddToCartRequest guestReq = new AddToCartRequest(testVariant.getId(), 5);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", guestSessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(guestReq)))
+                .andExpect(status().isOk());
+
+        // Đồng bộ
+        mockMvc.perform(post("/api/v1/cart/sync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .header("X-Session-Id", guestSessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hasStockAdjusted", equalTo(true)))
+                .andExpect(jsonPath("$.data.cart.totalItems", equalTo(6)))
+                .andExpect(jsonPath("$.data.cart.items[0].quantity", equalTo(6)));
+    }
+
+    @Test
+    @DisplayName("US-07.6: Gộp khi giỏ hàng tạm rỗng trả về giỏ user hiện tại bình thường")
+    void syncCart_guestCartEmpty_returnsUserCartWithoutError() throws Exception {
+        String guestSessionId = UUID.randomUUID().toString();
+
+        mockMvc.perform(post("/api/v1/cart/sync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .header("X-Session-Id", guestSessionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.mergedItemsCount", equalTo(0)))
+                .andExpect(jsonPath("$.data.hasStockAdjusted", equalTo(false)));
+    }
+
+    @Test
+    @DisplayName("US-07.6: Chưa đăng nhập gọi /sync trả về 401 Unauthorized")
+    void syncCart_unauthenticated_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/cart/sync")
+                        .header("X-Session-Id", UUID.randomUUID().toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code", equalTo("INVALID_ACCESS_TOKEN")));
     }
 }
 

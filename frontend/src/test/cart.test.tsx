@@ -16,6 +16,8 @@ vi.mock("../services/cartService", () => ({
   addToCart: vi.fn(),
   updateCartItemQuantity: vi.fn(),
   removeCartItem: vi.fn(),
+  validateCartStock: vi.fn(),
+  syncCart: vi.fn(),
 }));
 
 vi.mock("../services/storefrontService", () => ({
@@ -38,6 +40,7 @@ const mockedUpdateCartItemQuantity = vi.mocked(
   cartService.updateCartItemQuantity,
 );
 const mockedRemoveCartItem = vi.mocked(cartService.removeCartItem);
+const mockedSyncCart = vi.mocked(cartService.syncCart);
 const mockedGetProductDetail = vi.mocked(
   storefrontService.getStorefrontProductDetail,
 );
@@ -1246,6 +1249,207 @@ describe("US-07.5: Kiểm tra tồn kho mỗi khi khách hàng thêm/cập nhậ
         screen.queryByTestId("item-exceed-stock-chip-1"),
       ).not.toBeInTheDocument();
       expect(screen.getByTestId("checkout-btn")).toBeEnabled();
+    });
+  });
+});
+
+describe("US-07.6: Đồng bộ giỏ hàng tạm khi khách đăng nhập", () => {
+  const loggedInAuthValue = {
+    user: {
+      id: 1,
+      email: "user@example.com",
+      fullName: "Nguyễn Văn A",
+      phone: "0912345678",
+      status: "ACTIVE",
+      roles: ["CUSTOMER"],
+      emailVerified: true,
+      createdAt: "2026-09-01T00:00:00Z",
+    },
+    isAuthenticated: true,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    updateUserProfile: vi.fn(),
+    clearSession: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetRelatedProducts.mockResolvedValue([]);
+    window.localStorage.clear();
+  });
+
+  it("gọi API syncCart khi người dùng đăng nhập và cập nhật giỏ hàng", async () => {
+    window.localStorage.setItem("techstore.sessionId", "guest_test_123");
+
+    const syncedCart = {
+      id: 10,
+      totalItems: 3,
+      subtotal: 75000000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 75000000,
+      canCheckout: true,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          price: 25000000,
+          quantity: 3,
+          availableStock: 10,
+          subtotal: 75000000,
+          hasStockIssue: false,
+          stockStatusMessage: null,
+        },
+      ],
+    };
+
+    mockedSyncCart.mockResolvedValue({
+      cart: syncedCart,
+      mergedItemsCount: 2,
+      hasStockAdjusted: false,
+      message: "Đã đồng bộ 2 sản phẩm vào giỏ hàng thành công",
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={loggedInAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <StorefrontLayout />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockedSyncCart).toHaveBeenCalledWith("guest_test_123");
+    });
+
+    await waitFor(() => {
+      const badge = screen.getByTestId("header-cart-badge");
+      expect(badge).toHaveTextContent("3");
+      expect(screen.getByTestId("sync-cart-toast")).toBeInTheDocument();
+      expect(screen.getByTestId("sync-cart-toast")).toHaveTextContent("Đã đồng bộ 2 sản phẩm");
+    });
+  });
+
+  it("hiển thị thông báo điều chỉnh tồn kho khi hasStockAdjusted là true", async () => {
+    window.localStorage.setItem("techstore.sessionId", "guest_test_adjusted");
+
+    const syncedCart = {
+      id: 10,
+      totalItems: 5,
+      subtotal: 125000000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 125000000,
+      canCheckout: true,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          price: 25000000,
+          quantity: 5,
+          availableStock: 5,
+          subtotal: 125000000,
+          hasStockIssue: false,
+          stockStatusMessage: null,
+        },
+      ],
+    };
+
+    mockedSyncCart.mockResolvedValue({
+      cart: syncedCart,
+      mergedItemsCount: 2,
+      hasStockAdjusted: true,
+      message: "Đã đồng bộ 2 sản phẩm vào giỏ hàng (một số sản phẩm được điều chỉnh theo tồn kho tối đa)",
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={loggedInAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <StorefrontLayout />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockedSyncCart).toHaveBeenCalledWith("guest_test_adjusted");
+      expect(screen.getByTestId("sync-cart-toast")).toBeInTheDocument();
+      expect(screen.getByTestId("sync-cart-toast")).toHaveTextContent("tồn kho tối đa");
+    });
+  });
+
+  it("khi chưa đăng nhập, gọi getCart bình thường không gọi syncCart", async () => {
+    mockedGetCart.mockResolvedValue({
+      id: 99,
+      totalItems: 1,
+      subtotal: 25000000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 25000000,
+      canCheckout: true,
+      items: [],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <StorefrontLayout />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockedGetCart).toHaveBeenCalled();
+      expect(mockedSyncCart).not.toHaveBeenCalled();
+    });
+  });
+
+  it("khi syncCart thất bại, fallback sang refreshCart không làm crash trang", async () => {
+    window.localStorage.setItem("techstore.sessionId", "guest_fail_session");
+    mockedSyncCart.mockRejectedValue(new Error("Network Error"));
+    mockedGetCart.mockResolvedValue({
+      id: 5,
+      totalItems: 2,
+      subtotal: 50000000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 50000000,
+      canCheckout: true,
+      items: [],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={loggedInAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/"]}>
+              <StorefrontLayout />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(mockedSyncCart).toHaveBeenCalledWith("guest_fail_session");
+      expect(mockedGetCart).toHaveBeenCalled();
     });
   });
 });

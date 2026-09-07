@@ -5,6 +5,7 @@ import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.dto.response.CartItemResponse;
 import com.techstore.dto.response.CartItemStockIssueResponse;
 import com.techstore.dto.response.CartResponse;
+import com.techstore.dto.response.CartSyncResponse;
 import com.techstore.dto.response.CartValidationResponse;
 import com.techstore.entity.Cart;
 import com.techstore.entity.CartItem;
@@ -279,6 +280,91 @@ public class CartServiceImpl implements CartService {
 
         boolean valid = issues.isEmpty();
         return new CartValidationResponse(valid, issues);
+    }
+
+    @Override
+    @Transactional
+    public CartSyncResponse syncCart(Long userId, String sessionId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN, "Người dùng cần đăng nhập để đồng bộ giỏ hàng");
+        }
+        if (sessionId == null || sessionId.isBlank()) {
+            CartResponse currentCart = getCart(userId, null);
+            return new CartSyncResponse(currentCart, 0, false, "Không tìm thấy phiên giỏ hàng tạm để đồng bộ");
+        }
+
+        Optional<Cart> guestCartOpt = cartRepository.findBySessionId(sessionId);
+        if (guestCartOpt.isEmpty()) {
+            CartResponse currentCart = getCart(userId, null);
+            return new CartSyncResponse(currentCart, 0, false, "Không có sản phẩm trong giỏ hàng tạm");
+        }
+
+        Cart guestCart = guestCartOpt.get();
+        List<CartItem> guestItems = cartItemRepository.findByCartId(guestCart.getId());
+        if (guestItems.isEmpty()) {
+            cartRepository.delete(guestCart);
+            CartResponse currentCart = getCart(userId, null);
+            return new CartSyncResponse(currentCart, 0, false, "Giỏ hàng tạm trống");
+        }
+
+        Cart userCart = getOrCreateCart(userId, null);
+        List<CartItem> userItems = cartItemRepository.findByCartId(userCart.getId());
+
+        int mergedItemsCount = 0;
+        boolean hasStockAdjusted = false;
+
+        for (CartItem guestItem : guestItems) {
+            ProductVariant variant = guestItem.getVariant();
+            if (variant == null || variant.isDeleted()) {
+                continue;
+            }
+
+            Product product = variant.getProduct();
+            if (product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+                continue;
+            }
+
+            int availableStock = getAvailableStock(variant);
+            if (availableStock <= 0) {
+                continue;
+            }
+
+            Optional<CartItem> matchingUserItemOpt = userItems.stream()
+                    .filter(ui -> ui.getVariant() != null && Objects.equals(ui.getVariant().getId(), variant.getId()))
+                    .findFirst();
+
+            if (matchingUserItemOpt.isPresent()) {
+                CartItem userItem = matchingUserItemOpt.get();
+                int combinedQty = userItem.getQuantity() + guestItem.getQuantity();
+                if (combinedQty > availableStock) {
+                    userItem.setQuantity(Math.max(1, availableStock));
+                    hasStockAdjusted = true;
+                } else {
+                    userItem.setQuantity(combinedQty);
+                }
+                cartItemRepository.save(userItem);
+            } else {
+                int targetQty = guestItem.getQuantity();
+                if (targetQty > availableStock) {
+                    targetQty = Math.max(1, availableStock);
+                    hasStockAdjusted = true;
+                }
+                CartItem newItem = new CartItem(userCart, variant, targetQty);
+                cartItemRepository.save(newItem);
+                userItems.add(newItem);
+            }
+            mergedItemsCount++;
+        }
+
+        cartItemRepository.deleteAll(guestItems);
+        cartRepository.delete(guestCart);
+
+        CartResponse updatedCartResponse = mapToCartResponse(userCart);
+        String message = hasStockAdjusted
+                ? String.format("Đã đồng bộ %d sản phẩm vào giỏ hàng (một số sản phẩm được điều chỉnh theo tồn kho tối đa)", mergedItemsCount)
+                : String.format("Đã đồng bộ %d sản phẩm vào giỏ hàng thành công", mergedItemsCount);
+
+        return new CartSyncResponse(updatedCartResponse, mergedItemsCount, hasStockAdjusted, message);
     }
 
     private Cart getOrCreateCart(Long userId, String sessionId) {

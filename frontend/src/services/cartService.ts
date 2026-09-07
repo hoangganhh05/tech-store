@@ -1,5 +1,5 @@
 import { httpClient } from "./httpClient";
-import { getOrCreateSessionId } from "../utils/sessionStorage";
+import { getOrCreateSessionId, getSessionId } from "../utils/sessionStorage";
 
 type ApiResponse<T> = {
   success: boolean;
@@ -127,6 +127,29 @@ export async function validateCartStock(): Promise<CartValidationResult> {
       headers: {
         "X-Session-Id": sessionId,
       },
+    },
+  );
+  return response.data.data;
+}
+
+export interface CartSyncResult {
+  cart: Cart;
+  mergedItemsCount: number;
+  hasStockAdjusted: boolean;
+  message: string;
+}
+
+export async function syncCart(sessionId?: string): Promise<CartSyncResult> {
+  const currentSessionId = sessionId ?? getSessionId();
+  const response = await httpClient.post<ApiResponse<CartSyncResult>>(
+    "/cart/sync",
+    currentSessionId ? { sessionId: currentSessionId } : {},
+    {
+      headers: currentSessionId
+        ? {
+            "X-Session-Id": currentSessionId,
+          }
+        : {},
     },
   );
   return response.data.data;

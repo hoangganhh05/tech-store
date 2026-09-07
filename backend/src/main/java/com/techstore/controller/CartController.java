@@ -1,10 +1,14 @@
 package com.techstore.controller;
 
 import com.techstore.dto.request.AddToCartRequest;
+import com.techstore.dto.request.SyncCartRequest;
 import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.CartResponse;
+import com.techstore.dto.response.CartSyncResponse;
 import com.techstore.dto.response.CartValidationResponse;
+import com.techstore.enums.ErrorCode;
+import com.techstore.exception.BusinessException;
 import com.techstore.security.AccessTokenAuthenticator;
 import com.techstore.service.CartService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,6 +96,22 @@ public class CartController {
         Long userId = resolveUserId(authorizationHeader);
         CartValidationResponse response = cartService.validateCartStock(userId, sessionId);
         return ResponseEntity.ok(ApiResponse.success("Kiểm tra tồn kho giỏ hàng thành công", response));
+    }
+
+    @PostMapping("/sync")
+    @Operation(summary = "Đồng bộ/gộp giỏ hàng tạm thời của khách vãng lai vào tài khoản sau khi đăng nhập")
+    public ResponseEntity<ApiResponse<CartSyncResponse>> syncCart(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionIdHeader,
+            @RequestBody(required = false) SyncCartRequest request
+    ) {
+        Long userId = accessTokenAuthenticator.authenticate(authorizationHeader);
+        String sessionId = (request != null && request.sessionId() != null && !request.sessionId().isBlank())
+                ? request.sessionId()
+                : sessionIdHeader;
+
+        CartSyncResponse response = cartService.syncCart(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.success(response.message(), response));
     }
 
     private Long resolveUserId(String authorizationHeader) {
