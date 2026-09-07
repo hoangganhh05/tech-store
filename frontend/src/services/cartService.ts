@@ -28,6 +28,9 @@ export interface Cart {
   id: number | null;
   totalItems: number;
   subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  total: number;
   items: CartItem[];
 }
 
@@ -89,5 +92,3 @@ export async function removeCartItem(itemId: number): Promise<Cart> {
   );
   return response.data.data;
 }
-
-

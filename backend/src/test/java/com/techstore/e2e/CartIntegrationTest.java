@@ -505,5 +505,62 @@ class CartIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code", equalTo("CART_ITEM_NOT_FOUND")));
     }
+
+    @Test
+    @DisplayName("US-07.4: Đơn hàng dưới 5 triệu áp dụng phí vận chuyển tiêu chuẩn 30.000đ")
+    void calculateCartTotals_underThreshold_appliesStandardShipping() throws Exception {
+        // Tạo biến thể phụ kiện giá rẻ 200.000đ
+        Product accessory = productRepository.save(new Product("Cáp sạc USB-C", "Cáp sạc nhanh", testBrand, testCategory, ProductStatus.ACTIVE));
+        ProductVariant cheapVariant = productVariantRepository.save(new ProductVariant(
+                accessory,
+                "CAB-USBC-1M",
+                "Trắng",
+                "1m",
+                new BigDecimal("200000.00"),
+                new BigDecimal("250000.00"),
+                50,
+                VariantStatus.ACTIVE
+        ));
+        inventoryRepository.save(new Inventory(cheapVariant, 50, 0, 5));
+
+        AddToCartRequest addReq = new AddToCartRequest(cheapVariant.getId(), 2); // 400.000đ
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.subtotal", equalTo(400000.0)))
+                .andExpect(jsonPath("$.data.shippingFee", equalTo(30000)))
+                .andExpect(jsonPath("$.data.discountAmount", equalTo(0)))
+                .andExpect(jsonPath("$.data.total", equalTo(430000.0)));
+    }
+
+    @Test
+    @DisplayName("US-07.4: Đơn hàng từ 5 triệu trở lên được miễn phí vận chuyển (0đ)")
+    void calculateCartTotals_overThreshold_appliesFreeShipping() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1); // 25.990.000đ >= 5.000.000đ
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.subtotal", equalTo(25990000.0)))
+                .andExpect(jsonPath("$.data.shippingFee", equalTo(0)))
+                .andExpect(jsonPath("$.data.discountAmount", equalTo(0)))
+                .andExpect(jsonPath("$.data.total", equalTo(25990000.0)));
+    }
+
+    @Test
+    @DisplayName("US-07.4: Giỏ hàng trống có tạm tính, phí ship và tổng cộng đều bằng 0")
+    void calculateCartTotals_emptyCart_zeroTotals() throws Exception {
+        mockMvc.perform(get("/api/v1/cart")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalItems", equalTo(0)))
+                .andExpect(jsonPath("$.data.subtotal", equalTo(0)))
+                .andExpect(jsonPath("$.data.shippingFee", equalTo(0)))
+                .andExpect(jsonPath("$.data.discountAmount", equalTo(0)))
+                .andExpect(jsonPath("$.data.total", equalTo(0)));
+    }
 }
 
