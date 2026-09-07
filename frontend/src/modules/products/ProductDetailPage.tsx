@@ -24,6 +24,11 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import FlashOnRoundedIcon from "@mui/icons-material/FlashOnRounded";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -54,6 +59,7 @@ export function ProductDetailPage() {
     useState<ProductVariantDetail | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
 
   // Gallery state
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -237,6 +243,7 @@ export function ProductDetailPage() {
           setSelectedStorage(match.storage);
         }
         syncVariantImage(match, product.images);
+        setQuantity(1);
       }
     },
     [isColorDisabled, product, selectedStorage, syncVariantImage],
@@ -262,6 +269,7 @@ export function ProductDetailPage() {
           setSelectedColor(match.color);
         }
         syncVariantImage(match, product.images);
+        setQuantity(1);
       }
     },
     [isStorageDisabled, product, selectedColor, syncVariantImage],
@@ -310,8 +318,6 @@ export function ProductDetailPage() {
     }
     return product?.totalStock || 0;
   }, [product, selectedVariant]);
-
-  const hasStock = currentStock > 0;
 
   // Loading skeleton state
   if (loading) {
@@ -689,7 +695,7 @@ export function ProductDetailPage() {
             />
             {/* Stock status */}
             <Stack direction="row" spacing={0.5} alignItems="center">
-              {hasStock ? (
+              {currentStock > 5 ? (
                 <>
                   <CheckCircleOutlineRoundedIcon
                     sx={{ fontSize: 18, color: "success.main" }}
@@ -701,6 +707,20 @@ export function ProductDetailPage() {
                     data-testid="stock-status"
                   >
                     Còn hàng ({currentStock} sản phẩm)
+                  </Typography>
+                </>
+              ) : currentStock > 0 ? (
+                <>
+                  <WarningAmberRoundedIcon
+                    sx={{ fontSize: 18, color: "warning.main" }}
+                  />
+                  <Typography
+                    variant="body2"
+                    color="warning.main"
+                    fontWeight={600}
+                    data-testid="stock-status"
+                  >
+                    Sắp hết hàng (Chỉ còn {currentStock} sản phẩm)
                   </Typography>
                 </>
               ) : (
@@ -904,6 +924,168 @@ export function ProductDetailPage() {
               </Stack>
             </Box>
           )}
+
+          {/* Quantity Selector and Stock Alerts */}
+          <Box mb={3} data-testid="quantity-section">
+            <Typography
+              variant="subtitle2"
+              fontWeight={700}
+              color="text.primary"
+              mb={1.5}
+            >
+              Số lượng:
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 2,
+                  bgcolor: "#ffffff",
+                  overflow: "hidden",
+                }}
+              >
+                <IconButton
+                  size="small"
+                  onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  disabled={quantity <= 1 || currentStock <= 0}
+                  data-testid="decrease-quantity-btn"
+                  sx={{
+                    borderRadius: 0,
+                    p: 1,
+                    color: "text.primary",
+                    "&:disabled": { color: "text.disabled" },
+                  }}
+                >
+                  <RemoveRoundedIcon fontSize="small" />
+                </IconButton>
+                <Typography
+                  sx={{
+                    minWidth: 44,
+                    textAlign: "center",
+                    fontWeight: 700,
+                    fontSize: "0.95rem",
+                    userSelect: "none",
+                  }}
+                  data-testid="quantity-value"
+                >
+                  {currentStock <= 0 ? 0 : quantity}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    setQuantity((prev) => Math.min(currentStock, prev + 1))
+                  }
+                  disabled={quantity >= currentStock || currentStock <= 0}
+                  data-testid="increase-quantity-btn"
+                  sx={{
+                    borderRadius: 0,
+                    p: 1,
+                    color: "text.primary",
+                    "&:disabled": { color: "text.disabled" },
+                  }}
+                >
+                  <AddRoundedIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              {currentStock > 0 && currentStock <= 5 && (
+                <Chip
+                  icon={
+                    <WarningAmberRoundedIcon
+                      sx={{ fontSize: "1rem !important" }}
+                    />
+                  }
+                  label={`Chỉ còn ${currentStock} sản phẩm trong kho`}
+                  size="small"
+                  color="warning"
+                  variant="outlined"
+                  data-testid="low-stock-alert"
+                  sx={{ fontWeight: 600, fontSize: "0.8125rem" }}
+                />
+              )}
+
+              {currentStock <= 0 && (
+                <Chip
+                  icon={
+                    <RemoveCircleOutlineRoundedIcon
+                      sx={{ fontSize: "1rem !important" }}
+                    />
+                  }
+                  label="Hết hàng"
+                  size="small"
+                  color="error"
+                  variant="outlined"
+                  data-testid="out-of-stock-alert"
+                  sx={{ fontWeight: 600, fontSize: "0.8125rem" }}
+                />
+              )}
+            </Stack>
+          </Box>
+
+          {/* Action Buttons: Thêm vào giỏ & Mua ngay */}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            mb={3.5}
+            data-testid="purchase-actions"
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              startIcon={<ShoppingCartOutlinedIcon />}
+              disabled={currentStock <= 0}
+              data-testid="add-to-cart-btn"
+              sx={{
+                flex: 1,
+                py: 1.5,
+                borderRadius: 2.5,
+                fontWeight: 700,
+                fontSize: "1rem",
+                textTransform: "none",
+                boxShadow:
+                  currentStock > 0
+                    ? "0 4px 12px rgba(37, 99, 235, 0.25)"
+                    : "none",
+              }}
+            >
+              Thêm vào giỏ
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              size="large"
+              startIcon={<FlashOnRoundedIcon />}
+              disabled={currentStock <= 0}
+              data-testid="buy-now-btn"
+              sx={{
+                flex: 1,
+                py: 1.5,
+                borderRadius: 2.5,
+                fontWeight: 700,
+                fontSize: "1rem",
+                textTransform: "none",
+                bgcolor: currentStock > 0 ? "#dc2626" : undefined,
+                "&:hover": {
+                  bgcolor: currentStock > 0 ? "#b91c1c" : undefined,
+                },
+                boxShadow:
+                  currentStock > 0
+                    ? "0 4px 12px rgba(220, 38, 38, 0.25)"
+                    : "none",
+              }}
+            >
+              Mua ngay
+            </Button>
+          </Stack>
 
           {/* Short Description */}
           {product.description && (

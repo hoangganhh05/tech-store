@@ -5,6 +5,7 @@ import { appTheme } from "../configs/theme";
 import { ProductDetailPage } from "../modules/products/ProductDetailPage";
 import {
   getStorefrontProductDetail,
+  getVariantStock,
   type StorefrontProductDetail,
 } from "../services/storefrontService";
 
@@ -18,6 +19,7 @@ vi.mock("../services/storefrontService", () => ({
   getFeaturedProducts: vi.fn(),
   getNewArrivals: vi.fn(),
   getOnSaleProducts: vi.fn(),
+  getVariantStock: vi.fn(),
 }));
 
 const mockedGetStorefrontProductDetail = vi.mocked(getStorefrontProductDetail);
@@ -507,5 +509,240 @@ describe("US-06.2: ProductDetailPage - Chọn biến thể sản phẩm (màu s�
         "Tạm hết hàng",
       );
     });
+  });
+});
+
+describe("US-06.3: ProductDetailPage - Trạng thái tồn kho theo biến thể & disable nút mua khi hết hàng", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const stockVariantsProduct: StorefrontProductDetail = {
+    id: 10,
+    name: "iPhone 15 Pro",
+    status: "ACTIVE",
+    minPrice: 25000000,
+    maxPrice: 28000000,
+    discountPercent: 0,
+    totalStock: 18,
+    hasStock: true,
+    salesCount: 50,
+    rating: 5,
+    availableColors: ["Xanh", "Vàng", "Đen"],
+    availableStorages: ["128GB"],
+    variants: [
+      {
+        id: 1001,
+        productId: 10,
+        productName: "iPhone 15 Pro",
+        sku: "IP15P-BL-128",
+        color: "Xanh",
+        storage: "128GB",
+        price: 25000000,
+        stockQuantity: 15, // > 5 -> IN_STOCK
+        status: "ACTIVE",
+        stockStatus: "IN_STOCK",
+        createdAt: "2026-09-01T00:00:00Z",
+        updatedAt: "2026-09-01T00:00:00Z",
+      },
+      {
+        id: 1002,
+        productId: 10,
+        productName: "iPhone 15 Pro",
+        sku: "IP15P-YL-128",
+        color: "Vàng",
+        storage: "128GB",
+        price: 25000000,
+        stockQuantity: 3, // 1..5 -> LOW_STOCK
+        status: "ACTIVE",
+        stockStatus: "LOW_STOCK",
+        createdAt: "2026-09-01T00:00:00Z",
+        updatedAt: "2026-09-01T00:00:00Z",
+      },
+      {
+        id: 1003,
+        productId: 10,
+        productName: "iPhone 15 Pro",
+        sku: "IP15P-BK-128",
+        color: "Đen",
+        storage: "128GB",
+        price: 25000000,
+        stockQuantity: 0, // <= 0 -> OUT_OF_STOCK
+        status: "ACTIVE",
+        stockStatus: "OUT_OF_STOCK",
+        createdAt: "2026-09-01T00:00:00Z",
+        updatedAt: "2026-09-01T00:00:00Z",
+      },
+    ],
+    images: [],
+    specifications: [],
+    createdAt: "2026-09-01T00:00:00Z",
+    updatedAt: "2026-09-01T00:00:00Z",
+  };
+
+  it("renders 'Còn hàng' badge and enables buy buttons when variant stock > 5", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(stockVariantsProduct);
+
+    renderProductDetailPage("/products/10");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (15 sản phẩm)",
+      );
+      const addToCartBtn = screen.getByTestId("add-to-cart-btn");
+      const buyNowBtn = screen.getByTestId("buy-now-btn");
+      expect(addToCartBtn).not.toBeDisabled();
+      expect(buyNowBtn).not.toBeDisabled();
+    });
+  });
+
+  it("renders 'Sắp hết hàng' badge and low-stock warning when variant stock is 1 to 5", async () => {
+    const lowStockOnlyProduct: StorefrontProductDetail = {
+      ...stockVariantsProduct,
+      variants: [stockVariantsProduct.variants[1]], // Vàng, stock = 3
+    };
+    mockedGetStorefrontProductDetail.mockResolvedValue(lowStockOnlyProduct);
+
+    renderProductDetailPage("/products/10");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Sắp hết hàng (Chỉ còn 3 sản phẩm)",
+      );
+      expect(screen.getByTestId("low-stock-alert")).toHaveTextContent(
+        "Chỉ còn 3 sản phẩm trong kho",
+      );
+      expect(screen.getByTestId("add-to-cart-btn")).not.toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).not.toBeDisabled();
+    });
+  });
+
+  it("renders 'Tạm hết hàng' badge and disables both purchase buttons when variant stock is 0", async () => {
+    const outOfStockOnlyProduct: StorefrontProductDetail = {
+      ...stockVariantsProduct,
+      variants: [stockVariantsProduct.variants[2]], // Đen, stock = 0
+    };
+    mockedGetStorefrontProductDetail.mockResolvedValue(outOfStockOnlyProduct);
+
+    renderProductDetailPage("/products/10");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Tạm hết hàng",
+      );
+      expect(screen.getByTestId("out-of-stock-alert")).toHaveTextContent(
+        "Hết hàng",
+      );
+      expect(screen.getByTestId("add-to-cart-btn")).toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).toBeDisabled();
+      expect(screen.getByTestId("decrease-quantity-btn")).toBeDisabled();
+      expect(screen.getByTestId("increase-quantity-btn")).toBeDisabled();
+      expect(screen.getByTestId("quantity-value")).toHaveTextContent("0");
+    });
+  });
+
+  it("instantly updates stock badge and button disabled state when switching between variants", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(stockVariantsProduct);
+
+    renderProductDetailPage("/products/10");
+
+    // 1. Initial variant is "Xanh" (stock 15)
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (15 sản phẩm)",
+      );
+      expect(screen.getByTestId("add-to-cart-btn")).not.toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).not.toBeDisabled();
+    });
+
+    // 2. Switch to "Vàng" (stock 3)
+    fireEvent.click(screen.getByTestId("color-option-Vàng"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Sắp hết hàng (Chỉ còn 3 sản phẩm)",
+      );
+      expect(screen.getByTestId("low-stock-alert")).toBeInTheDocument();
+      expect(screen.getByTestId("add-to-cart-btn")).not.toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).not.toBeDisabled();
+    });
+
+    // 3. Switch to "Đen" (stock 0)
+    fireEvent.click(screen.getByTestId("color-option-Đen"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Tạm hết hàng",
+      );
+      expect(screen.getByTestId("out-of-stock-alert")).toBeInTheDocument();
+      expect(screen.getByTestId("add-to-cart-btn")).toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).toBeDisabled();
+    });
+
+    // 4. Switch back to "Xanh" (stock 15)
+    fireEvent.click(screen.getByTestId("color-option-Xanh"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (15 sản phẩm)",
+      );
+      expect(screen.getByTestId("add-to-cart-btn")).not.toBeDisabled();
+      expect(screen.getByTestId("buy-now-btn")).not.toBeDisabled();
+    });
+  });
+
+  it("controls quantity within bounds (min 1, max available stock)", async () => {
+    const limitedStockProduct: StorefrontProductDetail = {
+      ...stockVariantsProduct,
+      variants: [stockVariantsProduct.variants[1]], // Vàng, stock = 3
+    };
+    mockedGetStorefrontProductDetail.mockResolvedValue(limitedStockProduct);
+
+    renderProductDetailPage("/products/10");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quantity-value")).toHaveTextContent("1");
+    });
+
+    const decreaseBtn = screen.getByTestId("decrease-quantity-btn");
+    const increaseBtn = screen.getByTestId("increase-quantity-btn");
+
+    // At quantity 1, decrease is disabled
+    expect(decreaseBtn).toBeDisabled();
+    expect(increaseBtn).not.toBeDisabled();
+
+    // Increment to 2
+    fireEvent.click(increaseBtn);
+    expect(screen.getByTestId("quantity-value")).toHaveTextContent("2");
+    expect(decreaseBtn).not.toBeDisabled();
+    expect(increaseBtn).not.toBeDisabled();
+
+    // Increment to 3 (max stock)
+    fireEvent.click(increaseBtn);
+    expect(screen.getByTestId("quantity-value")).toHaveTextContent("3");
+    expect(decreaseBtn).not.toBeDisabled();
+    expect(increaseBtn).toBeDisabled();
+
+    // Decrement back to 2
+    fireEvent.click(decreaseBtn);
+    expect(screen.getByTestId("quantity-value")).toHaveTextContent("2");
+    expect(increaseBtn).not.toBeDisabled();
+  });
+
+  it("calls getVariantStock API to query variant stock directly", async () => {
+    const mockedGetVariantStock = vi.mocked(getVariantStock);
+    mockedGetVariantStock.mockResolvedValue({
+      variantId: 1001,
+      productId: 10,
+      sku: "IP15P-BL-128",
+      stockQuantity: 15,
+      stockStatus: "IN_STOCK",
+      isAvailable: true,
+    });
+
+    const stock = await getVariantStock(10, 1001);
+    expect(stock.stockStatus).toBe("IN_STOCK");
+    expect(stock.stockQuantity).toBe(15);
+    expect(stock.isAvailable).toBe(true);
   });
 });

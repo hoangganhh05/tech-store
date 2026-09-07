@@ -4,6 +4,7 @@ import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
+import com.techstore.dto.response.VariantStockResponse;
 import com.techstore.service.StorefrontProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -119,6 +120,20 @@ public class ProductController {
     ) {
         StorefrontProductDetailResponse response = storefrontProductService.getProductDetail(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết sản phẩm thành công", response));
+    }
+
+    @GetMapping("/{productId}/variants/{variantId}/stock")
+    @Operation(summary = "Get variant stock status and quantity")
+    public ResponseEntity<ApiResponse<VariantStockResponse>> getVariantStock(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long productId,
+            @PathVariable
+            @Positive(message = "ID biến thể không hợp lệ")
+            Long variantId
+    ) {
+        VariantStockResponse response = storefrontProductService.getVariantStock(productId, variantId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin tồn kho biến thể thành công", response));
     }
 }
 

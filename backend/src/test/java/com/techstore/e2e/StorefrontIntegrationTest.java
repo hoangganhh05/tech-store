@@ -918,4 +918,119 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    @DisplayName("US-06.3: API trả thông tin tồn kho biến thể trạng thái IN_STOCK (tồn > 5)")
+    void getVariantStock_inStock_shouldReturnInStockStatus() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("iPhone 15 Pro", "Flagship",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(product, "IP15P-128", "Titan Tự Nhiên", "128GB",
+                BigDecimal.valueOf(25990000), BigDecimal.valueOf(28990000), 10, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId() + "/variants/" + variant.getId() + "/stock"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.variantId").value(variant.getId()))
+                .andExpect(jsonPath("$.data.productId").value(product.getId()))
+                .andExpect(jsonPath("$.data.sku").value("IP15P-128"))
+                .andExpect(jsonPath("$.data.stockQuantity").value(10))
+                .andExpect(jsonPath("$.data.stockStatus").value("IN_STOCK"))
+                .andExpect(jsonPath("$.data.isAvailable").value(true));
+    }
+
+    @Test
+    @DisplayName("US-06.3: API trả thông tin tồn kho biến thể trạng thái LOW_STOCK (1 <= tồn <= 5)")
+    void getVariantStock_lowStock_shouldReturnLowStockStatus() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("iPhone 15 Pro Max", "Flagship",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(product, "IP15PM-256", "Titan Xanh", "256GB",
+                BigDecimal.valueOf(29990000), BigDecimal.valueOf(34990000), 3, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId() + "/variants/" + variant.getId() + "/stock"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.variantId").value(variant.getId()))
+                .andExpect(jsonPath("$.data.productId").value(product.getId()))
+                .andExpect(jsonPath("$.data.stockQuantity").value(3))
+                .andExpect(jsonPath("$.data.stockStatus").value("LOW_STOCK"))
+                .andExpect(jsonPath("$.data.isAvailable").value(true));
+    }
+
+    @Test
+    @DisplayName("US-06.3: API trả thông tin tồn kho biến thể trạng thái OUT_OF_STOCK (tồn = 0)")
+    void getVariantStock_outOfStock_shouldReturnOutOfStockStatus() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("iPhone 15 Plus", "Plus",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(product, "IP15PL-128", "Hồng", "128GB",
+                BigDecimal.valueOf(22990000), BigDecimal.valueOf(25990000), 0, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId() + "/variants/" + variant.getId() + "/stock"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.variantId").value(variant.getId()))
+                .andExpect(jsonPath("$.data.productId").value(product.getId()))
+                .andExpect(jsonPath("$.data.stockQuantity").value(0))
+                .andExpect(jsonPath("$.data.stockStatus").value("OUT_OF_STOCK"))
+                .andExpect(jsonPath("$.data.isAvailable").value(false));
+    }
+
+    @Test
+    @DisplayName("US-06.3: Biến thể không thuộc về sản phẩm trả về 404 VARIANT_NOT_FOUND")
+    void getVariantStock_mismatchProduct_shouldReturn404() throws Exception {
+        setupBaseData();
+
+        Product product1 = productRepository.save(new Product("Phone 1", "P1", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        Product product2 = productRepository.save(new Product("Phone 2", "P2", brandApple, categoryPhone, ProductStatus.ACTIVE));
+
+        ProductVariant variant2 = productVariantRepository.save(new ProductVariant(product2, "P2-VAR", "Đen", "128GB",
+                BigDecimal.valueOf(10000000), BigDecimal.valueOf(12000000), 5, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product1.getId() + "/variants/" + variant2.getId() + "/stock"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("PRODUCT_VARIANT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Biến thể không thuộc về sản phẩm này"));
+    }
+
+    @Test
+    @DisplayName("US-06.3: Validate ID sản phẩm hoặc biến thể không hợp lệ trả về 400")
+    void getVariantStock_invalidIds_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/v1/products/0/variants/1/stock"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/products/1/variants/-1/stock"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("US-06.3: Chi tiết sản phẩm trả kèm trường stockStatus trong từng biến thể")
+    void getProductDetail_variantsIncludeStockStatus() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("Samsung Galaxy S24", "Flagship",
+                brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+
+        productVariantRepository.save(new ProductVariant(product, "S24-128", "Vàng", "128GB",
+                BigDecimal.valueOf(19990000), BigDecimal.valueOf(22990000), 15, VariantStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(product, "S24-256", "Đen", "256GB",
+                BigDecimal.valueOf(22990000), BigDecimal.valueOf(25990000), 2, VariantStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(product, "S24-512", "Xám", "512GB",
+                BigDecimal.valueOf(25990000), BigDecimal.valueOf(28990000), 0, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.variants[0].stockStatus").value("IN_STOCK"))
+                .andExpect(jsonPath("$.data.variants[1].stockStatus").value("LOW_STOCK"))
+                .andExpect(jsonPath("$.data.variants[2].stockStatus").value("OUT_OF_STOCK"));
+    }
 }
