@@ -1,0 +1,63 @@
+package com.techstore.controller;
+
+import com.techstore.dto.request.AddToCartRequest;
+import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.CartResponse;
+import com.techstore.security.AccessTokenAuthenticator;
+import com.techstore.service.CartService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("${app.api.base-path}/cart")
+@Tag(name = "Cart", description = "Shopping cart endpoints")
+public class CartController {
+
+    private final CartService cartService;
+    private final AccessTokenAuthenticator accessTokenAuthenticator;
+
+    public CartController(CartService cartService, AccessTokenAuthenticator accessTokenAuthenticator) {
+        this.cartService = cartService;
+        this.accessTokenAuthenticator = accessTokenAuthenticator;
+    }
+
+    @PostMapping("/items")
+    @Operation(summary = "Thêm biến thể sản phẩm vào giỏ hàng (hỗ trợ cả người dùng đăng nhập và khách vãng lai)")
+    public ResponseEntity<ApiResponse<CartResponse>> addToCart(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId,
+            @Valid @RequestBody AddToCartRequest request
+    ) {
+        Long userId = resolveUserId(authorizationHeader);
+        CartResponse response = cartService.addToCart(userId, sessionId, request);
+        return ResponseEntity.ok(ApiResponse.success("Thêm sản phẩm vào giỏ hàng thành công", response));
+    }
+
+    @GetMapping
+    @Operation(summary = "Lấy thông tin chi tiết giỏ hàng hiện tại")
+    public ResponseEntity<ApiResponse<CartResponse>> getCart(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId
+    ) {
+        Long userId = resolveUserId(authorizationHeader);
+        CartResponse response = cartService.getCart(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin giỏ hàng thành công", response));
+    }
+
+    private Long resolveUserId(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
+            return null;
+        }
+        return accessTokenAuthenticator.authenticate(authorizationHeader);
+    }
+}
+
