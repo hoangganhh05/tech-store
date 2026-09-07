@@ -28,6 +28,15 @@ public class ProductController {
         this.storefrontProductService = storefrontProductService;
     }
 
+    @GetMapping
+    @Operation(summary = "Get products by category or all active products")
+    public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getProducts(
+            @RequestParam(required = false) Long categoryId
+    ) {
+        List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
+    }
+
     @GetMapping("/featured")
     @Operation(summary = "Get featured products")
     public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getFeatured(

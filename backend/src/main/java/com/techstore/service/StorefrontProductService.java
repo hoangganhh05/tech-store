@@ -17,5 +17,7 @@ public interface StorefrontProductService {
     List<StorefrontProductResponse> getOnSaleProducts(int limit);
 
     List<CategoryResponse> getFeaturedCategories();
+
+    List<StorefrontProductResponse> getProducts(Long categoryId);
 }
 

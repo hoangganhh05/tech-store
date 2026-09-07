@@ -221,4 +221,91 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    @DisplayName("US-05.2: Lấy tất cả sản phẩm đang bán khi không truyền categoryId")
+    void getProducts_withoutCategory_shouldReturnAllActiveProducts() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("iPhone 15", "Apple", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p1, "IP15-128", "Đen", "128GB",
+                new BigDecimal("20000000"), null, 5, VariantStatus.ACTIVE));
+
+        Product p2 = productRepository.save(new Product("MacBook Air M2", "Laptop Apple", brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p2, "MBA-M2", "Bạc", "256GB",
+                new BigDecimal("24000000"), null, 8, VariantStatus.ACTIVE));
+
+        // Inactive product should be excluded
+        Product pInactive = productRepository.save(new Product("Galaxy Y", "Old", brandSamsung, categoryPhone, ProductStatus.INACTIVE));
+        productVariantRepository.save(new ProductVariant(pInactive, "GY-1", "Trắng", "2GB",
+                new BigDecimal("1000000"), null, 2, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("US-05.2: Lấy sản phẩm theo danh mục bao gồm cả danh mục con")
+    void getProductsByCategory_shouldIncludeParentAndChildCategories() throws Exception {
+        setupBaseData();
+
+        // Create child category under categoryPhone
+        Category childCategory = new Category("iPhone", "Dòng iPhone", categoryPhone, "iphone.png");
+        childCategory.updateDisplay(1, true);
+        childCategory = categoryRepository.save(childCategory);
+
+        // Product in parent category
+        Product pPhone = productRepository.save(new Product("Galaxy S24", "Samsung", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pPhone, "S24-128", "Xám", "128GB",
+                new BigDecimal("18000000"), null, 10, VariantStatus.ACTIVE));
+
+        // Product in child category
+        Product pIPhone = productRepository.save(new Product("iPhone 15 Pro", "Apple", brandApple, childCategory, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pIPhone, "IP15P-128", "Titan", "128GB",
+                new BigDecimal("25000000"), null, 5, VariantStatus.ACTIVE));
+
+        // Product in different category (Laptop)
+        Product pLaptop = productRepository.save(new Product("MacBook Pro", "Apple", brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pLaptop, "MBP-14", "Xám", "512GB",
+                new BigDecimal("45000000"), null, 3, VariantStatus.ACTIVE));
+
+        // Query by parent category: should get both Galaxy S24 and iPhone 15 Pro
+        mockMvc.perform(get("/api/v1/products?categoryId=" + categoryPhone.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)));
+
+        // Query by child category: should only get iPhone 15 Pro
+        mockMvc.perform(get("/api/v1/products?categoryId=" + childCategory.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15 Pro"));
+    }
+
+    @Test
+    @DisplayName("US-05.2: Validate categoryId không tồn tại hoặc bị ẩn trả về lỗi 404 CATEGORY_NOT_FOUND")
+    void getProductsByCategory_invalidCategory_shouldReturnError() throws Exception {
+        setupBaseData();
+
+        // Non-existent category
+        mockMvc.perform(get("/api/v1/products?categoryId=999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("CATEGORY_NOT_FOUND"));
+
+        // Inactive category
+        mockMvc.perform(get("/api/v1/products?categoryId=" + inactiveCategory.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("CATEGORY_NOT_FOUND"));
+
+        // Negative categoryId -> VALIDATION_ERROR
+        mockMvc.perform(get("/api/v1/products?categoryId=-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }
