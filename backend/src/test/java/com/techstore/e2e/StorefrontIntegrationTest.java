@@ -7,6 +7,7 @@ import com.techstore.entity.Inventory;
 import com.techstore.entity.InventoryTransaction;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductImage;
+import com.techstore.entity.ProductSpecification;
 import com.techstore.entity.ProductVariant;
 import com.techstore.enums.InventoryTransactionType;
 import com.techstore.enums.ProductStatus;
@@ -792,6 +793,87 @@ class StorefrontIntegrationTest {
 
         // size > 100
         mockMvc.perform(get("/api/v1/products?page=0&size=101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("US-06.1: Lấy chi tiết sản phẩm thành công với đầy đủ biến thể, ảnh và thông số kỹ thuật")
+    void getProductDetail_success_shouldReturnFullProductWithVariantsImagesAndSpecs() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("iPhone 15 Pro Max", "Siêu phẩm flagship từ Apple với vỏ titan siêu bền và nhẹ.",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+
+        productVariantRepository.save(new ProductVariant(product, "IP15PM-256-TN", "Titan Tự Nhiên", "256GB",
+                BigDecimal.valueOf(29990000), BigDecimal.valueOf(34990000), 15, VariantStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(product, "IP15PM-512-BL", "Titan Xanh", "512GB",
+                BigDecimal.valueOf(34990000), BigDecimal.valueOf(39990000), 5, VariantStatus.ACTIVE));
+
+        productImageRepository.save(new ProductImage(product, null, "https://example.com/ip15pm-main.jpg", true, 1));
+        productImageRepository.save(new ProductImage(product, null, "https://example.com/ip15pm-side.jpg", false, 2));
+
+        productSpecificationRepository.save(new ProductSpecification(product, "Màn hình", "OLED 6.7 inch Super Retina XDR 120Hz", 1));
+        productSpecificationRepository.save(new ProductSpecification(product, "Chip xử lý", "Apple A17 Pro (3nm)", 2));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Lấy thông tin chi tiết sản phẩm thành công"))
+                .andExpect(jsonPath("$.data.id").value(product.getId()))
+                .andExpect(jsonPath("$.data.name").value("iPhone 15 Pro Max"))
+                .andExpect(jsonPath("$.data.description").value("Siêu phẩm flagship từ Apple với vỏ titan siêu bền và nhẹ."))
+                .andExpect(jsonPath("$.data.brandName").value("Apple"))
+                .andExpect(jsonPath("$.data.categoryName").value("Điện thoại"))
+                .andExpect(jsonPath("$.data.minPrice").value(29990000))
+                .andExpect(jsonPath("$.data.maxPrice").value(34990000))
+                .andExpect(jsonPath("$.data.originalPrice").value(34990000))
+                .andExpect(jsonPath("$.data.totalStock").value(20))
+                .andExpect(jsonPath("$.data.hasStock").value(true))
+                .andExpect(jsonPath("$.data.variants", hasSize(2)))
+                .andExpect(jsonPath("$.data.images", hasSize(2)))
+                .andExpect(jsonPath("$.data.specifications", hasSize(2)))
+                .andExpect(jsonPath("$.data.specifications[0].specKey").value("Màn hình"))
+                .andExpect(jsonPath("$.data.specifications[0].specValue").value("OLED 6.7 inch Super Retina XDR 120Hz"))
+                .andExpect(jsonPath("$.data.specifications[1].specKey").value("Chip xử lý"))
+                .andExpect(jsonPath("$.data.specifications[1].specValue").value("Apple A17 Pro (3nm)"));
+    }
+
+    @Test
+    @DisplayName("US-06.1: Truy cập sản phẩm không tồn tại trả về 404 PRODUCT_NOT_FOUND")
+    void getProductDetail_notFound_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/products/999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Không tìm thấy sản phẩm"));
+    }
+
+    @Test
+    @DisplayName("US-06.1: Truy cập sản phẩm ngừng bán (INACTIVE) trả về 404 thông báo ngừng kinh doanh")
+    void getProductDetail_inactiveProduct_shouldReturn404Discontinued() throws Exception {
+        setupBaseData();
+
+        Product discontinuedProduct = productRepository.save(new Product("Old Phone Model", "Sản phẩm cũ",
+                brandApple, categoryPhone, ProductStatus.INACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + discontinuedProduct.getId()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Sản phẩm đã ngừng kinh doanh"));
+    }
+
+    @Test
+    @DisplayName("US-06.1: Validate ID sản phẩm không hợp lệ trả về 400 VALIDATION_ERROR")
+    void getProductDetail_invalidId_shouldReturn400BadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/products/-5"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/products/0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
