@@ -150,7 +150,7 @@ describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () =>
       );
       expect(screen.getByTestId("product-price")).toBeInTheDocument();
       expect(screen.getByTestId("stock-status")).toHaveTextContent(
-        "Còn hàng (25 sản phẩm)",
+        "Còn hàng (15 sản phẩm)",
       );
       expect(screen.getByTestId("product-short-description")).toHaveTextContent(
         "Điện thoại flagship hàng đầu từ Apple với vỏ titan siêu nhẹ.",
@@ -279,10 +279,228 @@ describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () =>
       ...mockProductDetail,
       totalStock: 0,
       hasStock: false,
+      variants: mockProductDetail.variants.map((v) => ({
+        ...v,
+        stockQuantity: 0,
+      })),
     };
     mockedGetStorefrontProductDetail.mockResolvedValue(outOfStockProduct);
 
     renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Tạm hết hàng",
+      );
+    });
+  });
+});
+
+describe("US-06.2: ProductDetailPage - Chọn biến thể sản phẩm (màu sắc, dung lượng...)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("automatically selects default variant (first in-stock variant) on load", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-color-label")).toHaveTextContent(
+        "Titan Tự Nhiên",
+      );
+      expect(screen.getByTestId("selected-storage-label")).toHaveTextContent(
+        "256GB",
+      );
+      expect(screen.getByTestId("product-price")).toHaveTextContent(
+        "29.990.000 ₫",
+      );
+      expect(screen.getByTestId("variant-sku")).toHaveTextContent(
+        "IP15PM-256-TN",
+      );
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (15 sản phẩm)",
+      );
+    });
+  });
+
+  it("updates price, stock, sku, and gallery image when switching variant color and storage", async () => {
+    const productWithBlueImage: StorefrontProductDetail = {
+      ...mockProductDetail,
+      images: [
+        ...mockProductDetail.images,
+        {
+          id: 203,
+          productId: 1,
+          variantId: 102,
+          variantSku: "IP15PM-512-BL",
+          variantColor: "Titan Xanh",
+          imageUrl: "https://example.com/ip15pm-blue.jpg",
+          isPrimary: false,
+          displayOrder: 3,
+          createdAt: "2026-09-01T00:00:00Z",
+          updatedAt: "2026-09-01T00:00:00Z",
+        },
+      ],
+    };
+    mockedGetStorefrontProductDetail.mockResolvedValue(productWithBlueImage);
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-color-label")).toHaveTextContent(
+        "Titan Tự Nhiên",
+      );
+    });
+
+    // Click color "Titan Xanh"
+    const blueOption = screen.getByTestId("color-option-Titan Xanh");
+    fireEvent.click(blueOption);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-color-label")).toHaveTextContent(
+        "Titan Xanh",
+      );
+      expect(screen.getByTestId("selected-storage-label")).toHaveTextContent(
+        "512GB",
+      );
+      expect(screen.getByTestId("product-price")).toHaveTextContent(
+        "34.990.000 ₫",
+      );
+      expect(screen.getByTestId("variant-sku")).toHaveTextContent(
+        "IP15PM-512-BL",
+      );
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (10 sản phẩm)",
+      );
+      expect(screen.getByTestId("main-product-image")).toHaveAttribute(
+        "src",
+        "https://example.com/ip15pm-blue.jpg",
+      );
+    });
+  });
+
+  it("disables combination options that do not exist", async () => {
+    const combinationProduct: StorefrontProductDetail = {
+      id: 2,
+      name: "Galaxy S24",
+      status: "ACTIVE",
+      minPrice: 20000000,
+      maxPrice: 25000000,
+      discountPercent: 0,
+      totalStock: 15,
+      hasStock: true,
+      salesCount: 10,
+      rating: 5,
+      availableColors: ["Xám Titan", "Tím Titan"],
+      availableStorages: ["128GB", "256GB"],
+      variants: [
+        {
+          id: 201,
+          productId: 2,
+          productName: "Galaxy S24",
+          sku: "S24-GR-128",
+          color: "Xám Titan",
+          storage: "128GB",
+          price: 20000000,
+          stockQuantity: 5,
+          status: "ACTIVE",
+          createdAt: "2026-09-01T00:00:00Z",
+          updatedAt: "2026-09-01T00:00:00Z",
+        },
+        {
+          id: 202,
+          productId: 2,
+          productName: "Galaxy S24",
+          sku: "S24-GR-256",
+          color: "Xám Titan",
+          storage: "256GB",
+          price: 23000000,
+          stockQuantity: 5,
+          status: "ACTIVE",
+          createdAt: "2026-09-01T00:00:00Z",
+          updatedAt: "2026-09-01T00:00:00Z",
+        },
+        {
+          id: 203,
+          productId: 2,
+          productName: "Galaxy S24",
+          sku: "S24-VT-128",
+          color: "Tím Titan",
+          storage: "128GB",
+          price: 20000000,
+          stockQuantity: 5,
+          status: "ACTIVE",
+          createdAt: "2026-09-01T00:00:00Z",
+          updatedAt: "2026-09-01T00:00:00Z",
+        },
+        // NOTE: "Tím Titan" does NOT have 256GB!
+      ],
+      images: [],
+      specifications: [],
+      createdAt: "2026-09-01T00:00:00Z",
+      updatedAt: "2026-09-01T00:00:00Z",
+    };
+
+    mockedGetStorefrontProductDetail.mockResolvedValue(combinationProduct);
+
+    renderProductDetailPage("/products/2");
+
+    // Initially: Xám Titan & 128GB selected
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-color-label")).toHaveTextContent(
+        "Xám Titan",
+      );
+    });
+
+    // Select color "Tím Titan"
+    const violetOption = screen.getByTestId("color-option-Tím Titan");
+    fireEvent.click(violetOption);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("selected-color-label")).toHaveTextContent(
+        "Tím Titan",
+      );
+      // Since Tím Titan does not have 256GB, 256GB storage option must be DISABLED!
+      const storage256 = screen.getByTestId("storage-option-256GB");
+      expect(storage256).toBeDisabled();
+
+      // But 128GB option is enabled
+      const storage128 = screen.getByTestId("storage-option-128GB");
+      expect(storage128).not.toBeDisabled();
+    });
+  });
+
+  it("updates stock status to 'Tạm hết hàng' when selecting an out-of-stock variant", async () => {
+    const productWithOutOfStockVariant: StorefrontProductDetail = {
+      ...mockProductDetail,
+      variants: [
+        {
+          ...mockProductDetail.variants[0],
+          stockQuantity: 10,
+        },
+        {
+          ...mockProductDetail.variants[1],
+          stockQuantity: 0, // out of stock
+        },
+      ],
+    };
+    mockedGetStorefrontProductDetail.mockResolvedValue(
+      productWithOutOfStockVariant,
+    );
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("stock-status")).toHaveTextContent(
+        "Còn hàng (10 sản phẩm)",
+      );
+    });
+
+    // Switch to out-of-stock variant (Titan Xanh)
+    const blueOption = screen.getByTestId("color-option-Titan Xanh");
+    fireEvent.click(blueOption);
 
     await waitFor(() => {
       expect(screen.getByTestId("stock-status")).toHaveTextContent(

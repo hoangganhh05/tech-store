@@ -24,6 +24,8 @@ public record StorefrontProductDetailResponse(
         Long salesCount,
         Double rating,
         List<ProductVariantResponse> variants,
+        List<String> availableColors,
+        List<String> availableStorages,
         List<ProductImageResponse> images,
         List<ProductSpecificationResponse> specifications,
         Instant createdAt,
