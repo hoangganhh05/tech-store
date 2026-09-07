@@ -163,7 +163,7 @@ export function ProductListPage() {
       setError(null);
       if (searchQuery) {
         const data = await searchStorefrontProducts(searchQuery);
-        let sortedData = [...data];
+        const sortedData = [...data];
         if (sortBy === "price") {
           sortedData.sort((a, b) =>
             sortDir === "asc"
