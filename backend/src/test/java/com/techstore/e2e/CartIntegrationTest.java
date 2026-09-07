@@ -562,5 +562,127 @@ class CartIntegrationTest {
                 .andExpect(jsonPath("$.data.discountAmount", equalTo(0)))
                 .andExpect(jsonPath("$.data.total", equalTo(0)));
     }
+
+    @Test
+    @DisplayName("US-07.5: Kiểm tra tồn kho toàn bộ giỏ hàng hợp lệ trả về valid = true")
+    void validateCartStock_allInStock_returnsValidTrue() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/cart/validate")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.data.valid", equalTo(true)))
+                .andExpect(jsonPath("$.data.issues", hasSize(0)));
+
+        mockMvc.perform(get("/api/v1/cart")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hasStockIssue", equalTo(false)))
+                .andExpect(jsonPath("$.data.canCheckout", equalTo(true)))
+                .andExpect(jsonPath("$.data.items[0].hasStockIssue", equalTo(false)));
+    }
+
+    @Test
+    @DisplayName("US-07.5: Tồn kho giảm xuống dưới số lượng trong giỏ hàng trả về INSUFFICIENT_STOCK và hasStockIssue = true")
+    void validateCartStock_stockReducedBelowCartQuantity_returnsInsufficientStockIssue() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 5);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        // Giả lập người khác mua làm tồn kho giảm từ 10 xuống còn 2
+        Inventory inv = inventoryRepository.findByVariantId(testVariant.getId()).orElseThrow();
+        inv.setQuantityOnHand(2);
+        inventoryRepository.save(inv);
+
+        mockMvc.perform(post("/api/v1/cart/validate")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.data.valid", equalTo(false)))
+                .andExpect(jsonPath("$.data.issues", hasSize(1)))
+                .andExpect(jsonPath("$.data.issues[0].issueType", equalTo("INSUFFICIENT_STOCK")))
+                .andExpect(jsonPath("$.data.issues[0].requestedQuantity", equalTo(5)))
+                .andExpect(jsonPath("$.data.issues[0].availableStock", equalTo(2)));
+
+        mockMvc.perform(get("/api/v1/cart")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hasStockIssue", equalTo(true)))
+                .andExpect(jsonPath("$.data.canCheckout", equalTo(false)))
+                .andExpect(jsonPath("$.data.items[0].hasStockIssue", equalTo(true)))
+                .andExpect(jsonPath("$.data.items[0].stockStatusMessage", containsString("Tồn kho không đủ")));
+    }
+
+    @Test
+    @DisplayName("US-07.5: Tồn kho giảm về 0 trả về OUT_OF_STOCK và canCheckout = false")
+    void validateCartStock_stockReducedToZero_returnsOutOfStockIssue() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        // Giả lập sản phẩm hết sạch hàng
+        Inventory inv = inventoryRepository.findByVariantId(testVariant.getId()).orElseThrow();
+        inv.setQuantityOnHand(0);
+        inventoryRepository.save(inv);
+
+        mockMvc.perform(post("/api/v1/cart/validate")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.valid", equalTo(false)))
+                .andExpect(jsonPath("$.data.issues", hasSize(1)))
+                .andExpect(jsonPath("$.data.issues[0].issueType", equalTo("OUT_OF_STOCK")))
+                .andExpect(jsonPath("$.data.issues[0].availableStock", equalTo(0)));
+
+        mockMvc.perform(get("/api/v1/cart")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.hasStockIssue", equalTo(true)))
+                .andExpect(jsonPath("$.data.canCheckout", equalTo(false)))
+                .andExpect(jsonPath("$.data.items[0].stockStatusMessage", equalTo("Sản phẩm hiện đã hết hàng")));
+    }
+
+    @Test
+    @DisplayName("US-07.5: Sản phẩm bị chuyển sang ngừng kinh doanh trả về INACTIVE_OR_DELETED")
+    void validateCartStock_productInactive_returnsInactiveIssue() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        // Chuyển sản phẩm sang INACTIVE
+        testProduct.setStatus(ProductStatus.INACTIVE);
+        productRepository.save(testProduct);
+
+        mockMvc.perform(post("/api/v1/cart/validate")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.valid", equalTo(false)))
+                .andExpect(jsonPath("$.data.issues", hasSize(1)))
+                .andExpect(jsonPath("$.data.issues[0].issueType", equalTo("INACTIVE_OR_DELETED")));
+    }
+
+    @Test
+    @DisplayName("US-07.5: Giỏ hàng trống khi validate trả về valid = true")
+    void validateCartStock_emptyCart_returnsValidTrue() throws Exception {
+        mockMvc.perform(post("/api/v1/cart/validate")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.valid", equalTo(true)))
+                .andExpect(jsonPath("$.data.issues", hasSize(0)));
+    }
 }
 

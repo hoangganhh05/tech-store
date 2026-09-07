@@ -3,7 +3,9 @@ package com.techstore.service.impl;
 import com.techstore.dto.request.AddToCartRequest;
 import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.dto.response.CartItemResponse;
+import com.techstore.dto.response.CartItemStockIssueResponse;
 import com.techstore.dto.response.CartResponse;
+import com.techstore.dto.response.CartValidationResponse;
 import com.techstore.entity.Cart;
 import com.techstore.entity.CartItem;
 import com.techstore.entity.Inventory;
@@ -13,6 +15,7 @@ import com.techstore.entity.ProductVariant;
 import com.techstore.entity.User;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.ProductStatus;
+import com.techstore.enums.StockIssueType;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.CartItemRepository;
 import com.techstore.repository.CartRepository;
@@ -123,7 +126,7 @@ public class CartServiceImpl implements CartService {
     public CartResponse getCart(Long userId, String sessionId) {
         Optional<Cart> cartOpt = findCart(userId, sessionId);
         if (cartOpt.isEmpty()) {
-            return new CartResponse(null, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of());
+            return new CartResponse(null, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, false, false, List.of());
         }
         return mapToCartResponse(cartOpt.get());
     }
@@ -202,6 +205,82 @@ public class CartServiceImpl implements CartService {
         return mapToCartResponse(cart);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CartValidationResponse validateCartStock(Long userId, String sessionId) {
+        Optional<Cart> cartOpt = findCart(userId, sessionId);
+        if (cartOpt.isEmpty()) {
+            return new CartValidationResponse(true, List.of());
+        }
+        Cart cart = cartOpt.get();
+        List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
+        if (items.isEmpty()) {
+            return new CartValidationResponse(true, List.of());
+        }
+
+        List<CartItemStockIssueResponse> issues = new ArrayList<>();
+        for (CartItem item : items) {
+            ProductVariant variant = item.getVariant();
+            if (variant == null || variant.isDeleted()) {
+                issues.add(new CartItemStockIssueResponse(
+                        item.getId(),
+                        variant != null ? variant.getId() : null,
+                        variant != null && variant.getProduct() != null ? variant.getProduct().getName() : "Sản phẩm",
+                        variant != null ? variant.getSku() : null,
+                        item.getQuantity(),
+                        0,
+                        StockIssueType.INACTIVE_OR_DELETED,
+                        "Biến thể sản phẩm không tồn tại hoặc đã bị xoá"
+                ));
+                continue;
+            }
+
+            Product product = variant.getProduct();
+            if (product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+                issues.add(new CartItemStockIssueResponse(
+                        item.getId(),
+                        variant.getId(),
+                        product != null ? product.getName() : "Sản phẩm",
+                        variant.getSku(),
+                        item.getQuantity(),
+                        0,
+                        StockIssueType.INACTIVE_OR_DELETED,
+                        "Sản phẩm đã ngừng kinh doanh"
+                ));
+                continue;
+            }
+
+            int availableStock = getAvailableStock(variant);
+            if (availableStock <= 0) {
+                issues.add(new CartItemStockIssueResponse(
+                        item.getId(),
+                        variant.getId(),
+                        product.getName(),
+                        variant.getSku(),
+                        item.getQuantity(),
+                        0,
+                        StockIssueType.OUT_OF_STOCK,
+                        String.format("Sản phẩm \"%s\" hiện đã hết hàng", product.getName())
+                ));
+            } else if (item.getQuantity() > availableStock) {
+                issues.add(new CartItemStockIssueResponse(
+                        item.getId(),
+                        variant.getId(),
+                        product.getName(),
+                        variant.getSku(),
+                        item.getQuantity(),
+                        availableStock,
+                        StockIssueType.INSUFFICIENT_STOCK,
+                        String.format("Số lượng sản phẩm \"%s\" trong giỏ (%d) vượt quá tồn kho khả dụng (còn %d)",
+                                product.getName(), item.getQuantity(), availableStock)
+                ));
+            }
+        }
+
+        boolean valid = issues.isEmpty();
+        return new CartValidationResponse(valid, issues);
+    }
+
     private Cart getOrCreateCart(Long userId, String sessionId) {
         Optional<Cart> cartOpt = findCart(userId, sessionId);
         if (cartOpt.isPresent()) {
@@ -242,14 +321,15 @@ public class CartServiceImpl implements CartService {
         List<CartItemResponse> itemResponses = new ArrayList<>();
         int totalItems = 0;
         BigDecimal subtotal = BigDecimal.ZERO;
+        boolean cartHasStockIssue = false;
 
         for (CartItem item : items) {
             ProductVariant variant = item.getVariant();
-            Product product = variant.getProduct();
+            Product product = variant != null ? variant.getProduct() : null;
             int qty = item.getQuantity();
-            int stock = getAvailableStock(variant);
+            int stock = variant != null ? getAvailableStock(variant) : 0;
 
-            BigDecimal price = variant.getPrice() != null ? variant.getPrice() : BigDecimal.ZERO;
+            BigDecimal price = (variant != null && variant.getPrice() != null) ? variant.getPrice() : BigDecimal.ZERO;
             BigDecimal lineSubtotal = price.multiply(BigDecimal.valueOf(qty));
 
             totalItems += qty;
@@ -257,20 +337,40 @@ public class CartServiceImpl implements CartService {
 
             String imageUrl = resolveVariantImageUrl(variant, product);
 
+            boolean itemHasStockIssue = false;
+            String stockStatusMessage = null;
+
+            if (variant == null || variant.isDeleted() || product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+                itemHasStockIssue = true;
+                stockStatusMessage = "Sản phẩm đã ngừng kinh doanh hoặc không tồn tại";
+            } else if (stock <= 0) {
+                itemHasStockIssue = true;
+                stockStatusMessage = "Sản phẩm hiện đã hết hàng";
+            } else if (qty > stock) {
+                itemHasStockIssue = true;
+                stockStatusMessage = String.format("Tồn kho không đủ (chỉ còn %d sản phẩm)", stock);
+            }
+
+            if (itemHasStockIssue) {
+                cartHasStockIssue = true;
+            }
+
             itemResponses.add(new CartItemResponse(
                     item.getId(),
-                    variant.getId(),
+                    variant != null ? variant.getId() : null,
                     product != null ? product.getId() : null,
                     product != null ? product.getName() : "Sản phẩm",
-                    variant.getSku(),
-                    variant.getColor(),
-                    variant.getStorage(),
+                    variant != null ? variant.getSku() : null,
+                    variant != null ? variant.getColor() : null,
+                    variant != null ? variant.getStorage() : null,
                     price,
-                    variant.getOriginalPrice(),
+                    variant != null ? variant.getOriginalPrice() : null,
                     imageUrl,
                     qty,
                     stock,
-                    lineSubtotal
+                    lineSubtotal,
+                    itemHasStockIssue,
+                    stockStatusMessage
             ));
         }
 
@@ -286,7 +386,9 @@ public class CartServiceImpl implements CartService {
         BigDecimal discountAmount = BigDecimal.ZERO;
         BigDecimal total = subtotal.add(shippingFee).subtract(discountAmount);
 
-        return new CartResponse(cart.getId(), totalItems, subtotal, shippingFee, discountAmount, total, itemResponses);
+        boolean canCheckout = totalItems > 0 && !cartHasStockIssue;
+
+        return new CartResponse(cart.getId(), totalItems, subtotal, shippingFee, discountAmount, total, cartHasStockIssue, canCheckout, itemResponses);
     }
 
     private String resolveVariantImageUrl(ProductVariant variant, Product product) {
@@ -305,4 +407,3 @@ public class CartServiceImpl implements CartService {
         return null;
     }
 }
-

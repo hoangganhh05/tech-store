@@ -4,6 +4,7 @@ import com.techstore.dto.request.AddToCartRequest;
 import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.CartResponse;
+import com.techstore.dto.response.CartValidationResponse;
 import com.techstore.security.AccessTokenAuthenticator;
 import com.techstore.service.CartService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -82,6 +83,17 @@ public class CartController {
         return ResponseEntity.ok(ApiResponse.success("Xoá sản phẩm khỏi giỏ hàng thành công", response));
     }
 
+    @PostMapping("/validate")
+    @Operation(summary = "Kiểm tra lại tồn kho toàn bộ giỏ hàng trước khi checkout")
+    public ResponseEntity<ApiResponse<CartValidationResponse>> validateCartStock(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId
+    ) {
+        Long userId = resolveUserId(authorizationHeader);
+        CartValidationResponse response = cartService.validateCartStock(userId, sessionId);
+        return ResponseEntity.ok(ApiResponse.success("Kiểm tra tồn kho giỏ hàng thành công", response));
+    }
+
     private Long resolveUserId(String authorizationHeader) {
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
             return null;
@@ -89,4 +101,3 @@ public class CartController {
         return accessTokenAuthenticator.authenticate(authorizationHeader);
     }
 }
-
