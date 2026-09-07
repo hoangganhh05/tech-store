@@ -76,5 +76,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("categoryId") Long categoryId,
             @Param("status") ProductStatus status
     );
+
+    @Query("SELECT p FROM Product p " +
+            "WHERE p.status = :status AND p.isDeleted = false " +
+            "AND p.id != :excludeId " +
+            "AND ((:categoryId IS NOT NULL AND (p.category.id = :categoryId OR p.category.parent.id = :categoryId)) " +
+            "     OR (:brandId IS NOT NULL AND p.brand.id = :brandId)) " +
+            "ORDER BY " +
+            "  CASE WHEN (:categoryId IS NOT NULL AND (p.category.id = :categoryId OR p.category.parent.id = :categoryId)) " +
+            "            AND (:brandId IS NOT NULL AND p.brand.id = :brandId) THEN 0 " +
+            "       WHEN (:categoryId IS NOT NULL AND (p.category.id = :categoryId OR p.category.parent.id = :categoryId)) THEN 1 " +
+            "       ELSE 2 END ASC, " +
+            "  p.createdAt DESC")
+    List<Product> findRelatedProducts(
+            @Param("excludeId") Long excludeId,
+            @Param("categoryId") Long categoryId,
+            @Param("brandId") Long brandId,
+            @Param("status") ProductStatus status,
+            Pageable pageable
+    );
 }
 

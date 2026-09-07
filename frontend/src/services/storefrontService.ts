@@ -300,3 +300,16 @@ export async function getVariantStock(
   );
   return response.data.data;
 }
+
+export async function getRelatedProducts(
+  productId: number | string,
+  limit = 8,
+): Promise<StorefrontProduct[]> {
+  const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
+    `/products/${productId}/related`,
+    {
+      params: { limit },
+    },
+  );
+  return response.data.data;
+}
