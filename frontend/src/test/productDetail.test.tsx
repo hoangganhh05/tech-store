@@ -6,7 +6,9 @@ import { ProductDetailPage } from "../modules/products/ProductDetailPage";
 import {
   getStorefrontProductDetail,
   getVariantStock,
+  getRelatedProducts,
   type StorefrontProductDetail,
+  type StorefrontProduct,
 } from "../services/storefrontService";
 
 vi.mock("../services/storefrontService", () => ({
@@ -20,9 +22,11 @@ vi.mock("../services/storefrontService", () => ({
   getNewArrivals: vi.fn(),
   getOnSaleProducts: vi.fn(),
   getVariantStock: vi.fn(),
+  getRelatedProducts: vi.fn(),
 }));
 
 const mockedGetStorefrontProductDetail = vi.mocked(getStorefrontProductDetail);
+const mockedGetRelatedProducts = vi.mocked(getRelatedProducts);
 
 const mockProductDetail: StorefrontProductDetail = {
   id: 1,
@@ -135,6 +139,7 @@ function renderProductDetailPage(route = "/products/1") {
 describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedGetRelatedProducts.mockResolvedValue([]);
   });
 
   it("renders full product information with name, brand, category, price, and stock", async () => {
@@ -515,6 +520,7 @@ describe("US-06.2: ProductDetailPage - Chọn biến thể sản phẩm (màu s�
 describe("US-06.3: ProductDetailPage - Trạng thái tồn kho theo biến thể & disable nút mua khi hết hàng", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedGetRelatedProducts.mockResolvedValue([]);
   });
 
   const stockVariantsProduct: StorefrontProductDetail = {
@@ -744,5 +750,118 @@ describe("US-06.3: ProductDetailPage - Trạng thái tồn kho theo biến thể
     expect(stock.stockStatus).toBe("IN_STOCK");
     expect(stock.stockQuantity).toBe(15);
     expect(stock.isAvailable).toBe(true);
+  });
+});
+
+describe("US-06.4: ProductDetailPage - Gợi ý sản phẩm liên quan trên trang chi tiết", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockRelatedList: StorefrontProduct[] = [
+    {
+      id: 201,
+      name: "iPhone 15 Plus",
+      description: "Màn hình lớn",
+      brandId: 1,
+      brandName: "Apple",
+      categoryId: 1,
+      categoryName: "Điện thoại",
+      thumbnailUrl: "https://example.com/ip15plus.jpg",
+      minPrice: 22000000,
+      maxPrice: 24000000,
+      originalPrice: 25000000,
+      discountPercent: 12,
+      totalStock: 15,
+      hasStock: true,
+      salesCount: 30,
+      rating: 4.8,
+      createdAt: "2026-09-01T00:00:00Z",
+    },
+    {
+      id: 202,
+      name: "Samsung Galaxy S24",
+      description: "Flagship AI",
+      brandId: 2,
+      brandName: "Samsung",
+      categoryId: 1,
+      categoryName: "Điện thoại",
+      thumbnailUrl: "https://example.com/s24.jpg",
+      minPrice: 19000000,
+      maxPrice: 22000000,
+      originalPrice: 22000000,
+      discountPercent: 13,
+      totalStock: 8,
+      hasStock: true,
+      salesCount: 45,
+      rating: 4.9,
+      createdAt: "2026-09-01T00:00:00Z",
+    },
+  ];
+
+  it("renders related products section with title and product cards", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetRelatedProducts.mockResolvedValue(mockRelatedList);
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("related-products-section"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("related-products-title")).toHaveTextContent(
+        "Sản phẩm liên quan",
+      );
+      expect(screen.getByTestId("product-card-201")).toBeInTheDocument();
+      expect(screen.getByTestId("product-card-202")).toBeInTheDocument();
+    });
+  });
+
+  it("renders skeleton loading while related products are being fetched", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetRelatedProducts.mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve(mockRelatedList), 200),
+        ),
+    );
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("product-title")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("related-products-skeleton")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("product-card-201")).toBeInTheDocument();
+    });
+  });
+
+  it("does not render related products section when API returns empty list", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetRelatedProducts.mockResolvedValue([]);
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("product-title")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId("related-products-section"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls getRelatedProducts with correct productId and limit", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetRelatedProducts.mockResolvedValue(mockRelatedList);
+
+    renderProductDetailPage("/products/1");
+
+    await waitFor(() => {
+      expect(mockedGetRelatedProducts).toHaveBeenCalledWith(1, 8);
+    });
   });
 });

@@ -35,9 +35,12 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   getStorefrontProductDetail,
+  getRelatedProducts,
   type StorefrontProductDetail,
   type ProductVariantDetail,
+  type StorefrontProduct,
 } from "../../services/storefrontService";
+import { ProductCard } from "../../components/common/ProductCard";
 import { ROUTES } from "../../constants/routes";
 
 function formatPrice(val: number): string {
@@ -64,6 +67,12 @@ export function ProductDetailPage() {
   // Gallery state
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
+
+  // Related products state
+  const [relatedProducts, setRelatedProducts] = useState<StorefrontProduct[]>(
+    [],
+  );
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   const productId = useMemo(() => {
     if (!slug) return null;
@@ -173,6 +182,37 @@ export function ProductDetailPage() {
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
+
+  useEffect(() => {
+    if (!productId) {
+      setRelatedProducts([]);
+      return;
+    }
+
+    let active = true;
+    const fetchRelated = async () => {
+      try {
+        setRelatedLoading(true);
+        const data = await getRelatedProducts(productId, 8);
+        if (active) {
+          setRelatedProducts(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (active) {
+          setRelatedProducts([]);
+        }
+      } finally {
+        if (active) {
+          setRelatedLoading(false);
+        }
+      }
+    };
+
+    fetchRelated();
+    return () => {
+      active = false;
+    };
+  }, [productId]);
 
   const availableColors = useMemo(() => {
     if (product?.availableColors && product.availableColors.length > 0) {
@@ -1168,6 +1208,44 @@ export function ProductDetailPage() {
           )}
         </Grid>
       </Grid>
+
+      {/* Related Products Section */}
+      {(relatedLoading ||
+        Boolean(relatedProducts && relatedProducts.length > 0)) && (
+        <Box sx={{ mt: 6 }} data-testid="related-products-section">
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color="text.primary"
+            mb={3}
+            data-testid="related-products-title"
+          >
+            Sản phẩm liên quan
+          </Typography>
+
+          {relatedLoading ? (
+            <Grid container spacing={3} data-testid="related-products-skeleton">
+              {Array.from({ length: 4 }).map((_, idx) => (
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={idx}>
+                  <Skeleton
+                    variant="rounded"
+                    height={320}
+                    sx={{ borderRadius: 2.5 }}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Grid container spacing={3} data-testid="related-products-grid">
+              {relatedProducts.map((relProduct) => (
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={relProduct.id}>
+                  <ProductCard product={relProduct} />
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+      )}
 
       {/* Lightbox Zoom Dialog */}
       <Dialog

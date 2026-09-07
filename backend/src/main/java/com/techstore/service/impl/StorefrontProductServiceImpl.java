@@ -630,5 +630,39 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 variant.getStockQuantity()
         );
     }
+
+    @Override
+    public List<StorefrontProductResponse> getRelatedProducts(Long productId, int limit) {
+        if (productId == null || productId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID sản phẩm không hợp lệ");
+        }
+        if (limit <= 0 || limit > 50) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số lượng sản phẩm gợi ý phải từ 1 đến 50");
+        }
+
+        Product product = productRepository.findByIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm"));
+
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm đã ngừng kinh doanh");
+        }
+
+        Long categoryId = product.getCategory() != null ? product.getCategory().getId() : null;
+        Long brandId = product.getBrand() != null ? product.getBrand().getId() : null;
+
+        if (categoryId == null && brandId == null) {
+            return Collections.emptyList();
+        }
+
+        List<Product> related = productRepository.findRelatedProducts(
+                productId,
+                categoryId,
+                brandId,
+                ProductStatus.ACTIVE,
+                PageRequest.of(0, limit)
+        );
+
+        return mapToStorefrontProductResponses(related);
+    }
 }
 

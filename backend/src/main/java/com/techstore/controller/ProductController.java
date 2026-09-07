@@ -135,5 +135,20 @@ public class ProductController {
         VariantStockResponse response = storefrontProductService.getVariantStock(productId, variantId);
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin tồn kho biến thể thành công", response));
     }
+
+    @GetMapping("/{id}/related")
+    @Operation(summary = "Get related products by category/brand, excluding current product")
+    public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getRelatedProducts(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long id,
+            @RequestParam(defaultValue = "8")
+            @Min(value = 1, message = "Số lượng sản phẩm tối thiểu là 1")
+            @Max(value = 50, message = "Số lượng sản phẩm tối đa là 50")
+            int limit
+    ) {
+        List<StorefrontProductResponse> response = storefrontProductService.getRelatedProducts(id, limit);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm liên quan thành công", response));
+    }
 }
 

@@ -47,5 +47,7 @@ public interface StorefrontProductService {
     StorefrontProductDetailResponse getProductDetail(Long id);
 
     VariantStockResponse getVariantStock(Long productId, Long variantId);
+
+    List<StorefrontProductResponse> getRelatedProducts(Long productId, int limit);
 }
 

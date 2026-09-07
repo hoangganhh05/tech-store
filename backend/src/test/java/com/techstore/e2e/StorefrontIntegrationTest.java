@@ -1033,4 +1033,113 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.data.variants[1].stockStatus").value("LOW_STOCK"))
                 .andExpect(jsonPath("$.data.variants[2].stockStatus").value("OUT_OF_STOCK"));
     }
+
+    @Test
+    @DisplayName("US-06.4: API trả danh sách sản phẩm liên quan cùng danh mục/thương hiệu, loại trừ sản phẩm hiện tại")
+    void getRelatedProducts_shouldReturnRelated_excludingCurrentProduct() throws Exception {
+        setupBaseData();
+
+        // Current product: iPhone 15 Pro (Apple, Phone)
+        Product current = productRepository.save(new Product("iPhone 15 Pro", "Current Phone",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(current, "IP15P", "Titan", "128GB",
+                BigDecimal.valueOf(25000000), BigDecimal.valueOf(28000000), 10, VariantStatus.ACTIVE));
+
+        // Related 1: iPhone 15 Plus (Apple, Phone) -> matches both category and brand
+        Product rel1 = productRepository.save(new Product("iPhone 15 Plus", "Same Both",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(rel1, "IP15PL", "Đen", "128GB",
+                BigDecimal.valueOf(22000000), BigDecimal.valueOf(24000000), 10, VariantStatus.ACTIVE));
+
+        // Related 2: Samsung Galaxy S24 (Samsung, Phone) -> matches category
+        Product rel2 = productRepository.save(new Product("Samsung Galaxy S24", "Same Category",
+                brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(rel2, "S24", "Xám", "128GB",
+                BigDecimal.valueOf(20000000), BigDecimal.valueOf(23000000), 10, VariantStatus.ACTIVE));
+
+        // Related 3: MacBook Air M2 (Apple, Laptop) -> matches brand
+        Product rel3 = productRepository.save(new Product("MacBook Air M2", "Same Brand",
+                brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(rel3, "MBA2", "Bạc", "256GB",
+                BigDecimal.valueOf(24000000), BigDecimal.valueOf(27000000), 5, VariantStatus.ACTIVE));
+
+        // Unrelated: Dell XPS 13 (Dell, Laptop) -> different brand & different category
+        Brand brandDell = brandRepository.save(new Brand("Dell", "Dell Inc", "https://example.com/dell.png"));
+        Product unrelated = productRepository.save(new Product("Dell XPS 13", "Unrelated",
+                brandDell, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(unrelated, "XPS13", "Bạc", "512GB",
+                BigDecimal.valueOf(30000000), BigDecimal.valueOf(35000000), 5, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + current.getId() + "/related?limit=8"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                // First result should be iPhone 15 Plus (matches both category and brand)
+                .andExpect(jsonPath("$.data[0].id").value(rel1.getId()))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15 Plus"))
+                // Ensure current product is excluded
+                .andExpect(jsonPath("$.data[?(@.id == " + current.getId() + ")]").doesNotExist())
+                // Ensure unrelated product is excluded
+                .andExpect(jsonPath("$.data[?(@.id == " + unrelated.getId() + ")]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("US-06.4: API giới hạn số lượng sản phẩm liên quan theo tham số limit")
+    void getRelatedProducts_respectsLimitParam() throws Exception {
+        setupBaseData();
+
+        Product current = productRepository.save(new Product("iPhone 15", "Base Phone",
+                brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(current, "IP15", "Đen", "128GB",
+                BigDecimal.valueOf(20000000), BigDecimal.valueOf(22000000), 10, VariantStatus.ACTIVE));
+
+        for (int i = 1; i <= 5; i++) {
+            Product p = productRepository.save(new Product("iPhone Model " + i, "Phone " + i,
+                    brandApple, categoryPhone, ProductStatus.ACTIVE));
+            productVariantRepository.save(new ProductVariant(p, "IP-" + i, "Màu", "128GB",
+                    BigDecimal.valueOf(18000000), BigDecimal.valueOf(20000000), 10, VariantStatus.ACTIVE));
+        }
+
+        mockMvc.perform(get("/api/v1/products/" + current.getId() + "/related?limit=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("US-06.4: Truy cập gợi ý sản phẩm không tồn tại trả về 404 PRODUCT_NOT_FOUND")
+    void getRelatedProducts_notFound_shouldReturn404() throws Exception {
+        mockMvc.perform(get("/api/v1/products/999999/related"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("US-06.4: Truy cập gợi ý sản phẩm ngừng bán trả về 404")
+    void getRelatedProducts_inactiveProduct_shouldReturn404() throws Exception {
+        setupBaseData();
+
+        Product discontinued = productRepository.save(new Product("Discontinued Phone", "Old",
+                brandApple, categoryPhone, ProductStatus.INACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + discontinued.getId() + "/related"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Sản phẩm đã ngừng kinh doanh"));
+    }
+
+    @Test
+    @DisplayName("US-06.4: Validate ID sản phẩm hoặc limit không hợp lệ trả về 400 VALIDATION_ERROR")
+    void getRelatedProducts_invalidParams_shouldReturn400() throws Exception {
+        mockMvc.perform(get("/api/v1/products/0/related"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/products/1/related?limit=0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        mockMvc.perform(get("/api/v1/products/1/related?limit=99"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }
