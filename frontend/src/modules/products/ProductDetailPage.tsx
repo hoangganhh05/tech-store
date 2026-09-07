@@ -5,12 +5,14 @@ import {
   Breadcrumbs,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   Divider,
   Grid,
   IconButton,
   Paper,
   Skeleton,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -18,6 +20,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import axios from "axios";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
@@ -42,6 +45,7 @@ import {
 } from "../../services/storefrontService";
 import { ProductCard } from "../../components/common/ProductCard";
 import { ROUTES } from "../../constants/routes";
+import { useCart } from "../../hooks/useCart";
 
 function formatPrice(val: number): string {
   return new Intl.NumberFormat("vi-VN").format(val) + " ₫";
@@ -73,6 +77,15 @@ export function ProductDetailPage() {
     [],
   );
   const [relatedLoading, setRelatedLoading] = useState(false);
+
+  // Cart & Toast state
+  const { addToCart } = useCart();
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastSeverity, setToastSeverity] = useState<"success" | "error">(
+    "success",
+  );
 
   const productId = useMemo(() => {
     if (!slug) return null;
@@ -358,6 +371,41 @@ export function ProductDetailPage() {
     }
     return product?.totalStock || 0;
   }, [product, selectedVariant]);
+
+  const handleAddToCart = async () => {
+    if (!selectedVariant) {
+      setToastMessage("Vui lòng chọn biến thể sản phẩm");
+      setToastSeverity("error");
+      setToastOpen(true);
+      return;
+    }
+    if (currentStock <= 0) {
+      setToastMessage("Sản phẩm hiện đang hết hàng");
+      setToastSeverity("error");
+      setToastOpen(true);
+      return;
+    }
+
+    setIsAddingToCart(true);
+    try {
+      await addToCart(selectedVariant.id, quantity);
+      setToastMessage("Đã thêm sản phẩm vào giỏ hàng thành công!");
+      setToastSeverity("success");
+      setToastOpen(true);
+    } catch (err: unknown) {
+      let errorMsg = "Không thể thêm sản phẩm vào giỏ hàng. Vui lòng thử lại.";
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err instanceof Error) {
+        errorMsg = err.message;
+      }
+      setToastMessage(errorMsg);
+      setToastSeverity("error");
+      setToastOpen(true);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   // Loading skeleton state
   if (loading) {
@@ -1081,8 +1129,15 @@ export function ProductDetailPage() {
               variant="contained"
               color="primary"
               size="large"
-              startIcon={<ShoppingCartOutlinedIcon />}
-              disabled={currentStock <= 0}
+              startIcon={
+                isAddingToCart ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  <ShoppingCartOutlinedIcon />
+                )
+              }
+              disabled={currentStock <= 0 || isAddingToCart}
+              onClick={handleAddToCart}
               data-testid="add-to-cart-btn"
               sx={{
                 flex: 1,
@@ -1097,7 +1152,7 @@ export function ProductDetailPage() {
                     : "none",
               }}
             >
-              Thêm vào giỏ
+              {isAddingToCart ? "Đang thêm..." : "Thêm vào giỏ"}
             </Button>
             <Button
               variant="contained"
@@ -1293,6 +1348,23 @@ export function ProductDetailPage() {
           />
         )}
       </Dialog>
+
+      <Snackbar
+        open={toastOpen}
+        autoHideDuration={3500}
+        onClose={() => setToastOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setToastOpen(false)}
+          severity={toastSeverity}
+          variant="filled"
+          data-testid="cart-toast"
+          sx={{ width: "100%", borderRadius: 2, fontWeight: 600 }}
+        >
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

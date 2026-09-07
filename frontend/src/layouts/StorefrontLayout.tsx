@@ -1,4 +1,5 @@
 import {
+  Alert,
   AppBar,
   Badge,
   Box,
@@ -6,6 +7,7 @@ import {
   Container,
   IconButton,
   InputAdornment,
+  Snackbar,
   Stack,
   TextField,
   Toolbar,
@@ -26,6 +28,7 @@ import { ROUTES } from "../constants/routes";
 import { env } from "../configs/env";
 import { useAuthEvents } from "../hooks/useAuthEvents";
 import { useAuth } from "../hooks/useAuth";
+import { useCart } from "../hooks/useCart";
 
 const navItems = [
   { label: "Trang chủ", to: ROUTES.home },
@@ -37,6 +40,7 @@ export function StorefrontLayout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user, signOut } = useAuth();
+  const { cartCount, syncNotification, clearSyncNotification } = useCart();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState(
     searchParams.get("q") || "",
@@ -196,8 +200,17 @@ export function StorefrontLayout() {
                 </Button>
               </>
             )}
-            <IconButton component={Link} to={ROUTES.cart} aria-label="Giỏ hàng">
-              <Badge badgeContent={0} color="primary">
+            <IconButton
+              component={Link}
+              to={ROUTES.cart}
+              aria-label="Giỏ hàng"
+              data-testid="header-cart-btn"
+            >
+              <Badge
+                badgeContent={cartCount}
+                color="primary"
+                data-testid="header-cart-badge"
+              >
                 <ShoppingCartOutlinedIcon />
               </Badge>
             </IconButton>
@@ -217,6 +230,22 @@ export function StorefrontLayout() {
           </Typography>
         </Container>
       </Box>
+      <Snackbar
+        open={Boolean(syncNotification)}
+        autoHideDuration={4000}
+        onClose={clearSyncNotification}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={clearSyncNotification}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+          data-testid="sync-cart-toast"
+        >
+          {syncNotification}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
