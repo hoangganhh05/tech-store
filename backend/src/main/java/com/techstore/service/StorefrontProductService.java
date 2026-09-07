@@ -4,6 +4,7 @@ import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
+import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 
 import java.math.BigDecimal;
@@ -41,5 +42,7 @@ public interface StorefrontProductService {
     List<StorefrontProductResponse> searchProducts(String query);
 
     List<BrandResponse> getFeaturedBrands();
+
+    StorefrontProductDetailResponse getProductDetail(Long id);
 }
 

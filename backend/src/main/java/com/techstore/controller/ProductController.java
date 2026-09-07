@@ -2,6 +2,7 @@ package com.techstore.controller;
 
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.PageResponse;
+import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 import com.techstore.service.StorefrontProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,10 +10,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -105,6 +108,17 @@ public class ProductController {
     ) {
         List<StorefrontProductResponse> response = storefrontProductService.getOnSaleProducts(limit);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm khuyến mãi thành công", response));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get storefront product details by ID")
+    public ResponseEntity<ApiResponse<StorefrontProductDetailResponse>> getProductDetail(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long id
+    ) {
+        StorefrontProductDetailResponse response = storefrontProductService.getProductDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết sản phẩm thành công", response));
     }
 }
 
