@@ -81,3 +81,22 @@ export async function getOnSaleProducts(
   );
   return response.data.data;
 }
+
+export async function getStorefrontProducts(
+  categoryId?: number | null,
+): Promise<StorefrontProduct[]> {
+  const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
+    "/products",
+    {
+      params: categoryId ? { categoryId } : {},
+    },
+  );
+  return response.data.data;
+}
+
+export async function getStorefrontCategories(): Promise<Category[]> {
+  const response = await httpClient.get<ApiResponse<Category[]>>(
+    "/storefront/categories",
+  );
+  return response.data.data;
+}

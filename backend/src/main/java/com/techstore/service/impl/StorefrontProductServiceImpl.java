@@ -7,9 +7,11 @@ import com.techstore.entity.Category;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductImage;
 import com.techstore.entity.ProductVariant;
+import com.techstore.enums.ErrorCode;
 import com.techstore.enums.InventoryTransactionType;
 import com.techstore.enums.ProductStatus;
 import com.techstore.enums.VariantStatus;
+import com.techstore.exception.BusinessException;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
 import com.techstore.repository.ProductImageRepository;
@@ -110,6 +112,25 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 c.getCreatedAt(),
                 c.getUpdatedAt()
         )).toList();
+    }
+
+    @Override
+    public List<StorefrontProductResponse> getProducts(Long categoryId) {
+        List<Product> products;
+        if (categoryId != null) {
+            if (categoryId <= 0) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã danh mục không hợp lệ");
+            }
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND, "Danh mục không tồn tại"));
+            if (!Boolean.TRUE.equals(category.getIsActive())) {
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND, "Danh mục không tồn tại hoặc đã bị ẩn");
+            }
+            products = productRepository.findByCategoryOrParentCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE);
+        } else {
+            products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
+        }
+        return mapToStorefrontProductResponses(products);
     }
 
     private int normalizeLimit(int limit) {

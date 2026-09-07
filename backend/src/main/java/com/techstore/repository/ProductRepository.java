@@ -67,5 +67,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("variantStatus") VariantStatus variantStatus,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Product p " +
+            "WHERE p.status = :status AND p.isDeleted = false " +
+            "AND (p.category.id = :categoryId OR p.category.parent.id = :categoryId) " +
+            "ORDER BY p.createdAt DESC")
+    List<Product> findByCategoryOrParentCategoryIdAndStatus(
+            @Param("categoryId") Long categoryId,
+            @Param("status") ProductStatus status
+    );
 }
 
