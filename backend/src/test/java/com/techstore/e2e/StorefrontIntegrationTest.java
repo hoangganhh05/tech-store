@@ -832,12 +832,52 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.data.totalStock").value(20))
                 .andExpect(jsonPath("$.data.hasStock").value(true))
                 .andExpect(jsonPath("$.data.variants", hasSize(2)))
+                .andExpect(jsonPath("$.data.availableColors", hasSize(2)))
+                .andExpect(jsonPath("$.data.availableColors[0]").value("Titan Tự Nhiên"))
+                .andExpect(jsonPath("$.data.availableColors[1]").value("Titan Xanh"))
+                .andExpect(jsonPath("$.data.availableStorages", hasSize(2)))
+                .andExpect(jsonPath("$.data.availableStorages[0]").value("256GB"))
+                .andExpect(jsonPath("$.data.availableStorages[1]").value("512GB"))
                 .andExpect(jsonPath("$.data.images", hasSize(2)))
                 .andExpect(jsonPath("$.data.specifications", hasSize(2)))
                 .andExpect(jsonPath("$.data.specifications[0].specKey").value("Màn hình"))
                 .andExpect(jsonPath("$.data.specifications[0].specValue").value("OLED 6.7 inch Super Retina XDR 120Hz"))
                 .andExpect(jsonPath("$.data.specifications[1].specKey").value("Chip xử lý"))
                 .andExpect(jsonPath("$.data.specifications[1].specValue").value("Apple A17 Pro (3nm)"));
+    }
+
+    @Test
+    @DisplayName("US-06.2: API trả cấu trúc biến thể và danh sách thuộc tính color/storage combination")
+    void getProductDetail_variantAttributes_shouldReturnCombinationData() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("Samsung Galaxy S24 Ultra", "Flagship AI",
+                brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+
+        // 3 variants: Gray-256GB (stock 10), Gray-512GB (stock 0), Violet-256GB (stock 5)
+        productVariantRepository.save(new ProductVariant(product, "S24U-GR-256", "Xám Titan", "256GB",
+                BigDecimal.valueOf(26990000), BigDecimal.valueOf(31990000), 10, VariantStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(product, "S24U-GR-512", "Xám Titan", "512GB",
+                BigDecimal.valueOf(29990000), BigDecimal.valueOf(35990000), 0, VariantStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(product, "S24U-VT-256", "Tím Titan", "256GB",
+                BigDecimal.valueOf(26990000), BigDecimal.valueOf(31990000), 5, VariantStatus.ACTIVE));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.variants", hasSize(3)))
+                .andExpect(jsonPath("$.data.availableColors", hasSize(2)))
+                .andExpect(jsonPath("$.data.availableColors[0]").value("Xám Titan"))
+                .andExpect(jsonPath("$.data.availableColors[1]").value("Tím Titan"))
+                .andExpect(jsonPath("$.data.availableStorages", hasSize(2)))
+                .andExpect(jsonPath("$.data.availableStorages[0]").value("256GB"))
+                .andExpect(jsonPath("$.data.availableStorages[1]").value("512GB"))
+                .andExpect(jsonPath("$.data.variants[0].sku").value("S24U-GR-256"))
+                .andExpect(jsonPath("$.data.variants[0].stockQuantity").value(10))
+                .andExpect(jsonPath("$.data.variants[1].sku").value("S24U-GR-512"))
+                .andExpect(jsonPath("$.data.variants[1].stockQuantity").value(0))
+                .andExpect(jsonPath("$.data.variants[2].sku").value("S24U-VT-256"))
+                .andExpect(jsonPath("$.data.variants[2].stockQuantity").value(5));
     }
 
     @Test

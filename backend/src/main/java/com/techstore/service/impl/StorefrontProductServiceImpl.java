@@ -556,6 +556,18 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
 
         double rating = 5.0;
 
+        List<String> availableColors = activeVariants.stream()
+                .map(ProductVariant::getColor)
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .toList();
+
+        List<String> availableStorages = activeVariants.stream()
+                .map(ProductVariant::getStorage)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
+
         return new StorefrontProductDetailResponse(
                 product.getId(),
                 product.getName(),
@@ -574,6 +586,8 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 salesCount,
                 rating,
                 variantResponses,
+                availableColors,
+                availableStorages,
                 imageResponses,
                 specResponses,
                 product.getCreatedAt(),

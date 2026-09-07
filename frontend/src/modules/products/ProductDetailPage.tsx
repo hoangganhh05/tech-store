@@ -31,6 +31,7 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import {
   getStorefrontProductDetail,
   type StorefrontProductDetail,
+  type ProductVariantDetail,
 } from "../../services/storefrontService";
 import { ROUTES } from "../../constants/routes";
 
@@ -48,6 +49,12 @@ export function ProductDetailPage() {
   const [isNotFound, setIsNotFound] = useState(false);
   const [isDiscontinued, setIsDiscontinued] = useState(false);
 
+  // Variant selection state
+  const [selectedVariant, setSelectedVariant] =
+    useState<ProductVariantDetail | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
+
   // Gallery state
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -57,6 +64,33 @@ export function ProductDetailPage() {
     const n = Number(slug);
     return isNaN(n) || n <= 0 ? null : n;
   }, [slug]);
+
+  const syncVariantImage = useCallback(
+    (
+      variant: ProductVariantDetail,
+      images: StorefrontProductDetail["images"],
+    ) => {
+      if (!images || images.length === 0) return;
+      // 1. Prioritize image matching variantId
+      const imgById = images.find((img) => img.variantId === variant.id);
+      if (imgById) {
+        setSelectedImage(imgById.imageUrl);
+        return;
+      }
+      // 2. Image matching color
+      if (variant.color) {
+        const imgByColor = images.find(
+          (img) =>
+            img.variantColor?.toLowerCase() === variant.color?.toLowerCase(),
+        );
+        if (imgByColor) {
+          setSelectedImage(imgByColor.imageUrl);
+          return;
+        }
+      }
+    },
+    [],
+  );
 
   const loadProduct = useCallback(async () => {
     if (!productId) {
@@ -74,15 +108,38 @@ export function ProductDetailPage() {
       const data = await getStorefrontProductDetail(productId);
       setProduct(data);
 
-      // Default selected image to primary or first image
-      if (data.images && data.images.length > 0) {
-        const primaryImg = data.images.find((img) => img.isPrimary);
-        setSelectedImage(
-          primaryImg ? primaryImg.imageUrl : data.images[0].imageUrl,
-        );
-      } else {
-        setSelectedImage(null);
+      // Default variant selection: pick first in-stock variant, or first active variant
+      const variants = data.variants || [];
+      const defaultVariant =
+        variants.find((v) => v.stockQuantity > 0) || variants[0] || null;
+
+      setSelectedVariant(defaultVariant);
+      setSelectedColor(defaultVariant?.color || null);
+      setSelectedStorage(defaultVariant?.storage || null);
+
+      // Default selected image: check if default variant has associated image, otherwise primary image
+      let chosenImg: string | null = null;
+      if (defaultVariant && data.images && data.images.length > 0) {
+        const variantImg =
+          data.images.find((img) => img.variantId === defaultVariant.id) ||
+          (defaultVariant.color
+            ? data.images.find(
+                (img) =>
+                  img.variantColor?.toLowerCase() ===
+                  defaultVariant.color?.toLowerCase(),
+              )
+            : null);
+        if (variantImg) {
+          chosenImg = variantImg.imageUrl;
+        }
       }
+
+      if (!chosenImg && data.images && data.images.length > 0) {
+        const primaryImg = data.images.find((img) => img.isPrimary);
+        chosenImg = primaryImg ? primaryImg.imageUrl : data.images[0].imageUrl;
+      }
+
+      setSelectedImage(chosenImg);
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Không thể tải thông tin sản phẩm";
@@ -110,6 +167,151 @@ export function ProductDetailPage() {
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
+
+  const availableColors = useMemo(() => {
+    if (product?.availableColors && product.availableColors.length > 0) {
+      return product.availableColors;
+    }
+    if (!product?.variants) return [];
+    return Array.from(
+      new Set(
+        product.variants
+          .map((v) => v.color)
+          .filter((c): c is string => Boolean(c && c.trim())),
+      ),
+    );
+  }, [product]);
+
+  const availableStorages = useMemo(() => {
+    if (product?.availableStorages && product.availableStorages.length > 0) {
+      return product.availableStorages;
+    }
+    if (!product?.variants) return [];
+    return Array.from(
+      new Set(
+        product.variants
+          .map((v) => v.storage)
+          .filter((s): s is string => Boolean(s && s.trim())),
+      ),
+    );
+  }, [product]);
+
+  const isColorDisabled = useCallback(
+    (color: string) => {
+      if (!product?.variants) return false;
+      return !product.variants.some((v) => v.color === color);
+    },
+    [product],
+  );
+
+  const isStorageDisabled = useCallback(
+    (storage: string) => {
+      if (!product?.variants) return false;
+      if (!selectedColor) {
+        return !product.variants.some((v) => v.storage === storage);
+      }
+      return !product.variants.some(
+        (v) => v.storage === storage && v.color === selectedColor,
+      );
+    },
+    [product, selectedColor],
+  );
+
+  const handleColorSelect = useCallback(
+    (color: string) => {
+      if (isColorDisabled(color)) return;
+      setSelectedColor(color);
+
+      if (!product?.variants) return;
+      let match = product.variants.find(
+        (v) =>
+          v.color === color &&
+          (!selectedStorage || v.storage === selectedStorage),
+      );
+      if (!match) {
+        match = product.variants.find((v) => v.color === color);
+      }
+      if (match) {
+        setSelectedVariant(match);
+        if (match.storage) {
+          setSelectedStorage(match.storage);
+        }
+        syncVariantImage(match, product.images);
+      }
+    },
+    [isColorDisabled, product, selectedStorage, syncVariantImage],
+  );
+
+  const handleStorageSelect = useCallback(
+    (storage: string) => {
+      if (isStorageDisabled(storage)) return;
+      setSelectedStorage(storage);
+
+      if (!product?.variants) return;
+      let match = product.variants.find(
+        (v) =>
+          (!selectedColor || v.color === selectedColor) &&
+          v.storage === storage,
+      );
+      if (!match) {
+        match = product.variants.find((v) => v.storage === storage);
+      }
+      if (match) {
+        setSelectedVariant(match);
+        if (match.color) {
+          setSelectedColor(match.color);
+        }
+        syncVariantImage(match, product.images);
+      }
+    },
+    [isStorageDisabled, product, selectedColor, syncVariantImage],
+  );
+
+  const displayPrice = useMemo(() => {
+    if (selectedVariant) {
+      return formatPrice(selectedVariant.price);
+    }
+    if (!product) return "0 ₫";
+    return product.minPrice === product.maxPrice
+      ? formatPrice(product.minPrice)
+      : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`;
+  }, [product, selectedVariant]);
+
+  const displayOriginalPrice = useMemo(() => {
+    if (selectedVariant) {
+      return selectedVariant.originalPrice;
+    }
+    return product?.originalPrice;
+  }, [product, selectedVariant]);
+
+  const displayDiscountPercent = useMemo(() => {
+    if (selectedVariant) {
+      if (
+        selectedVariant.originalPrice &&
+        selectedVariant.originalPrice > selectedVariant.price
+      ) {
+        return Math.round(
+          ((selectedVariant.originalPrice - selectedVariant.price) /
+            selectedVariant.originalPrice) *
+            100,
+        );
+      }
+      return 0;
+    }
+    return product?.discountPercent || 0;
+  }, [product, selectedVariant]);
+
+  const hasDiscount =
+    displayDiscountPercent > 0 && displayOriginalPrice != null;
+
+  const currentStock = useMemo(() => {
+    if (selectedVariant) {
+      return selectedVariant.stockQuantity;
+    }
+    return product?.totalStock || 0;
+  }, [product, selectedVariant]);
+
+  const hasStock = currentStock > 0;
 
   // Loading skeleton state
   if (loading) {
@@ -240,15 +442,7 @@ export function ProductDetailPage() {
   }
 
   const galleryImages =
-    product.images && product.images.length > 0 ? product.images : [];
-
-  const displayPrice =
-    product.minPrice === product.maxPrice
-      ? formatPrice(product.minPrice)
-      : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`;
-
-  const hasDiscount =
-    product.discountPercent > 0 && product.originalPrice != null;
+    product?.images && product.images.length > 0 ? product.images : [];
 
   return (
     <Box sx={{ py: 3 }} data-testid="product-detail-container">
@@ -306,7 +500,7 @@ export function ProductDetailPage() {
             {/* Discount Badge */}
             {hasDiscount && (
               <Chip
-                label={`-${product.discountPercent}%`}
+                label={`-${displayDiscountPercent}%`}
                 size="small"
                 color="error"
                 sx={{
@@ -473,7 +667,7 @@ export function ProductDetailPage() {
           </Typography>
 
           {/* Rating & Sales */}
-          <Stack direction="row" spacing={2} alignItems="center" mb={2.5}>
+          <Stack direction="row" spacing={2} alignItems="center" mb={2}>
             <Stack direction="row" spacing={0.5} alignItems="center">
               <StarRoundedIcon sx={{ fontSize: 20, color: "#f59e0b" }} />
               <Typography variant="body2" fontWeight={700} color="text.primary">
@@ -495,7 +689,7 @@ export function ProductDetailPage() {
             />
             {/* Stock status */}
             <Stack direction="row" spacing={0.5} alignItems="center">
-              {product.hasStock ? (
+              {hasStock ? (
                 <>
                   <CheckCircleOutlineRoundedIcon
                     sx={{ fontSize: 18, color: "success.main" }}
@@ -506,7 +700,7 @@ export function ProductDetailPage() {
                     fontWeight={600}
                     data-testid="stock-status"
                   >
-                    Còn hàng ({product.totalStock} sản phẩm)
+                    Còn hàng ({currentStock} sản phẩm)
                   </Typography>
                 </>
               ) : (
@@ -526,6 +720,18 @@ export function ProductDetailPage() {
               )}
             </Stack>
           </Stack>
+
+          {/* Selected Variant SKU */}
+          {selectedVariant?.sku && (
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              data-testid="variant-sku"
+              sx={{ display: "block", mb: 2 }}
+            >
+              Mã SKU: <strong>{selectedVariant.sku}</strong>
+            </Typography>
+          )}
 
           {/* Price Box */}
           <Paper
@@ -552,18 +758,152 @@ export function ProductDetailPage() {
               >
                 {displayPrice}
               </Typography>
-              {hasDiscount && (
+              {hasDiscount && displayOriginalPrice && (
                 <Typography
                   variant="body1"
                   color="text.disabled"
                   sx={{ textDecoration: "line-through" }}
                   data-testid="original-price"
                 >
-                  {formatPrice(product.originalPrice!)}
+                  {formatPrice(displayOriginalPrice)}
                 </Typography>
               )}
             </Stack>
           </Paper>
+
+          {/* Variant Option Selector: Color Swatches */}
+          {availableColors.length > 0 && (
+            <Box mb={2.5} data-testid="variant-colors-container">
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                color="text.primary"
+                mb={1}
+              >
+                Màu sắc:{" "}
+                <Typography
+                  component="span"
+                  fontWeight={600}
+                  color="primary.main"
+                  data-testid="selected-color-label"
+                >
+                  {selectedColor || "Chưa chọn"}
+                </Typography>
+              </Typography>
+              <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                {availableColors.map((color) => {
+                  const isSelected = selectedColor === color;
+                  const disabled = isColorDisabled(color);
+                  return (
+                    <Button
+                      key={color}
+                      variant={isSelected ? "contained" : "outlined"}
+                      disabled={disabled}
+                      onClick={() => handleColorSelect(color)}
+                      data-testid={`color-option-${color}`}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        px: 2,
+                        py: 0.75,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderColor: isSelected ? "primary.main" : "#cbd5e1",
+                        bgcolor: isSelected
+                          ? "primary.main"
+                          : disabled
+                            ? "#f1f5f9"
+                            : "#ffffff",
+                        color: isSelected
+                          ? "#ffffff"
+                          : disabled
+                            ? "text.disabled"
+                            : "text.primary",
+                        boxShadow: isSelected
+                          ? "0 2px 6px rgba(37, 99, 235, 0.3)"
+                          : "none",
+                        "&:hover": {
+                          borderColor: isSelected
+                            ? "primary.dark"
+                            : "primary.main",
+                          bgcolor: isSelected ? "primary.dark" : "#f8fafc",
+                        },
+                      }}
+                    >
+                      {color}
+                    </Button>
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
+
+          {/* Variant Option Selector: Storage */}
+          {availableStorages.length > 0 && (
+            <Box mb={3} data-testid="variant-storages-container">
+              <Typography
+                variant="subtitle2"
+                fontWeight={700}
+                color="text.primary"
+                mb={1}
+              >
+                Dung lượng:{" "}
+                <Typography
+                  component="span"
+                  fontWeight={600}
+                  color="primary.main"
+                  data-testid="selected-storage-label"
+                >
+                  {selectedStorage || "Chưa chọn"}
+                </Typography>
+              </Typography>
+              <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                {availableStorages.map((storage) => {
+                  const isSelected = selectedStorage === storage;
+                  const disabled = isStorageDisabled(storage);
+                  return (
+                    <Button
+                      key={storage}
+                      variant={isSelected ? "contained" : "outlined"}
+                      disabled={disabled}
+                      onClick={() => handleStorageSelect(storage)}
+                      data-testid={`storage-option-${storage}`}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        px: 2,
+                        py: 0.75,
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        borderColor: isSelected ? "primary.main" : "#cbd5e1",
+                        bgcolor: isSelected
+                          ? "primary.main"
+                          : disabled
+                            ? "#f1f5f9"
+                            : "#ffffff",
+                        color: isSelected
+                          ? "#ffffff"
+                          : disabled
+                            ? "text.disabled"
+                            : "text.primary",
+                        boxShadow: isSelected
+                          ? "0 2px 6px rgba(37, 99, 235, 0.3)"
+                          : "none",
+                        "&:hover": {
+                          borderColor: isSelected
+                            ? "primary.dark"
+                            : "primary.main",
+                          bgcolor: isSelected ? "primary.dark" : "#f8fafc",
+                        },
+                      }}
+                    >
+                      {storage}
+                    </Button>
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
 
           {/* Short Description */}
           {product.description && (

@@ -264,6 +264,8 @@ export type StorefrontProductDetail = {
   salesCount: number;
   rating: number;
   variants: ProductVariantDetail[];
+  availableColors?: string[];
+  availableStorages?: string[];
   images: ProductImageDetail[];
   specifications: ProductSpecificationDetail[];
   createdAt: string;
