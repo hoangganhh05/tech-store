@@ -32,4 +32,14 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
             @Param("type") InventoryTransactionType type,
             Pageable pageable
     );
+
+    @Query("SELECT it.inventory.variant.product.id, COALESCE(SUM(ABS(it.quantityChange)), 0) " +
+            "FROM InventoryTransaction it " +
+            "WHERE it.inventory.variant.product.id IN :productIds " +
+            "AND it.transactionType = :type " +
+            "GROUP BY it.inventory.variant.product.id")
+    List<Object[]> sumSalesQuantityByProductIds(
+            @Param("productIds") java.util.Collection<Long> productIds,
+            @Param("type") InventoryTransactionType type
+    );
 }
