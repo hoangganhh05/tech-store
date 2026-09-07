@@ -130,7 +130,6 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
 
     expect(screen.getByText("iPhone 15 Pro Max")).toBeInTheDocument();
     expect(screen.getByText("MacBook Air M3")).toBeInTheDocument();
-    expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(null);
     expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
       expect.objectContaining({ categoryId: null }),
     );
@@ -147,7 +146,6 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
 
     expect(screen.getByText("iPhone 15 Pro Max")).toBeInTheDocument();
     expect(screen.queryByText("MacBook Air M3")).not.toBeInTheDocument();
-    expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(1);
     expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
       expect.objectContaining({ categoryId: 1 }),
     );
@@ -169,7 +167,6 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
     fireEvent.click(laptopChip);
 
     await waitFor(() => {
-      expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(2);
       expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
         expect.objectContaining({ categoryId: 2 }),
       );
@@ -274,7 +271,6 @@ describe("US-05.3: ProductListPage - Tìm kiếm sản phẩm theo từ khoá", 
     fireEvent.click(screen.getByTestId("clear-search-btn"));
 
     await waitFor(() => {
-      expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(null);
       expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
         expect.objectContaining({ categoryId: null }),
       );

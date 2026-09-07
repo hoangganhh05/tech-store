@@ -590,4 +590,121 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.data[0].name").value("Apple"))
                 .andExpect(jsonPath("$.data[1].name").value("Samsung"));
     }
+
+    @Test
+    @DisplayName("US-05.5: Sắp xếp theo giá tăng dần và giảm dần")
+    void getProducts_sortByPrice_shouldReturnOrderedProducts() throws Exception {
+        setupBaseData();
+
+        Product pCheap = productRepository.save(new Product("Cáp sạc Type-C", "Cáp", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pCheap, "CABLE-1", "Trắng", "1m",
+                new BigDecimal("200000"), null, 50, VariantStatus.ACTIVE));
+
+        Product pMid = productRepository.save(new Product("iPhone 13", "Phone", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pMid, "IP13-1", "Xanh", "128GB",
+                new BigDecimal("14000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pExpensive = productRepository.save(new Product("MacBook Pro M3 Max", "Laptop", brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pExpensive, "MBPM3-1", "Đen", "1TB",
+                new BigDecimal("60000000"), null, 5, VariantStatus.ACTIVE));
+
+        // Price ASC: Cáp sạc (200k) -> iPhone 13 (14M) -> MacBook (60M)
+        mockMvc.perform(get("/api/v1/products?sortBy=price&sortDir=asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                .andExpect(jsonPath("$.data[0].name").value("Cáp sạc Type-C"))
+                .andExpect(jsonPath("$.data[1].name").value("iPhone 13"))
+                .andExpect(jsonPath("$.data[2].name").value("MacBook Pro M3 Max"));
+
+        // Price DESC: MacBook (60M) -> iPhone 13 (14M) -> Cáp sạc (200k)
+        mockMvc.perform(get("/api/v1/products?sortBy=price&sortDir=desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                .andExpect(jsonPath("$.data[0].name").value("MacBook Pro M3 Max"))
+                .andExpect(jsonPath("$.data[1].name").value("iPhone 13"))
+                .andExpect(jsonPath("$.data[2].name").value("Cáp sạc Type-C"));
+    }
+
+    @Test
+    @DisplayName("US-05.5: Sắp xếp theo bán chạy nhất và mới nhất")
+    void getProducts_sortBySalesAndNewest_shouldReturnOrderedProducts() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("Sản phẩm ít bán", "SP 1", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant v1 = productVariantRepository.save(new ProductVariant(p1, "SP1-V", "Đen", "64GB",
+                new BigDecimal("5000000"), null, 20, VariantStatus.ACTIVE));
+        Inventory inv1 = inventoryRepository.save(new Inventory(v1, 20, 0, 5));
+        inventoryTransactionRepository.save(new InventoryTransaction(inv1, InventoryTransactionType.SALE, -2, null, null, "Sale 2", null));
+
+        Product p2 = productRepository.save(new Product("Sản phẩm bán chạy nhất", "SP 2", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant v2 = productVariantRepository.save(new ProductVariant(p2, "SP2-V", "Bạc", "128GB",
+                new BigDecimal("8000000"), null, 20, VariantStatus.ACTIVE));
+        Inventory inv2 = inventoryRepository.save(new Inventory(v2, 20, 0, 5));
+        inventoryTransactionRepository.save(new InventoryTransaction(inv2, InventoryTransactionType.SALE, -50, null, null, "Sale 50", null));
+
+        // Sort by salesCount DESC: p2 (50 sold) should come before p1 (2 sold)
+        mockMvc.perform(get("/api/v1/products?sortBy=salesCount&sortDir=desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].name").value("Sản phẩm bán chạy nhất"))
+                .andExpect(jsonPath("$.data[1].name").value("Sản phẩm ít bán"));
+
+        // Sort by createdAt DESC (newest first): p2 was created after p1
+        mockMvc.perform(get("/api/v1/products?sortBy=createdAt&sortDir=desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].name").value("Sản phẩm bán chạy nhất"))
+                .andExpect(jsonPath("$.data[1].name").value("Sản phẩm ít bán"));
+    }
+
+    @Test
+    @DisplayName("US-05.5: Sắp xếp kết hợp với bộ lọc danh mục và thương hiệu")
+    void getProducts_sortCombinedWithFilters_shouldReturnFilteredAndSorted() throws Exception {
+        setupBaseData();
+
+        Product pPhoneApple1 = productRepository.save(new Product("iPhone 13", "Phone", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pPhoneApple1, "IP13-V", "Đen", "128GB",
+                new BigDecimal("15000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pPhoneApple2 = productRepository.save(new Product("iPhone 15", "Phone", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pPhoneApple2, "IP15-V", "Hồng", "128GB",
+                new BigDecimal("22000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pPhoneSamsung = productRepository.save(new Product("Galaxy S24", "Phone", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pPhoneSamsung, "S24-V", "Xám", "128GB",
+                new BigDecimal("18000000"), null, 10, VariantStatus.ACTIVE));
+
+        // Filter categoryPhone + brandApple + sortBy=price&sortDir=desc
+        // Should only return iPhone 15 (22M) then iPhone 13 (15M)
+        mockMvc.perform(get("/api/v1/products?categoryId=" + categoryPhone.getId()
+                + "&brandIds=" + brandApple.getId()
+                + "&sortBy=price&sortDir=desc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15"))
+                .andExpect(jsonPath("$.data[1].name").value("iPhone 13"));
+    }
+
+    @Test
+    @DisplayName("US-05.5: Validate lỗi khi sortBy hoặc sortDir không hợp lệ")
+    void getProducts_sortValidation_shouldReturnBadRequest() throws Exception {
+        setupBaseData();
+
+        // Invalid sortBy
+        mockMvc.perform(get("/api/v1/products?sortBy=unknown_column"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Invalid sortDir
+        mockMvc.perform(get("/api/v1/products?sortBy=price&sortDir=sideways"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }
