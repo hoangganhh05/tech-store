@@ -6,6 +6,7 @@ import { ProductListPage } from "../modules/products/ProductListPage";
 import {
   getStorefrontProducts,
   getStorefrontCategories,
+  getStorefrontBrands,
   searchStorefrontProducts,
   type StorefrontProduct,
 } from "../services/storefrontService";
@@ -14,6 +15,7 @@ import type { Category } from "../services/categoryService";
 vi.mock("../services/storefrontService", () => ({
   getStorefrontProducts: vi.fn(),
   getStorefrontCategories: vi.fn(),
+  getStorefrontBrands: vi.fn(),
   searchStorefrontProducts: vi.fn(),
   getStorefrontHomeData: vi.fn(),
   getFeaturedProducts: vi.fn(),
@@ -23,6 +25,7 @@ vi.mock("../services/storefrontService", () => ({
 
 const mockedGetStorefrontProducts = vi.mocked(getStorefrontProducts);
 const mockedGetStorefrontCategories = vi.mocked(getStorefrontCategories);
+const mockedGetStorefrontBrands = vi.mocked(getStorefrontBrands);
 const mockedSearchStorefrontProducts = vi.mocked(searchStorefrontProducts);
 
 const mockCategories: Category[] = [
@@ -106,6 +109,7 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetStorefrontCategories.mockResolvedValue(mockCategories);
+    mockedGetStorefrontBrands.mockResolvedValue([]);
   });
 
   it("renders page intro and all products with total count by default", async () => {
@@ -127,6 +131,9 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
     expect(screen.getByText("iPhone 15 Pro Max")).toBeInTheDocument();
     expect(screen.getByText("MacBook Air M3")).toBeInTheDocument();
     expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(null);
+    expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryId: null }),
+    );
   });
 
   it("filters products by categoryId from URL query param and displays category name", async () => {
@@ -141,6 +148,9 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
     expect(screen.getByText("iPhone 15 Pro Max")).toBeInTheDocument();
     expect(screen.queryByText("MacBook Air M3")).not.toBeInTheDocument();
     expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(1);
+    expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryId: 1 }),
+    );
   });
 
   it("switches category when clicking category chip", async () => {
@@ -160,6 +170,9 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
 
     await waitFor(() => {
       expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(2);
+      expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: 2 }),
+      );
     });
   });
 
@@ -202,6 +215,7 @@ describe("US-05.3: ProductListPage - Tìm kiếm sản phẩm theo từ khoá", 
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetStorefrontCategories.mockResolvedValue(mockCategories);
+    mockedGetStorefrontBrands.mockResolvedValue([]);
   });
 
   it("calls searchStorefrontProducts when q query parameter is present", async () => {
@@ -261,6 +275,9 @@ describe("US-05.3: ProductListPage - Tìm kiếm sản phẩm theo từ khoá", 
 
     await waitFor(() => {
       expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(null);
+      expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: null }),
+      );
       expect(screen.getByText("Tìm thấy 2 sản phẩm")).toBeInTheDocument();
     });
   });

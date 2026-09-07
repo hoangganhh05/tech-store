@@ -449,4 +449,145 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data", hasSize(0)));
     }
+
+    @Test
+    @DisplayName("US-05.4: Lọc sản phẩm theo thương hiệu (multi-select)")
+    void getProducts_filterByBrands_shouldReturnMatchingProducts() throws Exception {
+        setupBaseData();
+
+        Product pApple = productRepository.save(new Product("iPhone 15", "Apple Phone", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pApple, "IP15-1", "Đen", "128GB",
+                new BigDecimal("20000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pSamsung = productRepository.save(new Product("Galaxy S24", "Samsung Phone", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pSamsung, "S24-1", "Xám", "128GB",
+                new BigDecimal("18000000"), null, 10, VariantStatus.ACTIVE));
+
+        // Single brand filter
+        mockMvc.perform(get("/api/v1/products?brandIds=" + brandApple.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15"));
+
+        // Multi-select brands filter
+        mockMvc.perform(get("/api/v1/products?brandIds=" + brandApple.getId() + "," + brandSamsung.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("US-05.4: Lọc sản phẩm theo khoảng giá (min-max)")
+    void getProducts_filterByPriceRange_shouldReturnMatchingProducts() throws Exception {
+        setupBaseData();
+
+        Product pLow = productRepository.save(new Product("Tai nghe giá rẻ", "Tai nghe", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pLow, "TN-1", "Trắng", "Std",
+                new BigDecimal("2000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pMid = productRepository.save(new Product("Galaxy A55", "Tầm trung", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pMid, "A55-1", "Xanh", "128GB",
+                new BigDecimal("9500000"), null, 10, VariantStatus.ACTIVE));
+
+        Product pHigh = productRepository.save(new Product("MacBook Pro 16", "Cao cấp", brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(pHigh, "MBP16-1", "Bạc", "512GB",
+                new BigDecimal("50000000"), null, 5, VariantStatus.ACTIVE));
+
+        // priceMax = 5,000,000 -> only pLow
+        mockMvc.perform(get("/api/v1/products?priceMax=5000000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Tai nghe giá rẻ"));
+
+        // priceMin = 5,000,000 and priceMax = 15,000,000 -> only pMid
+        mockMvc.perform(get("/api/v1/products?priceMin=5000000&priceMax=15000000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Galaxy A55"));
+
+        // priceMin = 20,000,000 -> only pHigh
+        mockMvc.perform(get("/api/v1/products?priceMin=20000000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("MacBook Pro 16"));
+    }
+
+    @Test
+    @DisplayName("US-05.4: Lọc kết hợp danh mục, thương hiệu và khoảng giá")
+    void getProducts_combinedFilters_shouldReturnMatchingProducts() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("iPhone 15 Pro", "Apple Phone", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p1, "IP15P-1", "Titan", "128GB",
+                new BigDecimal("25000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product p2 = productRepository.save(new Product("iPhone SE", "Apple Budget", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p2, "IPSE-1", "Đỏ", "64GB",
+                new BigDecimal("10000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product p3 = productRepository.save(new Product("MacBook Air", "Apple Laptop", brandApple, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p3, "MBA-1", "Vàng", "256GB",
+                new BigDecimal("25000000"), null, 5, VariantStatus.ACTIVE));
+
+        Product p4 = productRepository.save(new Product("Galaxy S24", "Samsung Phone", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p4, "S24-1", "Đen", "128GB",
+                new BigDecimal("22000000"), null, 10, VariantStatus.ACTIVE));
+
+        // Combined filter: categoryPhone + brandApple + priceMin=20,000,000
+        // Should return only iPhone 15 Pro (p2 is too cheap, p3 is wrong category, p4 is Samsung)
+        mockMvc.perform(get("/api/v1/products?categoryId=" + categoryPhone.getId()
+                + "&brandIds=" + brandApple.getId()
+                + "&priceMin=20000000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15 Pro"));
+    }
+
+    @Test
+    @DisplayName("US-05.4: Validate lỗi khoảng giá hoặc thương hiệu không hợp lệ")
+    void getProducts_filterValidation_shouldReturnBadRequest() throws Exception {
+        setupBaseData();
+
+        // priceMin > priceMax
+        mockMvc.perform(get("/api/v1/products?priceMin=30000000&priceMax=20000000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // priceMin < 0
+        mockMvc.perform(get("/api/v1/products?priceMin=-100"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // priceMax < 0
+        mockMvc.perform(get("/api/v1/products?priceMax=-500"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // brandIds with invalid negative id
+        mockMvc.perform(get("/api/v1/products?brandIds=-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("US-05.4: API public lấy danh sách thương hiệu phục vụ bộ lọc")
+    void getFeaturedBrands_shouldReturnBrandList() throws Exception {
+        setupBaseData();
+
+        mockMvc.perform(get("/api/v1/storefront/brands"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(2)))
+                .andExpect(jsonPath("$.data[0].name").value("Apple"))
+                .andExpect(jsonPath("$.data[1].name").value("Samsung"));
+    }
 }

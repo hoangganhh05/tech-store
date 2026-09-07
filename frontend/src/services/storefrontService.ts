@@ -1,5 +1,13 @@
 import { httpClient } from "./httpClient";
 import type { Category } from "./categoryService";
+import type { Brand } from "./brandService";
+
+export type ProductFilterParams = {
+  categoryId?: number | null;
+  brandIds?: number[];
+  priceMin?: number | null;
+  priceMax?: number | null;
+};
 
 export type StorefrontProduct = {
   id: number;
@@ -84,12 +92,35 @@ export async function getOnSaleProducts(
 
 export async function getStorefrontProducts(
   categoryId?: number | null,
+  filtersOrCategoryId?: ProductFilterParams | number | null,
 ): Promise<StorefrontProduct[]> {
+  const params: Record<string, unknown> = {};
+  if (typeof filtersOrCategoryId === "number") {
+    params.categoryId = filtersOrCategoryId;
+  } else if (filtersOrCategoryId && typeof filtersOrCategoryId === "object") {
+    if (filtersOrCategoryId.categoryId) {
+      params.categoryId = filtersOrCategoryId.categoryId;
+    }
+    if (
+      filtersOrCategoryId.brandIds &&
+      filtersOrCategoryId.brandIds.length > 0
+    ) {
+      params.brandIds = filtersOrCategoryId.brandIds.join(",");
+    }
+    if (filtersOrCategoryId.priceMin != null) {
+      params.priceMin = filtersOrCategoryId.priceMin;
+    }
+    if (filtersOrCategoryId.priceMax != null) {
+      params.priceMax = filtersOrCategoryId.priceMax;
+    }
+  }
+
   const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
     "/products",
     {
       params: categoryId ? { categoryId } : {},
     },
+    { params },
   );
   return response.data.data;
 }
@@ -98,6 +129,12 @@ export async function getStorefrontCategories(): Promise<Category[]> {
   const response = await httpClient.get<ApiResponse<Category[]>>(
     "/storefront/categories",
   );
+  return response.data.data;
+}
+
+export async function getStorefrontBrands(): Promise<Brand[]> {
+  const response =
+    await httpClient.get<ApiResponse<Brand[]>>("/storefront/brands");
   return response.data.data;
 }
 

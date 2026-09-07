@@ -1,6 +1,7 @@
 package com.techstore.controller;
 
 import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
@@ -83,6 +84,13 @@ public class StorefrontController {
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getFeaturedCategories() {
         List<CategoryResponse> response = storefrontProductService.getFeaturedCategories();
         return ResponseEntity.ok(ApiResponse.success("Lấy danh mục nổi bật thành công", response));
+    }
+
+    @GetMapping("/brands")
+    @Operation(summary = "Get featured brands for storefront filter")
+    public ResponseEntity<ApiResponse<List<BrandResponse>>> getFeaturedBrands() {
+        List<BrandResponse> response = storefrontProductService.getFeaturedBrands();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách thương hiệu thành công", response));
     }
 }
 
