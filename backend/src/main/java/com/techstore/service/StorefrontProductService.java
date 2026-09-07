@@ -19,5 +19,7 @@ public interface StorefrontProductService {
     List<CategoryResponse> getFeaturedCategories();
 
     List<StorefrontProductResponse> getProducts(Long categoryId);
+
+    List<StorefrontProductResponse> searchProducts(String query);
 }
 

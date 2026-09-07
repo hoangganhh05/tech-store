@@ -308,4 +308,145 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    @DisplayName("US-05.3: Tìm kiếm sản phẩm theo tên chính xác và không phân biệt hoa thường")
+    void searchProducts_caseInsensitive_shouldReturnMatches() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("iPhone 15 Pro", "Flagship Apple", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p1, "IP15P-1", "Titan", "128GB",
+                new BigDecimal("25000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product p2 = productRepository.save(new Product("Samsung Galaxy S24", "Flagship Samsung", brandSamsung, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p2, "S24-1", "Xám", "128GB",
+                new BigDecimal("18000000"), null, 10, VariantStatus.ACTIVE));
+
+        // Search "iphone" in lowercase -> returns iPhone 15 Pro
+        mockMvc.perform(get("/api/v1/products/search?q=iphone"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("iPhone 15 Pro"));
+
+        // Search "GALAXY" in uppercase -> returns Samsung Galaxy S24
+        mockMvc.perform(get("/api/v1/products/search?q=GALAXY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Samsung Galaxy S24"));
+    }
+
+    @Test
+    @DisplayName("US-05.3: Tìm kiếm sản phẩm không phân biệt dấu tiếng Việt")
+    void searchProducts_accentInsensitive_shouldReturnMatches() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("Điện thoại Xiaomi 14", "Chính hãng DGW", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p1, "XM14-1", "Đen", "256GB",
+                new BigDecimal("15000000"), null, 10, VariantStatus.ACTIVE));
+
+        Product p2 = productRepository.save(new Product("Bàn phím cơ AKKO", "Bàn phím cơ gõ êm", brandSamsung, categoryLaptop, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p2, "AKKO-1", "Hồng", "TKL",
+                new BigDecimal("1200000"), null, 15, VariantStatus.ACTIVE));
+
+        // Search without accents: "dien thoai" matches "Điện thoại Xiaomi 14"
+        mockMvc.perform(get("/api/v1/products/search?q=dien thoai"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Điện thoại Xiaomi 14"));
+
+        // Search without accents: "ban phim" matches "Bàn phím cơ AKKO"
+        mockMvc.perform(get("/api/v1/products/search?q=ban phim"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Bàn phím cơ AKKO"));
+
+        // Search with accents: "Điện thoại" matches "Điện thoại Xiaomi 14"
+        mockMvc.perform(get("/api/v1/products/search?q=Điện thoại"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Điện thoại Xiaomi 14"));
+    }
+
+    @Test
+    @DisplayName("US-05.3: Tìm kiếm theo thương hiệu và mô tả sản phẩm")
+    void searchProducts_brandAndDescription_shouldReturnMatches() throws Exception {
+        setupBaseData();
+
+        Product p1 = productRepository.save(new Product("Tai nghe Pro", "Màn hình OLED và chống ồn", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        productVariantRepository.save(new ProductVariant(p1, "TNP-1", "Trắng", "Standard",
+                new BigDecimal("5000000"), null, 8, VariantStatus.ACTIVE));
+
+        // Search by brand name "Apple"
+        mockMvc.perform(get("/api/v1/products/search?q=Apple"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Tai nghe Pro"));
+
+        // Search by description "chong on" (without accent)
+        mockMvc.perform(get("/api/v1/products/search?q=chong on"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(1)))
+                .andExpect(jsonPath("$.data[0].name").value("Tai nghe Pro"));
+    }
+
+    @Test
+    @DisplayName("US-05.3: Validate từ khoá rỗng, whitespace hoặc thiếu param trả về lỗi 400")
+    void searchProducts_validationErrors_shouldReturnBadRequest() throws Exception {
+        setupBaseData();
+
+        // Empty query
+        mockMvc.perform(get("/api/v1/products/search?q="))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Whitespace only query
+        mockMvc.perform(get("/api/v1/products/search?q=   "))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // Missing q parameter
+        mockMvc.perform(get("/api/v1/products/search"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("US-05.3: Không tìm thấy kết quả trả về mảng rỗng 200 OK và loại trừ sản phẩm ẩn/đã xoá")
+    void searchProducts_emptyAndExcludedProducts_shouldBehaveCorrectly() throws Exception {
+        setupBaseData();
+
+        // Inactive product matching keyword
+        Product inactiveProduct = productRepository.save(new Product("iPhone Cũ", "Apple", brandApple, categoryPhone, ProductStatus.INACTIVE));
+        productVariantRepository.save(new ProductVariant(inactiveProduct, "IP-OLD", "Đen", "64GB",
+                new BigDecimal("5000000"), null, 1, VariantStatus.ACTIVE));
+
+        // Deleted product matching keyword
+        Product deletedProduct = new Product("iPhone Xoá", "Apple", brandApple, categoryPhone, ProductStatus.ACTIVE);
+        deletedProduct.softDelete();
+        productRepository.save(deletedProduct);
+        productVariantRepository.save(new ProductVariant(deletedProduct, "IP-DEL", "Đen", "64GB",
+                new BigDecimal("5000000"), null, 1, VariantStatus.ACTIVE));
+
+        // Search keyword "iPhone": should not return inactive or deleted product
+        mockMvc.perform(get("/api/v1/products/search?q=iPhone"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(0)));
+
+        // Non-existent search term
+        mockMvc.perform(get("/api/v1/products/search?q=KhongTonTaiBatKyDau"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data", hasSize(0)));
+    }
 }

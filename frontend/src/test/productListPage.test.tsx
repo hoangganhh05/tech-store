@@ -6,6 +6,7 @@ import { ProductListPage } from "../modules/products/ProductListPage";
 import {
   getStorefrontProducts,
   getStorefrontCategories,
+  searchStorefrontProducts,
   type StorefrontProduct,
 } from "../services/storefrontService";
 import type { Category } from "../services/categoryService";
@@ -13,6 +14,7 @@ import type { Category } from "../services/categoryService";
 vi.mock("../services/storefrontService", () => ({
   getStorefrontProducts: vi.fn(),
   getStorefrontCategories: vi.fn(),
+  searchStorefrontProducts: vi.fn(),
   getStorefrontHomeData: vi.fn(),
   getFeaturedProducts: vi.fn(),
   getNewArrivals: vi.fn(),
@@ -21,6 +23,7 @@ vi.mock("../services/storefrontService", () => ({
 
 const mockedGetStorefrontProducts = vi.mocked(getStorefrontProducts);
 const mockedGetStorefrontCategories = vi.mocked(getStorefrontCategories);
+const mockedSearchStorefrontProducts = vi.mocked(searchStorefrontProducts);
 
 const mockCategories: Category[] = [
   {
@@ -191,6 +194,99 @@ describe("US-05.2: ProductListPage - Xem danh sách sản phẩm theo từng dan
     await waitFor(() => {
       expect(screen.getByText("Tìm thấy 0 sản phẩm")).toBeInTheDocument();
       expect(screen.getByText("Chưa có sản phẩm nào")).toBeInTheDocument();
+    });
+  });
+});
+
+describe("US-05.3: ProductListPage - Tìm kiếm sản phẩm theo từ khoá", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetStorefrontCategories.mockResolvedValue(mockCategories);
+  });
+
+  it("calls searchStorefrontProducts when q query parameter is present", async () => {
+    mockedSearchStorefrontProducts.mockResolvedValue([mockProductPhone]);
+
+    renderProductListPage("/products?q=iPhone");
+
+    expect(
+      screen.getByRole("heading", { name: /Kết quả tìm kiếm cho: "iPhone"/i }),
+    ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(mockedSearchStorefrontProducts).toHaveBeenCalledWith("iPhone");
+      expect(screen.getByText("Tìm thấy 1 sản phẩm")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("iPhone 15 Pro Max")).toBeInTheDocument();
+    expect(screen.getByText('"iPhone"')).toBeInTheDocument();
+    expect(mockedGetStorefrontProducts).not.toHaveBeenCalled();
+  });
+
+  it("displays empty search state with helpful suggestions when search yields no products", async () => {
+    mockedSearchStorefrontProducts.mockResolvedValue([]);
+
+    renderProductListPage("/products?q=khongtontai");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("empty-search-heading")).toHaveTextContent(
+        "Không tìm thấy sản phẩm nào",
+      );
+    });
+
+    expect(
+      screen.getByText(/Không có kết quả nào khớp với từ khóa "khongtontai"/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Gợi ý mở rộng tìm kiếm:")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Kiểm tra lại chính tả của từ khóa đã nhập/i),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("clear-search-btn")).toBeInTheDocument();
+  });
+
+  it("clears search query and returns to all products when clicking clear search button", async () => {
+    mockedSearchStorefrontProducts.mockResolvedValue([]);
+    mockedGetStorefrontProducts.mockResolvedValue([
+      mockProductPhone,
+      mockProductLaptop,
+    ]);
+
+    renderProductListPage("/products?q=khongtontai");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("clear-search-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("clear-search-btn"));
+
+    await waitFor(() => {
+      expect(mockedGetStorefrontProducts).toHaveBeenCalledWith(null);
+      expect(screen.getByText("Tìm thấy 2 sản phẩm")).toBeInTheDocument();
+    });
+  });
+
+  it("handles search error and allows retrying", async () => {
+    mockedSearchStorefrontProducts.mockRejectedValueOnce(
+      new Error("Lỗi tìm kiếm sản phẩm"),
+    );
+
+    renderProductListPage("/products?q=fail");
+
+    await waitFor(() => {
+      expect(screen.getByText("Lỗi tìm kiếm sản phẩm")).toBeInTheDocument();
+    });
+
+    const retryBtn = screen.getByRole("button", { name: /Thử lại/i });
+    expect(retryBtn).toBeInTheDocument();
+
+    mockedSearchStorefrontProducts.mockResolvedValueOnce([mockProductLaptop]);
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Lỗi tìm kiếm sản phẩm"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("MacBook Air M3")).toBeInTheDocument();
     });
   });
 });
