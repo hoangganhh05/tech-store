@@ -1,5 +1,6 @@
 package com.techstore.service.impl;
 
+import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
@@ -12,6 +13,7 @@ import com.techstore.enums.InventoryTransactionType;
 import com.techstore.enums.ProductStatus;
 import com.techstore.enums.VariantStatus;
 import com.techstore.exception.BusinessException;
+import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
 import com.techstore.repository.ProductImageRepository;
@@ -41,6 +43,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     private final ProductImageRepository productImageRepository;
     private final CategoryRepository categoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final BrandRepository brandRepository;
 
     public StorefrontProductServiceImpl(
             ProductRepository productRepository,
@@ -48,12 +51,15 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             ProductImageRepository productImageRepository,
             CategoryRepository categoryRepository,
             InventoryTransactionRepository inventoryTransactionRepository
+            InventoryTransactionRepository inventoryTransactionRepository,
+            BrandRepository brandRepository
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.productImageRepository = productImageRepository;
         this.categoryRepository = categoryRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
+        this.brandRepository = brandRepository;
     }
 
     @Override
@@ -119,6 +125,16 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     @Override
     public List<StorefrontProductResponse> getProducts(Long categoryId) {
         List<Product> products;
+        return getProducts(categoryId, null, null, null);
+    }
+
+    @Override
+    public List<StorefrontProductResponse> getProducts(
+            Long categoryId,
+            List<Long> brandIds,
+            BigDecimal priceMin,
+            BigDecimal priceMax
+    ) {
         if (categoryId != null) {
             if (categoryId <= 0) {
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã danh mục không hợp lệ");
@@ -128,11 +144,68 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             if (!Boolean.TRUE.equals(category.getIsActive())) {
                 throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND, "Danh mục không tồn tại hoặc đã bị ẩn");
             }
+        }
+
+        if (priceMin != null && priceMin.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Giá tối thiểu không được âm");
+        }
+        if (priceMax != null && priceMax.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Giá tối đa không được âm");
+        }
+        if (priceMin != null && priceMax != null && priceMin.compareTo(priceMax) > 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Giá tối thiểu không được lớn hơn giá tối đa");
+        }
+
+        List<Long> validBrandIds = null;
+        if (brandIds != null && !brandIds.isEmpty()) {
+            for (Long bId : brandIds) {
+                if (bId == null || bId <= 0) {
+                    throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID thương hiệu không hợp lệ");
+                }
+            }
+            validBrandIds = brandIds;
+        }
+
+        List<Product> products;
+        if (categoryId != null) {
             products = productRepository.findByCategoryOrParentCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE);
         } else {
             products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
         }
         return mapToStorefrontProductResponses(products);
+
+        if (validBrandIds != null) {
+            final List<Long> filterBrandIds = validBrandIds;
+            products = products.stream()
+                    .filter(p -> p.getBrand() != null && filterBrandIds.contains(p.getBrand().getId()))
+                    .toList();
+        }
+
+        List<StorefrontProductResponse> responses = mapToStorefrontProductResponses(products);
+
+        if (priceMin != null || priceMax != null) {
+            responses = responses.stream()
+                    .filter(p -> {
+                        if (priceMin != null && p.maxPrice().compareTo(priceMin) < 0) {
+                            return false;
+                        }
+                        if (priceMax != null && p.minPrice().compareTo(priceMax) > 0) {
+                            return false;
+                        }
+                        return true;
+                    })
+                    .toList();
+        }
+
+        return responses;
+    }
+
+    @Override
+    public List<BrandResponse> getFeaturedBrands() {
+        return brandRepository.findAllByOrderByNameAsc()
+                .stream()
+                .map(BrandResponse::from)
+                .toList();
     }
 
     private static final Pattern ACCENT_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");

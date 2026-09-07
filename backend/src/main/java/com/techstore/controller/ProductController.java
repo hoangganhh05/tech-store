@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -44,10 +45,16 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Get products by category or all active products")
+    @Operation(summary = "Get products with optional combined filters (categoryId, brandIds, priceMin, priceMax)")
     public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getProducts(
             @RequestParam(required = false) Long categoryId
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) List<Long> brandIds,
+            @RequestParam(required = false) BigDecimal priceMin,
+            @RequestParam(required = false) BigDecimal priceMax
     ) {
         List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId);
+        List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId, brandIds, priceMin, priceMax);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
     }
 
