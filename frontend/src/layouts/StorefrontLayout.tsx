@@ -1,4 +1,5 @@
 import {
+  Alert,
   AppBar,
   Badge,
   Box,
@@ -6,6 +7,7 @@ import {
   Container,
   IconButton,
   InputAdornment,
+  Snackbar,
   Stack,
   TextField,
   Toolbar,
@@ -38,7 +40,7 @@ export function StorefrontLayout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { isAuthenticated, user, signOut } = useAuth();
-  const { cartCount } = useCart();
+  const { cartCount, syncNotification, clearSyncNotification } = useCart();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState(
     searchParams.get("q") || "",
@@ -228,6 +230,22 @@ export function StorefrontLayout() {
           </Typography>
         </Container>
       </Box>
+      <Snackbar
+        open={Boolean(syncNotification)}
+        autoHideDuration={4000}
+        onClose={clearSyncNotification}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={clearSyncNotification}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+          data-testid="sync-cart-toast"
+        >
+          {syncNotification}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
