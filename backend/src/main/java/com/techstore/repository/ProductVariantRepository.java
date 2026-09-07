@@ -22,6 +22,8 @@ public interface ProductVariantRepository extends JpaRepository<ProductVariant, 
 
     Optional<ProductVariant> findByIdAndProductIdAndIsDeletedFalse(Long id, Long productId);
 
+    Optional<ProductVariant> findByIdAndIsDeletedFalse(Long id);
+
     boolean existsBySkuIgnoreCase(String sku);
 
     boolean existsBySkuIgnoreCaseAndIdNot(String sku, Long id);

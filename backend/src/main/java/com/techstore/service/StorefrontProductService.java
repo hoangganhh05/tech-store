@@ -4,7 +4,9 @@ import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
+import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
+import com.techstore.dto.response.VariantStockResponse;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -41,5 +43,11 @@ public interface StorefrontProductService {
     List<StorefrontProductResponse> searchProducts(String query);
 
     List<BrandResponse> getFeaturedBrands();
+
+    StorefrontProductDetailResponse getProductDetail(Long id);
+
+    VariantStockResponse getVariantStock(Long productId, Long variantId);
+
+    List<StorefrontProductResponse> getRelatedProducts(Long productId, int limit);
 }
 

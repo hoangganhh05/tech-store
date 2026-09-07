@@ -2,17 +2,21 @@ package com.techstore.controller;
 
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.PageResponse;
+import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
+import com.techstore.dto.response.VariantStockResponse;
 import com.techstore.service.StorefrontProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -105,6 +109,46 @@ public class ProductController {
     ) {
         List<StorefrontProductResponse> response = storefrontProductService.getOnSaleProducts(limit);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm khuyến mãi thành công", response));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get storefront product details by ID")
+    public ResponseEntity<ApiResponse<StorefrontProductDetailResponse>> getProductDetail(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long id
+    ) {
+        StorefrontProductDetailResponse response = storefrontProductService.getProductDetail(id);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin chi tiết sản phẩm thành công", response));
+    }
+
+    @GetMapping("/{productId}/variants/{variantId}/stock")
+    @Operation(summary = "Get variant stock status and quantity")
+    public ResponseEntity<ApiResponse<VariantStockResponse>> getVariantStock(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long productId,
+            @PathVariable
+            @Positive(message = "ID biến thể không hợp lệ")
+            Long variantId
+    ) {
+        VariantStockResponse response = storefrontProductService.getVariantStock(productId, variantId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin tồn kho biến thể thành công", response));
+    }
+
+    @GetMapping("/{id}/related")
+    @Operation(summary = "Get related products by category/brand, excluding current product")
+    public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getRelatedProducts(
+            @PathVariable
+            @Positive(message = "ID sản phẩm không hợp lệ")
+            Long id,
+            @RequestParam(defaultValue = "8")
+            @Min(value = 1, message = "Số lượng sản phẩm tối thiểu là 1")
+            @Max(value = 50, message = "Số lượng sản phẩm tối đa là 50")
+            int limit
+    ) {
+        List<StorefrontProductResponse> response = storefrontProductService.getRelatedProducts(id, limit);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm liên quan thành công", response));
     }
 }
 

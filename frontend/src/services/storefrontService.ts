@@ -207,3 +207,109 @@ export async function searchStorefrontProducts(
   );
   return response.data.data;
 }
+
+export type ProductVariantDetail = {
+  id: number;
+  productId: number;
+  productName: string;
+  sku: string;
+  color: string;
+  storage: string;
+  price: number;
+  originalPrice?: number | null;
+  stockQuantity: number;
+  status: string;
+  stockStatus?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductImageDetail = {
+  id: number;
+  productId: number;
+  variantId?: number | null;
+  variantSku?: string | null;
+  variantColor?: string | null;
+  imageUrl: string;
+  isPrimary: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductSpecificationDetail = {
+  id: number;
+  productId: number;
+  specKey: string;
+  specValue: string;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StorefrontProductDetail = {
+  id: number;
+  name: string;
+  description?: string | null;
+  brandId?: number | null;
+  brandName?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
+  status: string;
+  minPrice: number;
+  maxPrice: number;
+  originalPrice?: number | null;
+  discountPercent: number;
+  totalStock: number;
+  hasStock: boolean;
+  salesCount: number;
+  rating: number;
+  variants: ProductVariantDetail[];
+  availableColors?: string[];
+  availableStorages?: string[];
+  images: ProductImageDetail[];
+  specifications: ProductSpecificationDetail[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function getStorefrontProductDetail(
+  id: number | string,
+): Promise<StorefrontProductDetail> {
+  const response = await httpClient.get<ApiResponse<StorefrontProductDetail>>(
+    `/products/${id}`,
+  );
+  return response.data.data;
+}
+
+export type VariantStock = {
+  variantId: number;
+  productId: number;
+  sku: string;
+  stockQuantity: number;
+  stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | string;
+  isAvailable: boolean;
+};
+
+export async function getVariantStock(
+  productId: number | string,
+  variantId: number | string,
+): Promise<VariantStock> {
+  const response = await httpClient.get<ApiResponse<VariantStock>>(
+    `/products/${productId}/variants/${variantId}/stock`,
+  );
+  return response.data.data;
+}
+
+export async function getRelatedProducts(
+  productId: number | string,
+  limit = 8,
+): Promise<StorefrontProduct[]> {
+  const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
+    `/products/${productId}/related`,
+    {
+      params: { limit },
+    },
+  );
+  return response.data.data;
+}

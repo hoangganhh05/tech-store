@@ -3,11 +3,17 @@ package com.techstore.service.impl;
 import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
 import com.techstore.dto.response.PageResponse;
+import com.techstore.dto.response.ProductImageResponse;
+import com.techstore.dto.response.ProductSpecificationResponse;
+import com.techstore.dto.response.ProductVariantResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
+import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
+import com.techstore.dto.response.VariantStockResponse;
 import com.techstore.entity.Category;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductImage;
+import com.techstore.entity.ProductSpecification;
 import com.techstore.entity.ProductVariant;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.InventoryTransactionType;
@@ -19,6 +25,7 @@ import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.repository.ProductSpecificationRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.service.StorefrontProductService;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +51,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     private final ProductRepository productRepository;
     private final ProductVariantRepository productVariantRepository;
     private final ProductImageRepository productImageRepository;
+    private final ProductSpecificationRepository productSpecificationRepository;
     private final CategoryRepository categoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final BrandRepository brandRepository;
@@ -52,6 +60,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             ProductRepository productRepository,
             ProductVariantRepository productVariantRepository,
             ProductImageRepository productImageRepository,
+            ProductSpecificationRepository productSpecificationRepository,
             CategoryRepository categoryRepository,
             InventoryTransactionRepository inventoryTransactionRepository,
             BrandRepository brandRepository
@@ -59,6 +68,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
         this.productImageRepository = productImageRepository;
+        this.productSpecificationRepository = productSpecificationRepository;
         this.categoryRepository = categoryRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
         this.brandRepository = brandRepository;
@@ -460,6 +470,199 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                     product.getCreatedAt()
             );
         }).toList();
+    }
+
+    @Override
+    public StorefrontProductDetailResponse getProductDetail(Long id) {
+        if (id == null || id <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID sản phẩm không hợp lệ");
+        }
+
+        Product product = productRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm"));
+
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm đã ngừng kinh doanh");
+        }
+
+        List<ProductVariant> variants = productVariantRepository.findByProductIdAndIsDeletedFalseOrderByCreatedAtAsc(id);
+        List<ProductVariantResponse> variantResponses = variants.stream()
+                .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
+                .map(ProductVariantResponse::from)
+                .toList();
+
+        List<ProductImage> images = productImageRepository.findByProductIdOrderByIsPrimaryDescDisplayOrderAscIdAsc(id);
+        List<ProductImageResponse> imageResponses = images.stream()
+                .map(ProductImageResponse::from)
+                .toList();
+
+        List<ProductSpecification> specs = productSpecificationRepository.findByProductIdOrderByDisplayOrderAscIdAsc(id);
+        List<ProductSpecificationResponse> specResponses = specs.stream()
+                .map(ProductSpecificationResponse::from)
+                .toList();
+
+        BigDecimal minPrice = BigDecimal.ZERO;
+        BigDecimal maxPrice = BigDecimal.ZERO;
+        BigDecimal originalPrice = null;
+        int discountPercent = 0;
+        int totalStock = 0;
+
+        List<ProductVariant> activeVariants = variants.stream()
+                .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
+                .toList();
+
+        if (!activeVariants.isEmpty()) {
+            minPrice = activeVariants.stream()
+                    .map(ProductVariant::getPrice)
+                    .min(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
+            maxPrice = activeVariants.stream()
+                    .map(ProductVariant::getPrice)
+                    .max(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
+
+            totalStock = activeVariants.stream()
+                    .mapToInt(v -> v.getStockQuantity() != null ? Math.max(0, v.getStockQuantity()) : 0)
+                    .sum();
+
+            int maxDiscount = 0;
+            BigDecimal bestOriginalPrice = null;
+
+            for (ProductVariant v : activeVariants) {
+                if (v.getOriginalPrice() != null && v.getOriginalPrice().compareTo(v.getPrice()) > 0) {
+                    BigDecimal diff = v.getOriginalPrice().subtract(v.getPrice());
+                    int pct = diff.multiply(BigDecimal.valueOf(100))
+                            .divide(v.getOriginalPrice(), 0, RoundingMode.HALF_UP)
+                            .intValue();
+                    if (pct > maxDiscount) {
+                        maxDiscount = pct;
+                        bestOriginalPrice = v.getOriginalPrice();
+                    }
+                }
+            }
+
+            if (maxDiscount > 0) {
+                discountPercent = maxDiscount;
+                originalPrice = bestOriginalPrice;
+            }
+        }
+
+        boolean hasStock = totalStock > 0;
+
+        List<Object[]> salesData = inventoryTransactionRepository.sumSalesQuantityByProductIds(List.of(id), InventoryTransactionType.SALE);
+        long salesCount = 0L;
+        if (!salesData.isEmpty() && salesData.get(0).length >= 2 && salesData.get(0)[1] instanceof Number count) {
+            salesCount = count.longValue();
+        }
+
+        double rating = 5.0;
+
+        List<String> availableColors = activeVariants.stream()
+                .map(ProductVariant::getColor)
+                .filter(c -> c != null && !c.isBlank())
+                .distinct()
+                .toList();
+
+        List<String> availableStorages = activeVariants.stream()
+                .map(ProductVariant::getStorage)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
+
+        return new StorefrontProductDetailResponse(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getBrand() != null ? product.getBrand().getId() : null,
+                product.getBrand() != null ? product.getBrand().getName() : null,
+                product.getCategory() != null ? product.getCategory().getId() : null,
+                product.getCategory() != null ? product.getCategory().getName() : null,
+                product.getStatus(),
+                minPrice,
+                maxPrice,
+                originalPrice,
+                discountPercent,
+                totalStock,
+                hasStock,
+                salesCount,
+                rating,
+                variantResponses,
+                availableColors,
+                availableStorages,
+                imageResponses,
+                specResponses,
+                product.getCreatedAt(),
+                product.getUpdatedAt()
+        );
+    }
+
+    @Override
+    public VariantStockResponse getVariantStock(Long productId, Long variantId) {
+        if (productId == null || productId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID sản phẩm không hợp lệ");
+        }
+        if (variantId == null || variantId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID biến thể không hợp lệ");
+        }
+
+        Product product = productRepository.findByIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm"));
+
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm đã ngừng kinh doanh");
+        }
+
+        ProductVariant variant = productVariantRepository.findByIdAndIsDeletedFalse(variantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Không tìm thấy biến thể sản phẩm"));
+
+        if (!variant.getProduct().getId().equals(productId)) {
+            throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể không thuộc về sản phẩm này");
+        }
+
+        if (variant.getStatus() != VariantStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể đã ngừng kinh doanh");
+        }
+
+        return VariantStockResponse.of(
+                variant.getId(),
+                product.getId(),
+                variant.getSku(),
+                variant.getStockQuantity()
+        );
+    }
+
+    @Override
+    public List<StorefrontProductResponse> getRelatedProducts(Long productId, int limit) {
+        if (productId == null || productId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID sản phẩm không hợp lệ");
+        }
+        if (limit <= 0 || limit > 50) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số lượng sản phẩm gợi ý phải từ 1 đến 50");
+        }
+
+        Product product = productRepository.findByIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm"));
+
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm đã ngừng kinh doanh");
+        }
+
+        Long categoryId = product.getCategory() != null ? product.getCategory().getId() : null;
+        Long brandId = product.getBrand() != null ? product.getBrand().getId() : null;
+
+        if (categoryId == null && brandId == null) {
+            return Collections.emptyList();
+        }
+
+        List<Product> related = productRepository.findRelatedProducts(
+                productId,
+                categoryId,
+                brandId,
+                ProductStatus.ACTIVE,
+                PageRequest.of(0, limit)
+        );
+
+        return mapToStorefrontProductResponses(related);
     }
 }
 
