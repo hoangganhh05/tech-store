@@ -107,6 +107,12 @@ export function CartPage() {
   };
 
   const isEmpty = !cart || !cart.items || cart.items.length === 0;
+  const isCheckoutDisabled = Boolean(
+    !cart ||
+      cart.totalItems === 0 ||
+      cart.hasStockIssue ||
+      cart.canCheckout === false,
+  );
 
   return (
     <Box sx={{ py: 3 }} data-testid="cart-page">
@@ -141,6 +147,13 @@ export function CartPage() {
           {toastMessage}
         </Alert>
       </Snackbar>
+
+      {cart && cart.hasStockIssue && (
+        <Alert severity="error" sx={{ mb: 3 }} data-testid="cart-stock-alert">
+          Một số sản phẩm trong giỏ hàng đã thay đổi tồn kho hoặc hết hàng. Vui
+          lòng kiểm tra và cập nhật số lượng trước khi tiến hành thanh toán.
+        </Alert>
+      )}
 
       {isEmpty ? (
         <Card data-testid="empty-cart-card">
@@ -187,6 +200,11 @@ export function CartPage() {
                   </TableHead>
                   <TableBody>
                     {cart.items.map((item) => {
+                      const isOutOfStock = item.availableStock <= 0;
+                      const isExceedStock = item.quantity > item.availableStock;
+                      const hasStockIssue = Boolean(
+                        item.hasStockIssue || isOutOfStock || isExceedStock,
+                      );
                       const isMaxStock = item.quantity >= item.availableStock;
                       const isMinQuantity = item.quantity <= 1;
                       const isUpdating = updatingItemId === item.id;
@@ -195,6 +213,11 @@ export function CartPage() {
                         <TableRow
                           key={item.id}
                           data-testid={`cart-item-${item.id}`}
+                          sx={
+                            hasStockIssue
+                              ? { bgcolor: "action.hover" }
+                              : undefined
+                          }
                         >
                           <TableCell>
                             <Stack
@@ -248,8 +271,50 @@ export function CartPage() {
                                       sx={{ height: 22 }}
                                     />
                                   )}
+                                  {isOutOfStock && (
+                                    <Chip
+                                      size="small"
+                                      label="Hết hàng"
+                                      color="error"
+                                      data-testid={`item-out-of-stock-chip-${item.id}`}
+                                      sx={{ height: 22, fontWeight: 700 }}
+                                    />
+                                  )}
+                                  {!isOutOfStock && isExceedStock && (
+                                    <Chip
+                                      size="small"
+                                      label="Vượt tồn kho"
+                                      color="warning"
+                                      data-testid={`item-exceed-stock-chip-${item.id}`}
+                                      sx={{ height: 22, fontWeight: 700 }}
+                                    />
+                                  )}
                                 </Stack>
-                                {isMaxStock && (
+                                {isOutOfStock && (
+                                  <Typography
+                                    variant="caption"
+                                    color="error.main"
+                                    display="block"
+                                    data-testid={`stock-error-msg-${item.id}`}
+                                    sx={{ mt: 0.5, fontWeight: 600 }}
+                                  >
+                                    {item.stockStatusMessage ||
+                                      "Sản phẩm hiện đã hết hàng. Vui lòng xoá khỏi giỏ hàng."}
+                                  </Typography>
+                                )}
+                                {!isOutOfStock && isExceedStock && (
+                                  <Typography
+                                    variant="caption"
+                                    color="error.main"
+                                    display="block"
+                                    data-testid={`stock-error-msg-${item.id}`}
+                                    sx={{ mt: 0.5, fontWeight: 600 }}
+                                  >
+                                    {item.stockStatusMessage ||
+                                      `Số lượng trong giỏ (${item.quantity}) vượt quá tồn kho hiện tại (${item.availableStock}). Vui lòng giảm số lượng.`}
+                                  </Typography>
+                                )}
+                                {!hasStockIssue && isMaxStock && (
                                   <Typography
                                     variant="caption"
                                     color="warning.main"
@@ -315,7 +380,9 @@ export function CartPage() {
                               </Typography>
                               <IconButton
                                 size="small"
-                                disabled={isMaxStock || isUpdating}
+                                disabled={
+                                  isMaxStock || isUpdating || isOutOfStock
+                                }
                                 onClick={() =>
                                   handleUpdateQuantity(
                                     item.id,
@@ -497,17 +564,39 @@ export function CartPage() {
                     </Typography>
                   </Stack>
                 </Stack>
-                <Button
-                  component={Link}
-                  to={ROUTES.checkout}
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  sx={{ mt: 3 }}
-                  data-testid="checkout-btn"
+                <Tooltip
+                  title={
+                    cart.hasStockIssue
+                      ? "Vui lòng điều chỉnh số lượng các sản phẩm vượt tồn kho hoặc xoá sản phẩm hết hàng trước khi thanh toán"
+                      : ""
+                  }
                 >
-                  Tiến hành thanh toán
-                </Button>
+                  <span>
+                    <Button
+                      component={isCheckoutDisabled ? "button" : Link}
+                      to={isCheckoutDisabled ? undefined : ROUTES.checkout}
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                      disabled={isCheckoutDisabled}
+                      sx={{ mt: 3 }}
+                      data-testid="checkout-btn"
+                    >
+                      Tiến hành thanh toán
+                    </Button>
+                  </span>
+                </Tooltip>
+                {cart.hasStockIssue && (
+                  <Typography
+                    variant="caption"
+                    color="error.main"
+                    data-testid="checkout-disabled-reason"
+                    sx={{ mt: 1, display: "block", textAlign: "center" }}
+                  >
+                    Vui lòng xử lý các sản phẩm hết hàng hoặc vượt tồn kho để
+                    tiếp tục thanh toán.
+                  </Typography>
+                )}
                 <Button
                   component={Link}
                   to={ROUTES.products}

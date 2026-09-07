@@ -1022,3 +1022,230 @@ describe("US-07.4: Hệ thống tự tính tổng tiền giỏ hàng (tạm tín
     });
   });
 });
+
+describe("US-07.5: Kiểm tra tồn kho mỗi khi khách hàng thêm/cập nhật số lượng trong giỏ hàng", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("displays stock alert and warning chip when cart item quantity exceeds available stock", async () => {
+    const mockCartExceedStock: cartService.Cart = {
+      id: 1,
+      totalItems: 5,
+      subtotal: 129950000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 129950000,
+      hasStockIssue: true,
+      canCheckout: false,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          color: "Titan Tự Nhiên",
+          storage: "128GB",
+          price: 25990000,
+          originalPrice: 28990000,
+          imageUrl: "https://example.com/ip15p.png",
+          quantity: 5,
+          availableStock: 2,
+          subtotal: 129950000,
+          hasStockIssue: true,
+          stockStatusMessage: "Tồn kho không đủ (chỉ còn 2 sản phẩm)",
+        },
+      ],
+    };
+
+    mockedGetCart.mockResolvedValue(mockCartExceedStock);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-stock-alert")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("item-exceed-stock-chip-1"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("item-exceed-stock-chip-1")).toHaveTextContent(
+        "Vượt tồn kho",
+      );
+      expect(screen.getByTestId("stock-error-msg-1")).toHaveTextContent(
+        "Tồn kho không đủ (chỉ còn 2 sản phẩm)",
+      );
+      expect(screen.getByTestId("checkout-btn")).toBeDisabled();
+      expect(
+        screen.getByTestId("checkout-disabled-reason"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("displays out of stock chip and disables checkout when cart item is completely out of stock", async () => {
+    const mockCartOutOfStock: cartService.Cart = {
+      id: 1,
+      totalItems: 2,
+      subtotal: 51980000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 51980000,
+      hasStockIssue: true,
+      canCheckout: false,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          color: "Titan Tự Nhiên",
+          storage: "128GB",
+          price: 25990000,
+          originalPrice: 28990000,
+          imageUrl: "https://example.com/ip15p.png",
+          quantity: 2,
+          availableStock: 0,
+          subtotal: 51980000,
+          hasStockIssue: true,
+          stockStatusMessage: "Sản phẩm hiện đã hết hàng",
+        },
+      ],
+    };
+
+    mockedGetCart.mockResolvedValue(mockCartOutOfStock);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-stock-alert")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("item-out-of-stock-chip-1"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("item-out-of-stock-chip-1")).toHaveTextContent(
+        "Hết hàng",
+      );
+      expect(screen.getByTestId("stock-error-msg-1")).toHaveTextContent(
+        "Sản phẩm hiện đã hết hàng",
+      );
+      expect(screen.getByTestId("checkout-btn")).toBeDisabled();
+      expect(screen.getByTestId("increase-qty-btn-1")).toBeDisabled();
+    });
+  });
+
+  it("enables checkout button and removes warning alert after reducing quantity to valid stock", async () => {
+    const mockCartExceedStock: cartService.Cart = {
+      id: 1,
+      totalItems: 4,
+      subtotal: 103960000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 103960000,
+      hasStockIssue: true,
+      canCheckout: false,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          color: "Titan Tự Nhiên",
+          storage: "128GB",
+          price: 25990000,
+          originalPrice: 28990000,
+          imageUrl: "https://example.com/ip15p.png",
+          quantity: 4,
+          availableStock: 3,
+          subtotal: 103960000,
+          hasStockIssue: true,
+          stockStatusMessage: "Tồn kho không đủ (chỉ còn 3 sản phẩm)",
+        },
+      ],
+    };
+
+    mockedGetCart.mockResolvedValue(mockCartExceedStock);
+
+    const mockCartResolvedStock: cartService.Cart = {
+      id: 1,
+      totalItems: 3,
+      subtotal: 77970000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 77970000,
+      hasStockIssue: false,
+      canCheckout: true,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "iPhone 15 Pro",
+          sku: "IP15P-TITAN-128",
+          color: "Titan Tự Nhiên",
+          storage: "128GB",
+          price: 25990000,
+          originalPrice: 28990000,
+          imageUrl: "https://example.com/ip15p.png",
+          quantity: 3,
+          availableStock: 3,
+          subtotal: 77970000,
+          hasStockIssue: false,
+          stockStatusMessage: null,
+        },
+      ],
+    };
+    mockedUpdateCartItemQuantity.mockResolvedValue(mockCartResolvedStock);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-stock-alert")).toBeInTheDocument();
+      expect(screen.getByTestId("checkout-btn")).toBeDisabled();
+    });
+
+    // Giảm số lượng từ 4 xuống 3
+    fireEvent.click(screen.getByTestId("decrease-qty-btn-1"));
+
+    await waitFor(() => {
+      expect(mockedUpdateCartItemQuantity).toHaveBeenCalledWith(1, 3);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("cart-stock-alert")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("item-exceed-stock-chip-1"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("checkout-btn")).toBeEnabled();
+    });
+  });
+});
