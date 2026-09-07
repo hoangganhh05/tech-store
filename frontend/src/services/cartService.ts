@@ -59,3 +59,21 @@ export async function addToCart(payload: AddToCartPayload): Promise<Cart> {
   );
   return response.data.data;
 }
+
+export async function updateCartItemQuantity(
+  itemId: number,
+  quantity: number,
+): Promise<Cart> {
+  const sessionId = getOrCreateSessionId();
+  const response = await httpClient.patch<ApiResponse<Cart>>(
+    `/cart/items/${itemId}`,
+    { quantity },
+    {
+      headers: {
+        "X-Session-Id": sessionId,
+      },
+    },
+  );
+  return response.data.data;
+}
+

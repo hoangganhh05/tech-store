@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { appTheme } from "../configs/theme";
 import { StorefrontLayout } from "../layouts/StorefrontLayout";
 import { ProductDetailPage } from "../modules/products/ProductDetailPage";
+import { CartPage } from "../modules/cart/CartPage";
 import { CartProvider } from "../modules/cart/CartContext";
 import { AuthContext } from "../modules/auth/AuthStore";
 import * as cartService from "../services/cartService";
@@ -13,6 +14,7 @@ import * as storefrontService from "../services/storefrontService";
 vi.mock("../services/cartService", () => ({
   getCart: vi.fn(),
   addToCart: vi.fn(),
+  updateCartItemQuantity: vi.fn(),
 }));
 
 vi.mock("../services/storefrontService", () => ({
@@ -31,6 +33,7 @@ vi.mock("../services/storefrontService", () => ({
 
 const mockedGetCart = vi.mocked(cartService.getCart);
 const mockedAddToCart = vi.mocked(cartService.addToCart);
+const mockedUpdateCartItemQuantity = vi.mocked(cartService.updateCartItemQuantity);
 const mockedGetProductDetail = vi.mocked(
   storefrontService.getStorefrontProductDetail,
 );
@@ -283,6 +286,289 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       const toast = screen.getByTestId("cart-toast");
       expect(toast).toBeInTheDocument();
       expect(toast).toHaveTextContent("Số lượng vượt quá tồn kho khả dụng");
+    });
+  });
+});
+
+describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản phẩm (CartPage UI & Quantity Update)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockCartWithItems: cartService.Cart = {
+    id: 1,
+    totalItems: 2,
+    subtotal: 51980000,
+    items: [
+      {
+        id: 1,
+        variantId: 101,
+        productId: 1,
+        productName: "iPhone 15 Pro",
+        sku: "IP15P-TITAN-128",
+        color: "Titan Tự Nhiên",
+        storage: "128GB",
+        price: 25990000,
+        originalPrice: 28990000,
+        imageUrl: "https://example.com/ip15p.png",
+        quantity: 2,
+        availableStock: 5,
+        subtotal: 51980000,
+      },
+    ],
+  };
+
+  it("displays empty state when cart has no items", async () => {
+    mockedGetCart.mockResolvedValue({
+      id: 1,
+      totalItems: 0,
+      subtotal: 0,
+      items: [],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("empty-cart-card")).toBeInTheDocument();
+      expect(screen.getByTestId("empty-cart-message")).toHaveTextContent(
+        "Giỏ hàng của bạn đang trống.",
+      );
+      expect(screen.getByTestId("continue-shopping-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("displays cart items, variants, line subtotals, and order summary", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-table")).toBeInTheDocument();
+      expect(screen.getByTestId("cart-item-1")).toBeInTheDocument();
+      expect(screen.getByTestId("item-name-1")).toHaveTextContent("iPhone 15 Pro");
+      expect(screen.getByText("Titan Tự Nhiên")).toBeInTheDocument();
+      expect(screen.getByText("128GB")).toBeInTheDocument();
+      expect(screen.getByTestId("item-qty-1")).toHaveTextContent("2");
+      expect(screen.getByTestId("cart-summary")).toBeInTheDocument();
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("2 sản phẩm");
+      expect(screen.getByTestId("checkout-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("increases quantity when clicking '+' button and recalculates totals", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+    const updatedCart: cartService.Cart = {
+      id: 1,
+      totalItems: 3,
+      subtotal: 77970000,
+      items: [
+        {
+          ...mockCartWithItems.items[0],
+          quantity: 3,
+          subtotal: 77970000,
+        },
+      ],
+    };
+    mockedUpdateCartItemQuantity.mockResolvedValue(updatedCart);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-qty-1")).toHaveTextContent("2");
+    });
+
+    const increaseBtn = screen.getByTestId("increase-qty-btn-1");
+    fireEvent.click(increaseBtn);
+
+    await waitFor(() => {
+      expect(mockedUpdateCartItemQuantity).toHaveBeenCalledWith(1, 3);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-qty-1")).toHaveTextContent("3");
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("3 sản phẩm");
+    });
+  });
+
+  it("decreases quantity when clicking '-' button and recalculates totals", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+    const updatedCart: cartService.Cart = {
+      id: 1,
+      totalItems: 1,
+      subtotal: 25990000,
+      items: [
+        {
+          ...mockCartWithItems.items[0],
+          quantity: 1,
+          subtotal: 25990000,
+        },
+      ],
+    };
+    mockedUpdateCartItemQuantity.mockResolvedValue(updatedCart);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-qty-1")).toHaveTextContent("2");
+    });
+
+    const decreaseBtn = screen.getByTestId("decrease-qty-btn-1");
+    fireEvent.click(decreaseBtn);
+
+    await waitFor(() => {
+      expect(mockedUpdateCartItemQuantity).toHaveBeenCalledWith(1, 1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("item-qty-1")).toHaveTextContent("1");
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("1 sản phẩm");
+    });
+  });
+
+  it("disables '-' button when quantity is 1", async () => {
+    const cartQty1: cartService.Cart = {
+      id: 1,
+      totalItems: 1,
+      subtotal: 25990000,
+      items: [
+        {
+          ...mockCartWithItems.items[0],
+          quantity: 1,
+          availableStock: 5,
+        },
+      ],
+    };
+    mockedGetCart.mockResolvedValue(cartQty1);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      const decreaseBtn = screen.getByTestId("decrease-qty-btn-1");
+      expect(decreaseBtn).toBeDisabled();
+      const increaseBtn = screen.getByTestId("increase-qty-btn-1");
+      expect(increaseBtn).toBeEnabled();
+    });
+  });
+
+  it("disables '+' button and shows warning when quantity reaches availableStock", async () => {
+    const cartMaxStock: cartService.Cart = {
+      id: 1,
+      totalItems: 3,
+      subtotal: 77970000,
+      items: [
+        {
+          ...mockCartWithItems.items[0],
+          quantity: 3,
+          availableStock: 3,
+        },
+      ],
+    };
+    mockedGetCart.mockResolvedValue(cartMaxStock);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      const increaseBtn = screen.getByTestId("increase-qty-btn-1");
+      expect(increaseBtn).toBeDisabled();
+      expect(screen.getByText("Đã đạt giới hạn tồn kho (3)")).toBeInTheDocument();
+    });
+  });
+
+  it("shows error alert when updating quantity fails", async () => {
+    mockedGetCart.mockResolvedValue(mockCartWithItems);
+    mockedUpdateCartItemQuantity.mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        data: {
+          success: false,
+          code: "INSUFFICIENT_STOCK",
+          message: "Số lượng yêu cầu vượt quá tồn kho khả dụng",
+        },
+      },
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("increase-qty-btn-1")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("increase-qty-btn-1"));
+
+    await waitFor(() => {
+      const alert = screen.getByTestId("cart-error-alert");
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent("Số lượng yêu cầu vượt quá tồn kho khả dụng");
     });
   });
 });
