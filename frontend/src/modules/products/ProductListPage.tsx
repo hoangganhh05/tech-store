@@ -11,6 +11,7 @@ import {
   Grid,
   InputLabel,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Skeleton,
@@ -32,6 +33,7 @@ import {
   getStorefrontBrands,
   searchStorefrontProducts,
   type StorefrontProduct,
+  type StorefrontProductPageResponse,
 } from "../../services/storefrontService";
 import type { Category } from "../../services/categoryService";
 import type { Brand } from "../../services/brandService";
@@ -102,9 +104,19 @@ export function ProductListPage() {
     return "createdAt_desc";
   }, [sortBy, sortDir]);
 
+  // Pagination state (1-indexed in URL, 0-indexed in backend API)
+  const pageParam = searchParams.get("page");
+  const currentPage = useMemo(() => {
+    if (!pageParam) return 1;
+    const p = parseInt(pageParam, 10);
+    return isNaN(p) || p < 1 ? 1 : p;
+  }, [pageParam]);
+
+  const pageSize = 12;
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+
   // Local state for custom price inputs
-  const [customMin, setCustomMin] = useState(priceMin != null ? String(priceMin) : "");
-  const [customMax, setCustomMax] = useState(priceMax != null ? String(priceMax) : "");
   const [customMin, setCustomMin] = useState(
     priceMin != null ? String(priceMin) : "",
   );
@@ -151,7 +163,6 @@ export function ProductListPage() {
       setError(null);
       if (searchQuery) {
         const data = await searchStorefrontProducts(searchQuery);
-        setProducts(data);
         let sortedData = [...data];
         if (sortBy === "price") {
           sortedData.sort((a, b) =>
@@ -176,9 +187,12 @@ export function ProductListPage() {
             );
           }
         }
-        setProducts(sortedData);
+        setTotalElements(sortedData.length);
+        setTotalPages(Math.max(1, Math.ceil(sortedData.length / pageSize)));
+        const startIdx = (currentPage - 1) * pageSize;
+        setProducts(sortedData.slice(startIdx, startIdx + pageSize));
       } else {
-        const data = await getStorefrontProducts({
+        const res = await getStorefrontProducts({
           categoryId: selectedCategoryId,
           brandIds: selectedBrandIds,
           priceMin,
@@ -188,8 +202,19 @@ export function ProductListPage() {
             sortDirParam === "asc" || sortDirParam === "desc"
               ? sortDirParam
               : undefined,
+          page: currentPage - 1,
+          size: pageSize,
         });
-        setProducts(data);
+        if (Array.isArray(res)) {
+          setProducts(res);
+          setTotalElements(res.length);
+          setTotalPages(Math.max(1, Math.ceil(res.length / pageSize)));
+        } else if (res && typeof res === "object" && "items" in res) {
+          const pageRes = res as StorefrontProductPageResponse;
+          setProducts(pageRes.items);
+          setTotalElements(pageRes.totalElements);
+          setTotalPages(pageRes.totalPages);
+        }
       }
     } catch (err: unknown) {
       const msg =
@@ -198,7 +223,6 @@ export function ProductListPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategoryId, selectedBrandIds, priceMin, priceMax]);
   }, [
     searchQuery,
     selectedCategoryId,
@@ -209,13 +233,15 @@ export function ProductListPage() {
     sortDir,
     sortByParam,
     sortDirParam,
+    currentPage,
+    pageSize,
   ]);
 
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
 
-  // Update URL helper
+  // Update URL helper (resets page to 1 on filter changes)
   const updateFilterParams = useCallback(
     (updates: {
       categoryId?: number | null;
@@ -257,9 +283,11 @@ export function ProductListPage() {
         }
       }
 
+      // Reset to page 1 on filter changes
+      newParams.delete("page");
+
       setSearchParams(newParams);
     },
-    [searchParams, setSearchParams]
     [searchParams, setSearchParams],
   );
 
@@ -321,6 +349,7 @@ export function ProductListPage() {
   const handleClearSearch = () => {
     const newParams = new URLSearchParams(searchParams);
     newParams.delete("q");
+    newParams.delete("page");
     setSearchParams(newParams);
   };
 
@@ -339,16 +368,30 @@ export function ProductListPage() {
       newParams.delete("sortBy");
       newParams.delete("sortDir");
     }
+    // Reset to page 1 on sort changes
+    newParams.delete("page");
     setSearchParams(newParams);
   };
 
+  const handlePageChange = (
+    _event: React.ChangeEvent<unknown>,
+    value: number,
+  ) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value > 1) {
+      newParams.set("page", String(value));
+    } else {
+      newParams.delete("page");
+    }
+    setSearchParams(newParams);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const hasBrandOrPriceFilters = Boolean(
-    selectedBrandIds.length > 0 || priceMin != null || priceMax != null
     selectedBrandIds.length > 0 || priceMin != null || priceMax != null,
   );
 
   const hasActiveFilters = Boolean(
-    selectedCategoryId != null || hasBrandOrPriceFilters
     selectedCategoryId != null || hasBrandOrPriceFilters,
   );
 
@@ -497,7 +540,7 @@ export function ProductListPage() {
               bgcolor: "#ffffff",
             }}
           >
-            {/* Filter Header */}
+            {/* Sidebar header */}
             <Stack
               direction="row"
               justifyContent="space-between"
@@ -520,6 +563,7 @@ export function ProductListPage() {
                     color: "error.main",
                     fontSize: "0.8125rem",
                     p: 0,
+                    minWidth: "auto",
                   }}
                 >
                   Xóa tất cả
@@ -527,15 +571,13 @@ export function ProductListPage() {
               )}
             </Stack>
 
-            <Divider sx={{ mb: 2 }} />
-
-            {/* Brands Section (Multi-select) */}
-            <Box mb={3}>
+            {/* Brands Section */}
+            <Box mb={2.5}>
               <Typography
                 variant="subtitle2"
                 fontWeight={700}
                 color="text.primary"
-                mb={1}
+                mb={1.5}
               >
                 Thương hiệu
               </Typography>
@@ -652,7 +694,6 @@ export function ProductListPage() {
               </Stack>
 
               {priceError && (
-                <Typography variant="caption" color="error" display="block" mb={1}>
                 <Typography
                   variant="caption"
                   color="error"
@@ -677,15 +718,12 @@ export function ProductListPage() {
           </Paper>
         </Grid>
 
-        {/* Right Content Area: Active Chips, Count, Products Grid */}
+        {/* Right Content Area: Active Chips, Count, Products Grid, Pagination */}
         <Grid size={{ xs: 12, md: 8.5, lg: 9 }}>
-          {/* Results header & count bar */}
           {/* Results header, count bar & sort dropdown */}
           <Stack
-            direction="row"
             direction={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
-            alignItems="center"
             alignItems={{ xs: "flex-start", sm: "center" }}
             spacing={2}
             py={1.5}
@@ -695,17 +733,6 @@ export function ProductListPage() {
             borderRadius={2}
             border="1px solid #e2e8f0"
           >
-            <Typography variant="subtitle1" fontWeight={700} color="text.primary">
-              {searchQuery
-                ? `Từ khóa: "${searchQuery}"`
-                : currentCategory
-                ? currentCategory.name
-                : "Tất cả sản phẩm"}
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              data-testid="products-count"
             <Box>
               <Typography
                 variant="subtitle1"
@@ -723,9 +750,7 @@ export function ProductListPage() {
                 color="text.secondary"
                 data-testid="products-count"
               >
-                {loading
-                  ? "Đang tải..."
-                  : `Tìm thấy ${products.length} sản phẩm`}
+                {loading ? "Đang tải..." : `Tìm thấy ${totalElements} sản phẩm`}
               </Typography>
             </Box>
 
@@ -734,8 +759,6 @@ export function ProductListPage() {
               size="small"
               sx={{ minWidth: 170, width: { xs: "100%", sm: "auto" } }}
             >
-              {loading ? "Đang tải..." : `Tìm thấy ${products.length} sản phẩm`}
-            </Typography>
               <InputLabel id="sort-select-label">Sắp xếp theo</InputLabel>
               <Select
                 labelId="sort-select-label"
@@ -784,7 +807,6 @@ export function ProductListPage() {
               alignItems="center"
               mb={2.5}
             >
-              <Typography variant="body2" color="text.secondary" fontWeight={600}>
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -821,8 +843,6 @@ export function ProductListPage() {
                     priceMin != null && priceMax != null
                       ? `Giá: ${formatPrice(priceMin)} - ${formatPrice(priceMax)}`
                       : priceMin != null
-                      ? `Giá từ: ${formatPrice(priceMin)}`
-                      : `Giá đến: ${formatPrice(priceMax!)}`
                         ? `Giá từ: ${formatPrice(priceMin)}`
                         : `Giá đến: ${formatPrice(priceMax!)}`
                   }
@@ -881,14 +901,38 @@ export function ProductListPage() {
               ))}
             </Grid>
           ) : products.length > 0 ? (
-            /* Products Grid */
-            <Grid container spacing={2}>
-              {products.map((product) => (
-                <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <ProductCard product={product} />
-                </Grid>
-              ))}
-            </Grid>
+            <>
+              {/* Products Grid */}
+              <Grid container spacing={2}>
+                {products.map((product) => (
+                  <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                    <ProductCard product={product} />
+                  </Grid>
+                ))}
+              </Grid>
+
+              {/* Pagination Control */}
+              {totalPages > 1 && (
+                <Box
+                  display="flex"
+                  justifyContent="center"
+                  mt={4}
+                  mb={2}
+                  data-testid="pagination-container"
+                >
+                  <Pagination
+                    count={totalPages}
+                    page={currentPage}
+                    onChange={handlePageChange}
+                    color="primary"
+                    shape="rounded"
+                    showFirstButton
+                    showLastButton
+                    data-testid="pagination-control"
+                  />
+                </Box>
+              )}
+            </>
           ) : searchQuery ? (
             /* Empty Search State with Suggestions */
             <Box
@@ -943,12 +987,9 @@ export function ProductListPage() {
                 >
                   <li>Kiểm tra lại chính tả của từ khóa đã nhập.</li>
                   <li>
-                    Thử sử dụng từ khóa ngắn gọn hoặc tổng quát hơn (ví dụ: iPhone,
-                    Samsung, tai nghe, sạc...).
                     Thử sử dụng từ khóa ngắn gọn hoặc tổng quát hơn (ví dụ:
                     iPhone, Samsung, tai nghe, sạc...).
                   </li>
-                  <li>Thử duyệt theo danh mục sản phẩm ở thanh lọc phía trên.</li>
                   <li>
                     Thử duyệt theo danh mục sản phẩm ở thanh lọc phía trên.
                   </li>

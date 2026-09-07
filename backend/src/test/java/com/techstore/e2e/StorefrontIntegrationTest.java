@@ -707,4 +707,93 @@ class StorefrontIntegrationTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
+
+    @Test
+    @DisplayName("US-05.6: API GET /api/v1/products hỗ trợ phân trang chuẩn (page, size)")
+    void getProducts_pagination_shouldReturnPaginatedResponse() throws Exception {
+        setupBaseData();
+
+        for (int i = 1; i <= 5; i++) {
+            Product p = productRepository.save(new Product("Sản phẩm trang " + i, "SP " + i, brandApple, categoryPhone, ProductStatus.ACTIVE));
+            productVariantRepository.save(new ProductVariant(p, "PAG-" + i, "Màu " + i, "128GB",
+                    BigDecimal.valueOf(10000000 + i * 1000000), null, 10, VariantStatus.ACTIVE));
+        }
+
+        // Page 0, size 2 -> items 2, totalElements 5, totalPages 3, first true, last false
+        mockMvc.perform(get("/api/v1/products?page=0&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items", hasSize(2)))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(5))
+                .andExpect(jsonPath("$.data.totalPages").value(3))
+                .andExpect(jsonPath("$.data.first").value(true))
+                .andExpect(jsonPath("$.data.last").value(false));
+
+        // Page 1, size 2 -> items 2, first false, last false
+        mockMvc.perform(get("/api/v1/products?page=1&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items", hasSize(2)))
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.first").value(false))
+                .andExpect(jsonPath("$.data.last").value(false));
+
+        // Page 2, size 2 -> items 1, first false, last true
+        mockMvc.perform(get("/api/v1/products?page=2&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.page").value(2))
+                .andExpect(jsonPath("$.data.first").value(false))
+                .andExpect(jsonPath("$.data.last").value(true));
+    }
+
+    @Test
+    @DisplayName("US-05.6: Phân trang kết hợp với bộ lọc và sắp xếp")
+    void getProducts_paginationWithFilterAndSort_shouldReturnFilteredAndSortedPage() throws Exception {
+        setupBaseData();
+
+        for (int i = 1; i <= 4; i++) {
+            Product p = productRepository.save(new Product("SP Phone " + i, "Desc " + i, brandApple, categoryPhone, ProductStatus.ACTIVE));
+            productVariantRepository.save(new ProductVariant(p, "PAG-F-" + i, "Đen", "128GB",
+                    BigDecimal.valueOf(20000000 - i * 1000000), null, 10, VariantStatus.ACTIVE));
+        }
+
+        // Filter categoryPhone, sort price ASC (16M, 17M, 18M, 19M), page=0, size=2
+        mockMvc.perform(get("/api/v1/products?categoryId=" + categoryPhone.getId()
+                + "&sortBy=price&sortDir=asc&page=0&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items", hasSize(2)))
+                .andExpect(jsonPath("$.data.totalElements").value(4))
+                .andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.items[0].minPrice").value(16000000))
+                .andExpect(jsonPath("$.data.items[1].minPrice").value(17000000));
+    }
+
+    @Test
+    @DisplayName("US-05.6: Validate dữ liệu phân trang không hợp lệ trả về lỗi 400")
+    void getProducts_paginationValidation_shouldReturnBadRequest() throws Exception {
+        setupBaseData();
+
+        // page < 0
+        mockMvc.perform(get("/api/v1/products?page=-1&size=10"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // size <= 0
+        mockMvc.perform(get("/api/v1/products?page=0&size=0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        // size > 100
+        mockMvc.perform(get("/api/v1/products?page=0&size=101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }

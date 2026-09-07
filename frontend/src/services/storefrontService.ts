@@ -2,6 +2,16 @@ import { httpClient } from "./httpClient";
 import type { Category } from "./categoryService";
 import type { Brand } from "./brandService";
 
+export type StorefrontProductPageResponse = {
+  items: StorefrontProduct[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+};
+
 export type ProductFilterParams = {
   categoryId?: number | null;
   brandIds?: number[];
@@ -9,6 +19,8 @@ export type ProductFilterParams = {
   priceMax?: number | null;
   sortBy?: string | null;
   sortDir?: "asc" | "desc" | null;
+  page?: number | null;
+  size?: number | null;
 };
 
 export type StorefrontProduct = {
@@ -94,7 +106,7 @@ export async function getOnSaleProducts(
 
 export async function getStorefrontProducts(
   filtersOrCategoryId?: ProductFilterParams | number | null,
-): Promise<StorefrontProduct[]> {
+): Promise<StorefrontProduct[] | StorefrontProductPageResponse> {
   const params: Record<string, unknown> = {};
   if (typeof filtersOrCategoryId === "number") {
     params.categoryId = filtersOrCategoryId;
@@ -120,13 +132,55 @@ export async function getStorefrontProducts(
     if (filtersOrCategoryId.sortDir) {
       params.sortDir = filtersOrCategoryId.sortDir;
     }
+    if (filtersOrCategoryId.page != null) {
+      params.page = filtersOrCategoryId.page;
+    }
+    if (filtersOrCategoryId.size != null) {
+      params.size = filtersOrCategoryId.size;
+    }
   }
 
-  const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
-    "/products",
-    { params },
-  );
+  const response = await httpClient.get<
+    ApiResponse<StorefrontProduct[] | StorefrontProductPageResponse>
+  >("/products", { params });
   return response.data.data;
+}
+
+export async function getStorefrontPaginatedProducts(
+  filters?: ProductFilterParams,
+): Promise<StorefrontProductPageResponse> {
+  const params: Record<string, unknown> = {};
+  if (filters) {
+    if (filters.categoryId) params.categoryId = filters.categoryId;
+    if (filters.brandIds && filters.brandIds.length > 0)
+      params.brandIds = filters.brandIds.join(",");
+    if (filters.priceMin != null) params.priceMin = filters.priceMin;
+    if (filters.priceMax != null) params.priceMax = filters.priceMax;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+    if (filters.sortDir) params.sortDir = filters.sortDir;
+    params.page = filters.page != null ? filters.page : 0;
+    params.size = filters.size != null ? filters.size : 12;
+  } else {
+    params.page = 0;
+    params.size = 12;
+  }
+
+  const response = await httpClient.get<
+    ApiResponse<StorefrontProductPageResponse | StorefrontProduct[]>
+  >("/products", { params });
+  const data = response.data.data;
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      page: 0,
+      size: data.length,
+      totalElements: data.length,
+      totalPages: 1,
+      first: true,
+      last: true,
+    };
+  }
+  return data;
 }
 
 export async function getStorefrontCategories(): Promise<Category[]> {

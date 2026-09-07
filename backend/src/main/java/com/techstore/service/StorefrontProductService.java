@@ -2,6 +2,7 @@ package com.techstore.service;
 
 import com.techstore.dto.response.BrandResponse;
 import com.techstore.dto.response.CategoryResponse;
+import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 
@@ -25,6 +26,17 @@ public interface StorefrontProductService {
     List<StorefrontProductResponse> getProducts(Long categoryId, List<Long> brandIds, BigDecimal priceMin, BigDecimal priceMax);
 
     List<StorefrontProductResponse> getProducts(Long categoryId, List<Long> brandIds, BigDecimal priceMin, BigDecimal priceMax, String sortBy, String sortDir);
+
+    PageResponse<StorefrontProductResponse> getPaginatedProducts(
+            Long categoryId,
+            List<Long> brandIds,
+            BigDecimal priceMin,
+            BigDecimal priceMax,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size
+    );
 
     List<StorefrontProductResponse> searchProducts(String query);
 
