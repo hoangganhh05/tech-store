@@ -2,6 +2,7 @@ package com.techstore.e2e;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.techstore.dto.request.AddToCartRequest;
+import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.entity.Brand;
 import com.techstore.entity.Cart;
 import com.techstore.entity.CartItem;
@@ -44,6 +45,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -287,6 +289,123 @@ class CartIntegrationTest {
                 .andExpect(jsonPath("$.data.totalItems", equalTo(2)))
                 .andExpect(jsonPath("$.data.items", hasSize(1)))
                 .andExpect(jsonPath("$.data.items[0].productName", equalTo("iPhone 15 Pro")));
+    }
+
+    @Test
+    @DisplayName("US-07.2: Cập nhật số lượng sản phẩm trong giỏ thành công và tự tính lại tổng tiền")
+    void updateCartItemQuantity_success() throws Exception {
+        // Thêm sản phẩm vào giỏ trước (số lượng 2)
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findByUserId(testUser.getId()).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        // Cập nhật số lượng lên 5
+        UpdateCartItemRequest updateReq = new UpdateCartItemRequest(5);
+        mockMvc.perform(patch("/api/v1/cart/items/" + cartItem.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", equalTo(true)))
+                .andExpect(jsonPath("$.data.totalItems", equalTo(5)))
+                .andExpect(jsonPath("$.data.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.items[0].quantity", equalTo(5)))
+                .andExpect(jsonPath("$.data.items[0].subtotal", equalTo(129950000.0)))
+                .andExpect(jsonPath("$.data.subtotal", equalTo(129950000.0)));
+    }
+
+    @Test
+    @DisplayName("US-07.2: Khách vãng lai cập nhật số lượng qua X-Session-Id thành công")
+    void updateCartItemQuantity_guestUser_success() throws Exception {
+        String sessionId = UUID.randomUUID().toString();
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header("X-Session-Id", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findBySessionId(sessionId).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        UpdateCartItemRequest updateReq = new UpdateCartItemRequest(3);
+        mockMvc.perform(patch("/api/v1/cart/items/" + cartItem.getId())
+                        .header("X-Session-Id", sessionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalItems", equalTo(3)))
+                .andExpect(jsonPath("$.data.items[0].quantity", equalTo(3)));
+    }
+
+    @Test
+    @DisplayName("US-07.2: Cập nhật số lượng vượt tồn kho khả dụng trả về lỗi INSUFFICIENT_STOCK (400)")
+    void updateCartItemQuantity_exceedsStock_returnsError() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findByUserId(testUser.getId()).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        // Tồn kho là 10, cập nhật thành 11
+        UpdateCartItemRequest updateReq = new UpdateCartItemRequest(11);
+        mockMvc.perform(patch("/api/v1/cart/items/" + cartItem.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", equalTo("INSUFFICIENT_STOCK")));
+    }
+
+    @Test
+    @DisplayName("US-07.2: Cập nhật số lượng không hợp lệ (<= 0) trả về VALIDATION_ERROR (400)")
+    void updateCartItemQuantity_invalidQuantity_returns400() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        Cart cart = cartRepository.findByUserId(testUser.getId()).orElseThrow();
+        CartItem cartItem = cartItemRepository.findByCartId(cart.getId()).get(0);
+
+        UpdateCartItemRequest updateReq = new UpdateCartItemRequest(0);
+        mockMvc.perform(patch("/api/v1/cart/items/" + cartItem.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", equalTo("VALIDATION_ERROR")));
+    }
+
+    @Test
+    @DisplayName("US-07.2: Cập nhật dòng sản phẩm không tồn tại trả về CART_ITEM_NOT_FOUND (404)")
+    void updateCartItemQuantity_itemNotFound_returns404() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 2);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        UpdateCartItemRequest updateReq = new UpdateCartItemRequest(3);
+        mockMvc.perform(patch("/api/v1/cart/items/999999")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateReq)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code", equalTo("CART_ITEM_NOT_FOUND")));
     }
 }
 

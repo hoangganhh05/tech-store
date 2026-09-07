@@ -1,6 +1,7 @@
 package com.techstore.service.impl;
 
 import com.techstore.dto.request.AddToCartRequest;
+import com.techstore.dto.request.UpdateCartItemRequest;
 import com.techstore.dto.response.CartItemResponse;
 import com.techstore.dto.response.CartResponse;
 import com.techstore.entity.Cart;
@@ -122,6 +123,55 @@ public class CartServiceImpl implements CartService {
             return new CartResponse(null, 0, BigDecimal.ZERO, List.of());
         }
         return mapToCartResponse(cartOpt.get());
+    }
+
+    @Override
+    @Transactional
+    public CartResponse updateCartItemQuantity(Long userId, String sessionId, Long itemId, UpdateCartItemRequest request) {
+        if (itemId == null || itemId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã dòng sản phẩm giỏ hàng không hợp lệ");
+        }
+        if (request == null || request.getQuantity() == null || request.getQuantity() <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số lượng phải lớn hơn 0");
+        }
+
+        Cart cart = findCart(userId, sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_NOT_FOUND, "Giỏ hàng không tồn tại"));
+
+        CartItem item = cartItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND, "Sản phẩm không có trong giỏ hàng"));
+
+        if (!Objects.equals(item.getCart().getId(), cart.getId())) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND, "Sản phẩm không thuộc giỏ hàng hiện tại");
+        }
+
+        ProductVariant variant = item.getVariant();
+        if (variant == null || variant.isDeleted()) {
+            throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể sản phẩm không tồn tại hoặc đã bị xoá");
+        }
+
+        Product product = variant.getProduct();
+        if (product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm không tồn tại hoặc đã ngừng kinh doanh");
+        }
+
+        int availableStock = getAvailableStock(variant);
+        if (availableStock <= 0) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Sản phẩm đã hết hàng");
+        }
+
+        if (request.getQuantity() > availableStock) {
+            throw new BusinessException(
+                    ErrorCode.INSUFFICIENT_STOCK,
+                    String.format("Số lượng yêu cầu (%d) vượt quá tồn kho khả dụng (tối đa: %d).",
+                            request.getQuantity(), availableStock)
+            );
+        }
+
+        item.setQuantity(request.getQuantity());
+        cartItemRepository.save(item);
+
+        return mapToCartResponse(cart);
     }
 
     private Cart getOrCreateCart(Long userId, String sessionId) {
