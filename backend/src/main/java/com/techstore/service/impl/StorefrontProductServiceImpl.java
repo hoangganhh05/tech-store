@@ -9,6 +9,7 @@ import com.techstore.dto.response.ProductVariantResponse;
 import com.techstore.dto.response.StorefrontHomeResponse;
 import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
+import com.techstore.dto.response.VariantStockResponse;
 import com.techstore.entity.Category;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductImage;
@@ -592,6 +593,41 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 specResponses,
                 product.getCreatedAt(),
                 product.getUpdatedAt()
+        );
+    }
+
+    @Override
+    public VariantStockResponse getVariantStock(Long productId, Long variantId) {
+        if (productId == null || productId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID sản phẩm không hợp lệ");
+        }
+        if (variantId == null || variantId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "ID biến thể không hợp lệ");
+        }
+
+        Product product = productRepository.findByIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm"));
+
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Sản phẩm đã ngừng kinh doanh");
+        }
+
+        ProductVariant variant = productVariantRepository.findByIdAndIsDeletedFalse(variantId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Không tìm thấy biến thể sản phẩm"));
+
+        if (!variant.getProduct().getId().equals(productId)) {
+            throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể không thuộc về sản phẩm này");
+        }
+
+        if (variant.getStatus() != VariantStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Biến thể đã ngừng kinh doanh");
+        }
+
+        return VariantStockResponse.of(
+                variant.getId(),
+                product.getId(),
+                variant.getSku(),
+                variant.getStockQuantity()
         );
     }
 }

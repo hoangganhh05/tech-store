@@ -219,6 +219,7 @@ export type ProductVariantDetail = {
   originalPrice?: number | null;
   stockQuantity: number;
   status: string;
+  stockStatus?: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | string;
   createdAt: string;
   updatedAt: string;
 };
@@ -277,6 +278,25 @@ export async function getStorefrontProductDetail(
 ): Promise<StorefrontProductDetail> {
   const response = await httpClient.get<ApiResponse<StorefrontProductDetail>>(
     `/products/${id}`,
+  );
+  return response.data.data;
+}
+
+export type VariantStock = {
+  variantId: number;
+  productId: number;
+  sku: string;
+  stockQuantity: number;
+  stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | string;
+  isAvailable: boolean;
+};
+
+export async function getVariantStock(
+  productId: number | string,
+  variantId: number | string,
+): Promise<VariantStock> {
+  const response = await httpClient.get<ApiResponse<VariantStock>>(
+    `/products/${productId}/variants/${variantId}/stock`,
   );
   return response.data.data;
 }
