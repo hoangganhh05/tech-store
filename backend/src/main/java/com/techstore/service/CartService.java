@@ -11,5 +11,8 @@ public interface CartService {
     CartResponse getCart(Long userId, String sessionId);
 
     CartResponse updateCartItemQuantity(Long userId, String sessionId, Long itemId, UpdateCartItemRequest request);
+
+    CartResponse removeCartItem(Long userId, String sessionId, Long itemId);
 }
+
 

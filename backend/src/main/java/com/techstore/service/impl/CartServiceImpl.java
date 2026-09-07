@@ -174,6 +174,31 @@ public class CartServiceImpl implements CartService {
         return mapToCartResponse(cart);
     }
 
+    @Override
+    @Transactional
+    public CartResponse removeCartItem(Long userId, String sessionId, Long itemId) {
+        if (itemId == null || itemId <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã dòng sản phẩm giỏ hàng không hợp lệ");
+        }
+
+        Cart cart = findCart(userId, sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_NOT_FOUND, "Giỏ hàng không tồn tại"));
+
+        CartItem item = cartItemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND, "Sản phẩm không có trong giỏ hàng"));
+
+        if (!Objects.equals(item.getCart().getId(), cart.getId())) {
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND, "Sản phẩm không thuộc giỏ hàng hiện tại");
+        }
+
+        cartItemRepository.delete(item);
+        if (cart.getItems() != null) {
+            cart.getItems().removeIf(ci -> Objects.equals(ci.getId(), itemId));
+        }
+
+        return mapToCartResponse(cart);
+    }
+
     private Cart getOrCreateCart(Long userId, String sessionId) {
         Optional<Cart> cartOpt = findCart(userId, sessionId);
         if (cartOpt.isPresent()) {

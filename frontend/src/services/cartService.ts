@@ -77,3 +77,17 @@ export async function updateCartItemQuantity(
   return response.data.data;
 }
 
+export async function removeCartItem(itemId: number): Promise<Cart> {
+  const sessionId = getOrCreateSessionId();
+  const response = await httpClient.delete<ApiResponse<Cart>>(
+    `/cart/items/${itemId}`,
+    {
+      headers: {
+        "X-Session-Id": sessionId,
+      },
+    },
+  );
+  return response.data.data;
+}
+
+
