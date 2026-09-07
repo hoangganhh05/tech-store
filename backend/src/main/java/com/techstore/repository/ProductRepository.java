@@ -1,8 +1,13 @@
 package com.techstore.repository;
 
 import com.techstore.entity.Product;
+import com.techstore.enums.InventoryTransactionType;
 import com.techstore.enums.ProductStatus;
+import com.techstore.enums.VariantStatus;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -36,4 +41,31 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByStatusOrderByCreatedAtDesc(ProductStatus status);
 
     List<Product> findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus status);
+
+    List<Product> findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus status, Pageable pageable);
+
+    @Query("SELECT p FROM Product p " +
+            "WHERE p.status = :status AND p.isDeleted = false " +
+            "ORDER BY (SELECT COALESCE(SUM(ABS(it.quantityChange)), 0) " +
+            "          FROM InventoryTransaction it " +
+            "          WHERE it.inventory.variant.product = p " +
+            "          AND it.transactionType = :saleType) DESC, p.createdAt DESC")
+    List<Product> findFeaturedProducts(
+            @Param("status") ProductStatus status,
+            @Param("saleType") InventoryTransactionType saleType,
+            Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT p FROM Product p " +
+            "JOIN ProductVariant pv ON pv.product = p " +
+            "WHERE p.status = :status AND p.isDeleted = false " +
+            "AND pv.status = :variantStatus AND pv.isDeleted = false " +
+            "AND pv.originalPrice IS NOT NULL AND pv.originalPrice > pv.price " +
+            "ORDER BY p.createdAt DESC")
+    List<Product> findOnSaleProducts(
+            @Param("status") ProductStatus status,
+            @Param("variantStatus") VariantStatus variantStatus,
+            Pageable pageable
+    );
 }
+
