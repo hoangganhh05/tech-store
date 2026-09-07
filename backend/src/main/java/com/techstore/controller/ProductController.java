@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,18 @@ public class ProductController {
 
     public ProductController(StorefrontProductService storefrontProductService) {
         this.storefrontProductService = storefrontProductService;
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Search products by keyword (name, description, brand)")
+    public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> searchProducts(
+            @RequestParam(name = "q")
+            @NotBlank(message = "Từ khóa tìm kiếm không được để trống")
+            @Size(max = 100, message = "Từ khóa tìm kiếm tối đa 100 ký tự")
+            String q
+    ) {
+        List<StorefrontProductResponse> response = storefrontProductService.searchProducts(q);
+        return ResponseEntity.ok(ApiResponse.success("Tìm kiếm sản phẩm thành công", response));
     }
 
     @GetMapping

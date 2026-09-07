@@ -100,3 +100,15 @@ export async function getStorefrontCategories(): Promise<Category[]> {
   );
   return response.data.data;
 }
+
+export async function searchStorefrontProducts(
+  keyword: string,
+): Promise<StorefrontProduct[]> {
+  const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
+    "/products/search",
+    {
+      params: { q: keyword },
+    },
+  );
+  return response.data.data;
+}

@@ -24,10 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.Normalizer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -131,6 +133,51 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
         }
         return mapToStorefrontProductResponses(products);
+    }
+
+    private static final Pattern ACCENT_PATTERN = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+
+    @Override
+    public List<StorefrontProductResponse> searchProducts(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        String trimmed = query.trim();
+        String normalizedKeyword = removeAccents(trimmed).toLowerCase();
+
+        List<Product> activeProducts = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
+
+        List<Product> matched = activeProducts.stream()
+                .filter(p -> matchesSearch(p, normalizedKeyword))
+                .toList();
+
+        return mapToStorefrontProductResponses(matched);
+    }
+
+    private boolean matchesSearch(Product product, String normalizedKeyword) {
+        if (product.getName() != null && removeAccents(product.getName()).toLowerCase().contains(normalizedKeyword)) {
+            return true;
+        }
+        if (product.getDescription() != null && removeAccents(product.getDescription()).toLowerCase().contains(normalizedKeyword)) {
+            return true;
+        }
+        if (product.getBrand() != null && product.getBrand().getName() != null
+                && removeAccents(product.getBrand().getName()).toLowerCase().contains(normalizedKeyword)) {
+            return true;
+        }
+        return false;
+    }
+
+    private String removeAccents(String input) {
+        if (input == null) {
+            return "";
+        }
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+        return ACCENT_PATTERN.matcher(normalized).replaceAll("")
+                .replace('\u0111', 'd')
+                .replace('\u0110', 'D')
+                .replace('đ', 'd')
+                .replace('Đ', 'd');
     }
 
     private int normalizeLimit(int limit) {
