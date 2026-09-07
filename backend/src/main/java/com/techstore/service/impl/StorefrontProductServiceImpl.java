@@ -27,7 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +52,6 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             ProductVariantRepository productVariantRepository,
             ProductImageRepository productImageRepository,
             CategoryRepository categoryRepository,
-            InventoryTransactionRepository inventoryTransactionRepository
             InventoryTransactionRepository inventoryTransactionRepository,
             BrandRepository brandRepository
     ) {
@@ -135,6 +136,18 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             BigDecimal priceMin,
             BigDecimal priceMax
     ) {
+        return getProducts(categoryId, brandIds, priceMin, priceMax, null, null);
+    }
+
+    @Override
+    public List<StorefrontProductResponse> getProducts(
+            Long categoryId,
+            List<Long> brandIds,
+            BigDecimal priceMin,
+            BigDecimal priceMax,
+            String sortBy,
+            String sortDir
+    ) {
         if (categoryId != null) {
             if (categoryId <= 0) {
                 throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã danh mục không hợp lệ");
@@ -166,13 +179,38 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             validBrandIds = brandIds;
         }
 
+        // Validate sortBy
+        String normalizedSortBy = null;
+        if (sortBy != null && !sortBy.trim().isEmpty()) {
+            String raw = sortBy.trim().toLowerCase();
+            if (raw.equals("price")) {
+                normalizedSortBy = "price";
+            } else if (raw.equals("createdat") || raw.equals("created_at") || raw.equals("newest")) {
+                normalizedSortBy = "createdAt";
+            } else if (raw.equals("sales") || raw.equals("salescount") || raw.equals("sales_count") || raw.equals("best_seller") || raw.equals("bestseller")) {
+                normalizedSortBy = "salesCount";
+            } else {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Tiêu chí sắp xếp không hợp lệ");
+            }
+        }
+
+        // Validate sortDir
+        String normalizedSortDir = null;
+        if (sortDir != null && !sortDir.trim().isEmpty()) {
+            String raw = sortDir.trim().toLowerCase();
+            if (raw.equals("asc") || raw.equals("desc")) {
+                normalizedSortDir = raw;
+            } else {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Chiều sắp xếp không hợp lệ");
+            }
+        }
+
         List<Product> products;
         if (categoryId != null) {
             products = productRepository.findByCategoryOrParentCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE);
         } else {
             products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
         }
-        return mapToStorefrontProductResponses(products);
 
         if (validBrandIds != null) {
             final List<Long> filterBrandIds = validBrandIds;
@@ -195,6 +233,39 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                         return true;
                     })
                     .toList();
+        }
+
+        if (normalizedSortBy != null) {
+            List<StorefrontProductResponse> sorted = new java.util.ArrayList<>(responses);
+            boolean isAsc = "asc".equalsIgnoreCase(normalizedSortDir != null ? normalizedSortDir : ("price".equals(normalizedSortBy) ? "asc" : "desc"));
+
+            if ("price".equals(normalizedSortBy)) {
+                if (isAsc) {
+                    sorted.sort(Comparator.comparing(StorefrontProductResponse::minPrice, Comparator.nullsLast(BigDecimal::compareTo))
+                            .thenComparing(StorefrontProductResponse::id));
+                } else {
+                    sorted.sort(Comparator.comparing(StorefrontProductResponse::minPrice, Comparator.nullsLast(BigDecimal::compareTo)).reversed()
+                            .thenComparing(StorefrontProductResponse::id, Comparator.reverseOrder()));
+                }
+            } else if ("salesCount".equals(normalizedSortBy)) {
+                if (isAsc) {
+                    sorted.sort(Comparator.comparing((StorefrontProductResponse p) -> p.salesCount() == null ? 0L : p.salesCount())
+                            .thenComparing(StorefrontProductResponse::id));
+                } else {
+                    sorted.sort(Comparator.comparing((StorefrontProductResponse p) -> p.salesCount() == null ? 0L : p.salesCount(), Comparator.reverseOrder())
+                            .thenComparing((StorefrontProductResponse p) -> p.createdAt() == null ? java.time.Instant.EPOCH : p.createdAt(), Comparator.reverseOrder())
+                            .thenComparing(StorefrontProductResponse::id));
+                }
+            } else if ("createdAt".equals(normalizedSortBy)) {
+                if (isAsc) {
+                    sorted.sort(Comparator.comparing((StorefrontProductResponse p) -> p.createdAt() == null ? java.time.Instant.EPOCH : p.createdAt())
+                            .thenComparing(StorefrontProductResponse::id));
+                } else {
+                    sorted.sort(Comparator.comparing((StorefrontProductResponse p) -> p.createdAt() == null ? java.time.Instant.EPOCH : p.createdAt(), Comparator.reverseOrder())
+                            .thenComparing(StorefrontProductResponse::id, Comparator.reverseOrder()));
+                }
+            }
+            return sorted;
         }
 
         return responses;

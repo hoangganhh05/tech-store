@@ -44,17 +44,21 @@ public class ProductController {
     }
 
     @GetMapping
-    @Operation(summary = "Get products by category or all active products")
     @Operation(summary = "Get products with optional combined filters (categoryId, brandIds, priceMin, priceMax)")
+    @Operation(summary = "Get products with optional combined filters and sorting (categoryId, brandIds, priceMin, priceMax, sortBy, sortDir)")
     public ResponseEntity<ApiResponse<List<StorefrontProductResponse>>> getProducts(
-            @RequestParam(required = false) Long categoryId
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) List<Long> brandIds,
             @RequestParam(required = false) BigDecimal priceMin,
             @RequestParam(required = false) BigDecimal priceMax
+            @RequestParam(required = false) BigDecimal priceMax,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir
     ) {
-        List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId);
         List<StorefrontProductResponse> response = storefrontProductService.getProducts(categoryId, brandIds, priceMin, priceMax);
+        List<StorefrontProductResponse> response = storefrontProductService.getProducts(
+                categoryId, brandIds, priceMin, priceMax, sortBy, sortDir
+        );
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách sản phẩm thành công", response));
     }
 

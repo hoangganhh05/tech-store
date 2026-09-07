@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Alert,
   Box,
@@ -6,10 +6,13 @@ import {
   Checkbox,
   Chip,
   Divider,
+  FormControl,
   FormControlLabel,
   Grid,
+  InputLabel,
   MenuItem,
   Paper,
+  Select,
   Skeleton,
   Stack,
   TextField,
@@ -81,9 +84,33 @@ export function ProductListPage() {
     return isNaN(n) ? null : n;
   }, [priceMaxParam]);
 
+  // Sorting filter
+  const sortByParam = searchParams.get("sortBy");
+  const sortDirParam = searchParams.get("sortDir");
+
+  const sortBy = sortByParam || "createdAt";
+  const sortDir =
+    sortDirParam === "asc" || sortDirParam === "desc" ? sortDirParam : "desc";
+
+  const sortValue = useMemo(() => {
+    if (sortBy === "price") {
+      return sortDir === "asc" ? "price_asc" : "price_desc";
+    }
+    if (sortBy === "salesCount" || sortBy === "sales") {
+      return "salesCount_desc";
+    }
+    return "createdAt_desc";
+  }, [sortBy, sortDir]);
+
   // Local state for custom price inputs
   const [customMin, setCustomMin] = useState(priceMin != null ? String(priceMin) : "");
   const [customMax, setCustomMax] = useState(priceMax != null ? String(priceMax) : "");
+  const [customMin, setCustomMin] = useState(
+    priceMin != null ? String(priceMin) : "",
+  );
+  const [customMax, setCustomMax] = useState(
+    priceMax != null ? String(priceMax) : "",
+  );
   const [priceError, setPriceError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,12 +152,42 @@ export function ProductListPage() {
       if (searchQuery) {
         const data = await searchStorefrontProducts(searchQuery);
         setProducts(data);
+        let sortedData = [...data];
+        if (sortBy === "price") {
+          sortedData.sort((a, b) =>
+            sortDir === "asc"
+              ? a.minPrice - b.minPrice
+              : b.minPrice - a.minPrice,
+          );
+        } else if (sortBy === "salesCount" || sortBy === "sales") {
+          sortedData.sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0));
+        } else if (sortBy === "createdAt") {
+          if (sortDir === "asc") {
+            sortedData.sort(
+              (a, b) =>
+                new Date(a.createdAt || 0).getTime() -
+                new Date(b.createdAt || 0).getTime(),
+            );
+          } else {
+            sortedData.sort(
+              (a, b) =>
+                new Date(b.createdAt || 0).getTime() -
+                new Date(a.createdAt || 0).getTime(),
+            );
+          }
+        }
+        setProducts(sortedData);
       } else {
         const data = await getStorefrontProducts({
           categoryId: selectedCategoryId,
           brandIds: selectedBrandIds,
           priceMin,
           priceMax,
+          sortBy: sortByParam || undefined,
+          sortDir:
+            sortDirParam === "asc" || sortDirParam === "desc"
+              ? sortDirParam
+              : undefined,
         });
         setProducts(data);
       }
@@ -142,6 +199,17 @@ export function ProductListPage() {
       setLoading(false);
     }
   }, [searchQuery, selectedCategoryId, selectedBrandIds, priceMin, priceMax]);
+  }, [
+    searchQuery,
+    selectedCategoryId,
+    selectedBrandIds,
+    priceMin,
+    priceMax,
+    sortBy,
+    sortDir,
+    sortByParam,
+    sortDirParam,
+  ]);
 
   useEffect(() => {
     loadProducts();
@@ -192,6 +260,7 @@ export function ProductListPage() {
       setSearchParams(newParams);
     },
     [searchParams, setSearchParams]
+    [searchParams, setSearchParams],
   );
 
   const handleCategoryChange = (newCategoryId: number | null) => {
@@ -240,6 +309,12 @@ export function ProductListPage() {
     if (searchQuery) {
       newParams.set("q", searchQuery);
     }
+    if (sortByParam) {
+      newParams.set("sortBy", sortByParam);
+    }
+    if (sortDirParam) {
+      newParams.set("sortDir", sortDirParam);
+    }
     setSearchParams(newParams);
   };
 
@@ -249,12 +324,32 @@ export function ProductListPage() {
     setSearchParams(newParams);
   };
 
+  const handleSortChange = (newSortValue: string) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (newSortValue === "price_asc") {
+      newParams.set("sortBy", "price");
+      newParams.set("sortDir", "asc");
+    } else if (newSortValue === "price_desc") {
+      newParams.set("sortBy", "price");
+      newParams.set("sortDir", "desc");
+    } else if (newSortValue === "salesCount_desc") {
+      newParams.set("sortBy", "salesCount");
+      newParams.set("sortDir", "desc");
+    } else {
+      newParams.delete("sortBy");
+      newParams.delete("sortDir");
+    }
+    setSearchParams(newParams);
+  };
+
   const hasBrandOrPriceFilters = Boolean(
     selectedBrandIds.length > 0 || priceMin != null || priceMax != null
+    selectedBrandIds.length > 0 || priceMin != null || priceMax != null,
   );
 
   const hasActiveFilters = Boolean(
     selectedCategoryId != null || hasBrandOrPriceFilters
+    selectedCategoryId != null || hasBrandOrPriceFilters,
   );
 
   const currentCategory = useMemo(() => {
@@ -558,6 +653,12 @@ export function ProductListPage() {
 
               {priceError && (
                 <Typography variant="caption" color="error" display="block" mb={1}>
+                <Typography
+                  variant="caption"
+                  color="error"
+                  display="block"
+                  mb={1}
+                >
                   {priceError}
                 </Typography>
               )}
@@ -579,10 +680,14 @@ export function ProductListPage() {
         {/* Right Content Area: Active Chips, Count, Products Grid */}
         <Grid size={{ xs: 12, md: 8.5, lg: 9 }}>
           {/* Results header & count bar */}
+          {/* Results header, count bar & sort dropdown */}
           <Stack
             direction="row"
+            direction={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
             alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={2}
             py={1.5}
             px={2}
             mb={2}
@@ -601,9 +706,73 @@ export function ProductListPage() {
               variant="body2"
               color="text.secondary"
               data-testid="products-count"
+            <Box>
+              <Typography
+                variant="subtitle1"
+                fontWeight={700}
+                color="text.primary"
+              >
+                {searchQuery
+                  ? `Từ khóa: "${searchQuery}"`
+                  : currentCategory
+                    ? currentCategory.name
+                    : "Tất cả sản phẩm"}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                data-testid="products-count"
+              >
+                {loading
+                  ? "Đang tải..."
+                  : `Tìm thấy ${products.length} sản phẩm`}
+              </Typography>
+            </Box>
+
+            {/* Dropdown chọn tiêu chí sắp xếp */}
+            <FormControl
+              size="small"
+              sx={{ minWidth: 170, width: { xs: "100%", sm: "auto" } }}
             >
               {loading ? "Đang tải..." : `Tìm thấy ${products.length} sản phẩm`}
             </Typography>
+              <InputLabel id="sort-select-label">Sắp xếp theo</InputLabel>
+              <Select
+                labelId="sort-select-label"
+                id="sort-select"
+                value={sortValue}
+                label="Sắp xếp theo"
+                onChange={(e) => handleSortChange(e.target.value)}
+                data-testid="sort-select"
+                sx={{
+                  bgcolor: "#ffffff",
+                  borderRadius: 1.5,
+                  fontSize: "0.875rem",
+                }}
+              >
+                <MenuItem
+                  value="createdAt_desc"
+                  data-testid="sort-option-newest"
+                >
+                  Mới nhất
+                </MenuItem>
+                <MenuItem value="price_asc" data-testid="sort-option-price-asc">
+                  Giá tăng dần
+                </MenuItem>
+                <MenuItem
+                  value="price_desc"
+                  data-testid="sort-option-price-desc"
+                >
+                  Giá giảm dần
+                </MenuItem>
+                <MenuItem
+                  value="salesCount_desc"
+                  data-testid="sort-option-sales-desc"
+                >
+                  Bán chạy nhất
+                </MenuItem>
+              </Select>
+            </FormControl>
           </Stack>
 
           {/* Active Filter Badges */}
@@ -616,6 +785,11 @@ export function ProductListPage() {
               mb={2.5}
             >
               <Typography variant="body2" color="text.secondary" fontWeight={600}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                fontWeight={600}
+              >
                 Đang lọc:
               </Typography>
               {currentCategory && (
@@ -649,6 +823,8 @@ export function ProductListPage() {
                       : priceMin != null
                       ? `Giá từ: ${formatPrice(priceMin)}`
                       : `Giá đến: ${formatPrice(priceMax!)}`
+                        ? `Giá từ: ${formatPrice(priceMin)}`
+                        : `Giá đến: ${formatPrice(priceMax!)}`
                   }
                   onDelete={() =>
                     updateFilterParams({ priceMin: null, priceMax: null })
@@ -769,8 +945,13 @@ export function ProductListPage() {
                   <li>
                     Thử sử dụng từ khóa ngắn gọn hoặc tổng quát hơn (ví dụ: iPhone,
                     Samsung, tai nghe, sạc...).
+                    Thử sử dụng từ khóa ngắn gọn hoặc tổng quát hơn (ví dụ:
+                    iPhone, Samsung, tai nghe, sạc...).
                   </li>
                   <li>Thử duyệt theo danh mục sản phẩm ở thanh lọc phía trên.</li>
+                  <li>
+                    Thử duyệt theo danh mục sản phẩm ở thanh lọc phía trên.
+                  </li>
                 </Typography>
               </Box>
 

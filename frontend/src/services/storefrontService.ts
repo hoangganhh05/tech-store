@@ -7,6 +7,8 @@ export type ProductFilterParams = {
   brandIds?: number[];
   priceMin?: number | null;
   priceMax?: number | null;
+  sortBy?: string | null;
+  sortDir?: "asc" | "desc" | null;
 };
 
 export type StorefrontProduct = {
@@ -91,7 +93,6 @@ export async function getOnSaleProducts(
 }
 
 export async function getStorefrontProducts(
-  categoryId?: number | null,
   filtersOrCategoryId?: ProductFilterParams | number | null,
 ): Promise<StorefrontProduct[]> {
   const params: Record<string, unknown> = {};
@@ -113,13 +114,16 @@ export async function getStorefrontProducts(
     if (filtersOrCategoryId.priceMax != null) {
       params.priceMax = filtersOrCategoryId.priceMax;
     }
+    if (filtersOrCategoryId.sortBy) {
+      params.sortBy = filtersOrCategoryId.sortBy;
+    }
+    if (filtersOrCategoryId.sortDir) {
+      params.sortDir = filtersOrCategoryId.sortDir;
+    }
   }
 
   const response = await httpClient.get<ApiResponse<StorefrontProduct[]>>(
     "/products",
-    {
-      params: categoryId ? { categoryId } : {},
-    },
     { params },
   );
   return response.data.data;

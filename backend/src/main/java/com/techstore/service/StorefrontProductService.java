@@ -24,6 +24,8 @@ public interface StorefrontProductService {
 
     List<StorefrontProductResponse> getProducts(Long categoryId, List<Long> brandIds, BigDecimal priceMin, BigDecimal priceMax);
 
+    List<StorefrontProductResponse> getProducts(Long categoryId, List<Long> brandIds, BigDecimal priceMin, BigDecimal priceMax, String sortBy, String sortDir);
+
     List<StorefrontProductResponse> searchProducts(String query);
 
     List<BrandResponse> getFeaturedBrands();
