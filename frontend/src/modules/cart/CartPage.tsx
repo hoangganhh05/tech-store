@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -25,82 +25,103 @@ import {
   DialogContentText,
   DialogActions,
   Tooltip,
-} from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import RemoveIcon from '@mui/icons-material/Remove'
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Link } from 'react-router-dom'
-import { PageIntro } from '../../components/common/PageIntro'
-import { ROUTES } from '../../constants/routes'
-import { useCart } from '../../hooks/useCart'
-import type { CartItem } from '../../services/cartService'
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { Link } from "react-router-dom";
+import { PageIntro } from "../../components/common/PageIntro";
+import { ROUTES } from "../../constants/routes";
+import { useCart } from "../../hooks/useCart";
+import type { CartItem } from "../../services/cartService";
 
 function formatPrice(val: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(val);
 }
 
 export function CartPage() {
-  const { cart, updateQuantity, removeCartItem } = useCart()
-  const [updatingItemId, setUpdatingItemId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState<boolean>(false)
-  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const { cart, updateQuantity, removeCartItem } = useCart();
+  const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<boolean>(false);
+  const [itemToDelete, setItemToDelete] = useState<CartItem | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const handleUpdateQuantity = async (itemId: number, newQty: number, maxStock: number) => {
-    if (newQty < 1) return
+  const handleUpdateQuantity = async (
+    itemId: number,
+    newQty: number,
+    maxStock: number,
+  ) => {
+    if (newQty < 1) return;
     if (newQty > maxStock) {
-      setErrorMessage(`Số lượng vượt quá tồn kho khả dụng (${maxStock})`)
-      return
+      setErrorMessage(`Số lượng vượt quá tồn kho khả dụng (${maxStock})`);
+      return;
     }
 
-    setUpdatingItemId(itemId)
-    setErrorMessage(null)
+    setUpdatingItemId(itemId);
+    setErrorMessage(null);
     try {
-      await updateQuantity(itemId, newQty)
+      await updateQuantity(itemId, newQty);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } }
-      setErrorMessage(axiosErr?.response?.data?.message || 'Không thể cập nhật số lượng. Vui lòng thử lại.')
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setErrorMessage(
+        axiosErr?.response?.data?.message ||
+          "Không thể cập nhật số lượng. Vui lòng thử lại.",
+      );
     } finally {
-      setUpdatingItemId(null)
+      setUpdatingItemId(null);
     }
-  }
+  };
 
   const handleOpenDeleteDialog = (item: CartItem) => {
-    setItemToDelete(item)
-  }
+    setItemToDelete(item);
+  };
 
   const handleCloseDeleteDialog = () => {
-    if (deleting) return
-    setItemToDelete(null)
-  }
+    if (deleting) return;
+    setItemToDelete(null);
+  };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete) return
-    setDeleting(true)
-    setErrorMessage(null)
+    if (!itemToDelete) return;
+    setDeleting(true);
+    setErrorMessage(null);
     try {
-      await removeCartItem(itemToDelete.id)
-      setToastMessage('Đã xoá sản phẩm khỏi giỏ hàng thành công!')
-      setItemToDelete(null)
+      await removeCartItem(itemToDelete.id);
+      setToastMessage("Đã xoá sản phẩm khỏi giỏ hàng thành công!");
+      setItemToDelete(null);
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } }
-      setErrorMessage(axiosErr?.response?.data?.message || 'Không thể xoá sản phẩm. Vui lòng thử lại.')
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      setErrorMessage(
+        axiosErr?.response?.data?.message ||
+          "Không thể xoá sản phẩm. Vui lòng thử lại.",
+      );
     } finally {
-      setDeleting(false)
+      setDeleting(false);
     }
-  }
+  };
 
-  const isEmpty = !cart || !cart.items || cart.items.length === 0
+  const isEmpty = !cart || !cart.items || cart.items.length === 0;
 
   return (
     <Box sx={{ py: 3 }} data-testid="cart-page">
-      <PageIntro title="Giỏ hàng" description="Kiểm tra sản phẩm và số lượng trước khi đặt hàng." />
+      <PageIntro
+        title="Giỏ hàng"
+        description="Kiểm tra sản phẩm và số lượng trước khi đặt hàng."
+      />
 
       {errorMessage && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorMessage(null)} data-testid="cart-error-alert">
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          onClose={() => setErrorMessage(null)}
+          data-testid="cart-error-alert"
+        >
           {errorMessage}
         </Alert>
       )}
@@ -109,18 +130,30 @@ export function CartPage() {
         open={!!toastMessage}
         autoHideDuration={4000}
         onClose={() => setToastMessage(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert onClose={() => setToastMessage(null)} severity="success" sx={{ width: '100%' }} data-testid="cart-toast">
+        <Alert
+          onClose={() => setToastMessage(null)}
+          severity="success"
+          sx={{ width: "100%" }}
+          data-testid="cart-toast"
+        >
           {toastMessage}
         </Alert>
       </Snackbar>
 
       {isEmpty ? (
         <Card data-testid="empty-cart-card">
-          <CardContent sx={{ textAlign: 'center', py: 6 }}>
-            <ShoppingCartOutlinedIcon sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom data-testid="empty-cart-message">
+          <CardContent sx={{ textAlign: "center", py: 6 }}>
+            <ShoppingCartOutlinedIcon
+              sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+            />
+            <Typography
+              variant="h6"
+              color="text.secondary"
+              gutterBottom
+              data-testid="empty-cart-message"
+            >
               Giỏ hàng của bạn đang trống.
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
@@ -154,19 +187,30 @@ export function CartPage() {
                   </TableHead>
                   <TableBody>
                     {cart.items.map((item) => {
-                      const isMaxStock = item.quantity >= item.availableStock
-                      const isMinQuantity = item.quantity <= 1
-                      const isUpdating = updatingItemId === item.id
+                      const isMaxStock = item.quantity >= item.availableStock;
+                      const isMinQuantity = item.quantity <= 1;
+                      const isUpdating = updatingItemId === item.id;
 
                       return (
-                        <TableRow key={item.id} data-testid={`cart-item-${item.id}`}>
+                        <TableRow
+                          key={item.id}
+                          data-testid={`cart-item-${item.id}`}
+                        >
                           <TableCell>
-                            <Stack direction="row" spacing={2} alignItems="center">
+                            <Stack
+                              direction="row"
+                              spacing={2}
+                              alignItems="center"
+                            >
                               <Avatar
                                 variant="rounded"
-                                src={item.imageUrl || ''}
+                                src={item.imageUrl || ""}
                                 alt={item.productName}
-                                sx={{ width: 64, height: 64, bgcolor: 'grey.100' }}
+                                sx={{
+                                  width: 64,
+                                  height: 64,
+                                  bgcolor: "grey.100",
+                                }}
                               />
                               <Box>
                                 <Typography
@@ -175,32 +219,56 @@ export function CartPage() {
                                   variant="subtitle2"
                                   data-testid={`item-name-${item.id}`}
                                   sx={{
-                                    textDecoration: 'none',
-                                    color: 'inherit',
+                                    textDecoration: "none",
+                                    color: "inherit",
                                     fontWeight: 600,
-                                    '&:hover': { color: 'primary.main' },
+                                    "&:hover": { color: "primary.main" },
                                   }}
                                 >
                                   {item.productName}
                                 </Typography>
-                                <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                                <Stack
+                                  direction="row"
+                                  spacing={1}
+                                  sx={{ mt: 0.5 }}
+                                >
                                   {item.color && (
-                                    <Chip size="small" label={item.color} variant="outlined" sx={{ height: 22 }} />
+                                    <Chip
+                                      size="small"
+                                      label={item.color}
+                                      variant="outlined"
+                                      sx={{ height: 22 }}
+                                    />
                                   )}
                                   {item.storage && (
-                                    <Chip size="small" label={item.storage} variant="outlined" sx={{ height: 22 }} />
+                                    <Chip
+                                      size="small"
+                                      label={item.storage}
+                                      variant="outlined"
+                                      sx={{ height: 22 }}
+                                    />
                                   )}
                                 </Stack>
                                 {isMaxStock && (
-                                  <Typography variant="caption" color="warning.main" display="block" sx={{ mt: 0.5 }}>
-                                    Đã đạt giới hạn tồn kho ({item.availableStock})
+                                  <Typography
+                                    variant="caption"
+                                    color="warning.main"
+                                    display="block"
+                                    sx={{ mt: 0.5 }}
+                                  >
+                                    Đã đạt giới hạn tồn kho (
+                                    {item.availableStock})
                                   </Typography>
                                 )}
                               </Box>
                             </Stack>
                           </TableCell>
                           <TableCell align="center">
-                            <Typography variant="body2" fontWeight={600} data-testid={`item-price-${item.id}`}>
+                            <Typography
+                              variant="body2"
+                              fontWeight={600}
+                              data-testid={`item-price-${item.id}`}
+                            >
                               {formatPrice(item.price)}
                             </Typography>
                           </TableCell>
@@ -211,19 +279,25 @@ export function CartPage() {
                               justifyContent="center"
                               spacing={0.5}
                               sx={{
-                                border: '1px solid',
-                                borderColor: 'divider',
+                                border: "1px solid",
+                                borderColor: "divider",
                                 borderRadius: 1,
                                 px: 0.5,
                                 py: 0.25,
-                                width: 'fit-content',
-                                mx: 'auto',
+                                width: "fit-content",
+                                mx: "auto",
                               }}
                             >
                               <IconButton
                                 size="small"
                                 disabled={isMinQuantity || isUpdating}
-                                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.availableStock)}
+                                onClick={() =>
+                                  handleUpdateQuantity(
+                                    item.id,
+                                    item.quantity - 1,
+                                    item.availableStock,
+                                  )
+                                }
                                 data-testid={`decrease-qty-btn-${item.id}`}
                                 aria-label="Giảm số lượng"
                               >
@@ -231,14 +305,24 @@ export function CartPage() {
                               </IconButton>
                               <Typography
                                 data-testid={`item-qty-${item.id}`}
-                                sx={{ minWidth: 32, textAlign: 'center', fontWeight: 600 }}
+                                sx={{
+                                  minWidth: 32,
+                                  textAlign: "center",
+                                  fontWeight: 600,
+                                }}
                               >
                                 {item.quantity}
                               </Typography>
                               <IconButton
                                 size="small"
                                 disabled={isMaxStock || isUpdating}
-                                onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.availableStock)}
+                                onClick={() =>
+                                  handleUpdateQuantity(
+                                    item.id,
+                                    item.quantity + 1,
+                                    item.availableStock,
+                                  )
+                                }
                                 data-testid={`increase-qty-btn-${item.id}`}
                                 aria-label="Tăng số lượng"
                               >
@@ -270,7 +354,7 @@ export function CartPage() {
                             </Tooltip>
                           </TableCell>
                         </TableRow>
-                      )
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -287,7 +371,9 @@ export function CartPage() {
                 <Divider sx={{ my: 1.5 }} />
                 <Stack spacing={1.5}>
                   <Stack direction="row" justifyContent="space-between">
-                    <Typography color="text.secondary">Tổng số lượng:</Typography>
+                    <Typography color="text.secondary">
+                      Tổng số lượng:
+                    </Typography>
                     <Typography fontWeight={600} data-testid="cart-total-items">
                       {cart.totalItems} sản phẩm
                     </Typography>
@@ -298,19 +384,116 @@ export function CartPage() {
                       {formatPrice(cart.subtotal)}
                     </Typography>
                   </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography color="text.secondary">Phí vận chuyển:</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Tính khi thanh toán
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Typography color="text.secondary">
+                      Phí vận chuyển dự kiến:
                     </Typography>
+                    {cart.shippingFee === 0 ? (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography
+                          fontWeight={600}
+                          color="success.main"
+                          data-testid="cart-shipping-fee"
+                        >
+                          Miễn phí
+                        </Typography>
+                        <Chip
+                          label="FREE SHIP"
+                          color="success"
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: "0.68rem",
+                            fontWeight: 700,
+                          }}
+                        />
+                      </Stack>
+                    ) : (
+                      <Typography
+                        fontWeight={600}
+                        data-testid="cart-shipping-fee"
+                      >
+                        {formatPrice(cart.shippingFee)}
+                      </Typography>
+                    )}
                   </Stack>
+
+                  {/* Freeship notification hint */}
+                  {cart.subtotal < 5000000 ? (
+                    <Box
+                      data-testid="freeship-progress-notice"
+                      sx={{
+                        bgcolor: "info.lighter",
+                        p: 1,
+                        borderRadius: 1,
+                        border: "1px dashed",
+                        borderColor: "info.light",
+                      }}
+                    >
+                      <Typography variant="caption" color="text.secondary">
+                        Mua thêm{" "}
+                        <strong>{formatPrice(5000000 - cart.subtotal)}</strong>{" "}
+                        để được <strong>Miễn phí vận chuyển</strong>!
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      data-testid="freeship-eligible-notice"
+                      sx={{
+                        bgcolor: "success.lighter",
+                        p: 1,
+                        borderRadius: 1,
+                        border: "1px dashed",
+                        borderColor: "success.light",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="success.main"
+                        fontWeight={600}
+                      >
+                        ✓ Đơn hàng đủ điều kiện Miễn phí vận chuyển toàn quốc!
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {cart.discountAmount > 0 && (
+                    <Stack direction="row" justifyContent="space-between">
+                      <Typography color="text.secondary">
+                        Giảm giá voucher:
+                      </Typography>
+                      <Typography
+                        fontWeight={600}
+                        color="error.main"
+                        data-testid="cart-discount"
+                      >
+                        -{formatPrice(cart.discountAmount)}
+                      </Typography>
+                    </Stack>
+                  )}
+
                   <Divider sx={{ my: 1 }} />
-                  <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="baseline"
+                  >
                     <Typography variant="subtitle1" fontWeight={700}>
                       Tổng cộng:
                     </Typography>
-                    <Typography variant="h6" fontWeight={700} color="primary.main" data-testid="cart-total">
-                      {formatPrice(cart.subtotal)}
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color="primary.main"
+                      data-testid="cart-total"
+                    >
+                      {formatPrice(
+                        cart.total ?? cart.subtotal + (cart.shippingFee || 0),
+                      )}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -350,15 +533,27 @@ export function CartPage() {
         <DialogTitle>Xác nhận xoá sản phẩm</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Bạn có chắc chắn muốn xoá sản phẩm <strong>{itemToDelete?.productName}</strong>
+            Bạn có chắc chắn muốn xoá sản phẩm{" "}
+            <strong>{itemToDelete?.productName}</strong>
             {itemToDelete && (itemToDelete.color || itemToDelete.storage) ? (
-              <> ({[itemToDelete.color, itemToDelete.storage].filter(Boolean).join(' - ')})</>
-            ) : null}{' '}
+              <>
+                {" "}
+                (
+                {[itemToDelete.color, itemToDelete.storage]
+                  .filter(Boolean)
+                  .join(" - ")}
+                )
+              </>
+            ) : null}{" "}
             khỏi giỏ hàng không?
           </DialogContentText>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDeleteDialog} disabled={deleting} data-testid="cancel-delete-btn">
+          <Button
+            onClick={handleCloseDeleteDialog}
+            disabled={deleting}
+            data-testid="cancel-delete-btn"
+          >
             Huỷ
           </Button>
           <Button
@@ -368,10 +563,10 @@ export function CartPage() {
             disabled={deleting}
             data-testid="confirm-delete-btn"
           >
-            {deleting ? 'Đang xoá...' : 'Xác nhận xoá'}
+            {deleting ? "Đang xoá..." : "Xác nhận xoá"}
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
-  )
+  );
 }

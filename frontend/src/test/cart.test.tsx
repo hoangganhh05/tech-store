@@ -34,7 +34,9 @@ vi.mock("../services/storefrontService", () => ({
 
 const mockedGetCart = vi.mocked(cartService.getCart);
 const mockedAddToCart = vi.mocked(cartService.addToCart);
-const mockedUpdateCartItemQuantity = vi.mocked(cartService.updateCartItemQuantity);
+const mockedUpdateCartItemQuantity = vi.mocked(
+  cartService.updateCartItemQuantity,
+);
 const mockedRemoveCartItem = vi.mocked(cartService.removeCartItem);
 const mockedGetProductDetail = vi.mocked(
   storefrontService.getStorefrontProductDetail,
@@ -54,13 +56,13 @@ const mockAuthValue = {
 
 const mockProductDetail: storefrontService.StorefrontProductDetail = {
   id: 1,
-  name: 'iPhone 15 Pro Max',
-  description: 'Điện thoại flagship cao cấp.',
+  name: "iPhone 15 Pro Max",
+  description: "Điện thoại flagship cao cấp.",
   brandId: 1,
-  brandName: 'Apple',
+  brandName: "Apple",
   categoryId: 1,
-  categoryName: 'Điện thoại',
-  status: 'ACTIVE',
+  categoryName: "Điện thoại",
+  status: "ACTIVE",
   minPrice: 29990000,
   maxPrice: 34990000,
   originalPrice: 34990000,
@@ -73,33 +75,33 @@ const mockProductDetail: storefrontService.StorefrontProductDetail = {
     {
       id: 101,
       productId: 1,
-      productName: 'iPhone 15 Pro Max',
-      sku: 'IP15PM-TITAN-256',
-      color: 'Titan Tự Nhiên',
-      storage: '256GB',
+      productName: "iPhone 15 Pro Max",
+      sku: "IP15PM-TITAN-256",
+      color: "Titan Tự Nhiên",
+      storage: "256GB",
       price: 29990000,
       originalPrice: 34990000,
       stockQuantity: 10,
-      status: 'ACTIVE',
-      stockStatus: 'IN_STOCK',
-      createdAt: '2026-09-01T00:00:00Z',
-      updatedAt: '2026-09-01T00:00:00Z',
+      status: "ACTIVE",
+      stockStatus: "IN_STOCK",
+      createdAt: "2026-09-01T00:00:00Z",
+      updatedAt: "2026-09-01T00:00:00Z",
     },
   ],
   images: [
     {
       id: 1,
       productId: 1,
-      imageUrl: 'https://example.com/ip15pm.jpg',
+      imageUrl: "https://example.com/ip15pm.jpg",
       isPrimary: true,
       displayOrder: 0,
-      createdAt: '2026-09-01T00:00:00Z',
-      updatedAt: '2026-09-01T00:00:00Z',
+      createdAt: "2026-09-01T00:00:00Z",
+      updatedAt: "2026-09-01T00:00:00Z",
     },
   ],
   specifications: [],
-  createdAt: '2026-09-01T00:00:00Z',
-  updatedAt: '2026-09-01T00:00:00Z',
+  createdAt: "2026-09-01T00:00:00Z",
+  updatedAt: "2026-09-01T00:00:00Z",
 };
 
 describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () => {
@@ -113,6 +115,9 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       id: 1,
       totalItems: 0,
       subtotal: 0,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 0,
       items: [],
     });
 
@@ -140,6 +145,9 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       id: 1,
       totalItems: 5,
       subtotal: 100000,
+      shippingFee: 30000,
+      discountAmount: 0,
+      total: 130000,
       items: [],
     });
 
@@ -166,6 +174,9 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       id: 1,
       totalItems: 0,
       subtotal: 0,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 0,
       items: [],
     });
     mockedGetProductDetail.mockResolvedValue(mockProductDetail);
@@ -173,6 +184,9 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       id: 1,
       totalItems: 2,
       subtotal: 59980000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 59980000,
       items: [
         {
           id: 1,
@@ -249,6 +263,9 @@ describe("US-07.1: Thêm sản phẩm vào giỏ hàng (Cart UI & Badge)", () =>
       id: 1,
       totalItems: 0,
       subtotal: 0,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 0,
       items: [],
     });
     mockedGetProductDetail.mockResolvedValue(mockProductDetail);
@@ -301,6 +318,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     id: 1,
     totalItems: 2,
     subtotal: 51980000,
+    shippingFee: 0,
+    discountAmount: 0,
+    total: 51980000,
     items: [
       {
         id: 1,
@@ -325,6 +345,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       id: 1,
       totalItems: 0,
       subtotal: 0,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 0,
       items: [],
     });
 
@@ -367,12 +390,16 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     await waitFor(() => {
       expect(screen.getByTestId("cart-table")).toBeInTheDocument();
       expect(screen.getByTestId("cart-item-1")).toBeInTheDocument();
-      expect(screen.getByTestId("item-name-1")).toHaveTextContent("iPhone 15 Pro");
+      expect(screen.getByTestId("item-name-1")).toHaveTextContent(
+        "iPhone 15 Pro",
+      );
       expect(screen.getByText("Titan Tự Nhiên")).toBeInTheDocument();
       expect(screen.getByText("128GB")).toBeInTheDocument();
       expect(screen.getByTestId("item-qty-1")).toHaveTextContent("2");
       expect(screen.getByTestId("cart-summary")).toBeInTheDocument();
-      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("2 sản phẩm");
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent(
+        "2 sản phẩm",
+      );
       expect(screen.getByTestId("checkout-btn")).toBeInTheDocument();
     });
   });
@@ -383,6 +410,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       id: 1,
       totalItems: 3,
       subtotal: 77970000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 77970000,
       items: [
         {
           ...mockCartWithItems.items[0],
@@ -418,7 +448,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
 
     await waitFor(() => {
       expect(screen.getByTestId("item-qty-1")).toHaveTextContent("3");
-      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("3 sản phẩm");
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent(
+        "3 sản phẩm",
+      );
     });
   });
 
@@ -428,6 +460,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       id: 1,
       totalItems: 1,
       subtotal: 25990000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 25990000,
       items: [
         {
           ...mockCartWithItems.items[0],
@@ -463,7 +498,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
 
     await waitFor(() => {
       expect(screen.getByTestId("item-qty-1")).toHaveTextContent("1");
-      expect(screen.getByTestId("cart-total-items")).toHaveTextContent("1 sản phẩm");
+      expect(screen.getByTestId("cart-total-items")).toHaveTextContent(
+        "1 sản phẩm",
+      );
     });
   });
 
@@ -472,6 +509,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       id: 1,
       totalItems: 1,
       subtotal: 25990000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 25990000,
       items: [
         {
           ...mockCartWithItems.items[0],
@@ -507,6 +547,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
       id: 1,
       totalItems: 3,
       subtotal: 77970000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 77970000,
       items: [
         {
           ...mockCartWithItems.items[0],
@@ -532,7 +575,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     await waitFor(() => {
       const increaseBtn = screen.getByTestId("increase-qty-btn-1");
       expect(increaseBtn).toBeDisabled();
-      expect(screen.getByText("Đã đạt giới hạn tồn kho (3)")).toBeInTheDocument();
+      expect(
+        screen.getByText("Đã đạt giới hạn tồn kho (3)"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -570,7 +615,9 @@ describe("US-07.2: Xem giỏ hàng và cập nhật số lượng từng sản p
     await waitFor(() => {
       const alert = screen.getByTestId("cart-error-alert");
       expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent("Số lượng yêu cầu vượt quá tồn kho khả dụng");
+      expect(alert).toHaveTextContent(
+        "Số lượng yêu cầu vượt quá tồn kho khả dụng",
+      );
     });
   });
 });
@@ -584,6 +631,9 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
     id: 1,
     totalItems: 2,
     subtotal: 51980000,
+    shippingFee: 0,
+    discountAmount: 0,
+    total: 51980000,
     items: [
       {
         id: 1,
@@ -625,7 +675,9 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
     fireEvent.click(screen.getByTestId("remove-item-btn-1"));
 
     expect(screen.getByTestId("delete-confirm-dialog")).toBeInTheDocument();
-    expect(screen.getByText(/Bạn có chắc chắn muốn xoá sản phẩm/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Bạn có chắc chắn muốn xoá sản phẩm/i),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("cancel-delete-btn")).toBeInTheDocument();
     expect(screen.getByTestId("confirm-delete-btn")).toBeInTheDocument();
 
@@ -633,7 +685,9 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
     fireEvent.click(screen.getByTestId("cancel-delete-btn"));
 
     await waitFor(() => {
-      expect(screen.queryByTestId("delete-confirm-dialog")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("delete-confirm-dialog"),
+      ).not.toBeInTheDocument();
     });
     expect(mockedRemoveCartItem).not.toHaveBeenCalled();
   });
@@ -644,6 +698,9 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
       id: 1,
       totalItems: 0,
       subtotal: 0,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 0,
       items: [],
     });
 
@@ -677,13 +734,17 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
     await waitFor(() => {
       const toast = screen.getByTestId("cart-toast");
       expect(toast).toBeInTheDocument();
-      expect(toast).toHaveTextContent("Đã xoá sản phẩm khỏi giỏ hàng thành công!");
+      expect(toast).toHaveTextContent(
+        "Đã xoá sản phẩm khỏi giỏ hàng thành công!",
+      );
     });
 
     // Verify cart switches to empty state
     await waitFor(() => {
       expect(screen.getByTestId("empty-cart-card")).toBeInTheDocument();
-      expect(screen.getByTestId("empty-cart-message")).toHaveTextContent("Giỏ hàng của bạn đang trống.");
+      expect(screen.getByTestId("empty-cart-message")).toHaveTextContent(
+        "Giỏ hàng của bạn đang trống.",
+      );
     });
   });
 
@@ -727,3 +788,237 @@ describe("US-07.3: Xoá một hoặc nhiều sản phẩm khỏi giỏ hàng (Re
   });
 });
 
+describe("US-07.4: Hệ thống tự tính tổng tiền giỏ hàng (tạm tính, phí vận chuyển dự kiến, tổng cộng)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockCartUnderThreshold: cartService.Cart = {
+    id: 1,
+    totalItems: 1,
+    subtotal: 1000000,
+    shippingFee: 30000,
+    discountAmount: 0,
+    total: 1030000,
+    items: [
+      {
+        id: 1,
+        variantId: 101,
+        productId: 1,
+        productName: "Tai nghe Bluetooth",
+        sku: "TN-BT-01",
+        price: 1000000,
+        originalPrice: 1200000,
+        quantity: 1,
+        availableStock: 10,
+        subtotal: 1000000,
+      },
+    ],
+  };
+
+  const mockCartOverThreshold: cartService.Cart = {
+    id: 1,
+    totalItems: 2,
+    subtotal: 51980000,
+    shippingFee: 0,
+    discountAmount: 0,
+    total: 51980000,
+    items: [
+      {
+        id: 1,
+        variantId: 101,
+        productId: 1,
+        productName: "iPhone 15 Pro Max",
+        sku: "IP15PM-TITAN-256",
+        price: 25990000,
+        originalPrice: 28990000,
+        quantity: 2,
+        availableStock: 10,
+        subtotal: 51980000,
+      },
+    ],
+  };
+
+  it("calculates and displays standard shipping fee and subtotal when below free shipping threshold", async () => {
+    mockedGetCart.mockResolvedValue(mockCartUnderThreshold);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-summary")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("cart-total-items")).toHaveTextContent(
+      "1 sản phẩm",
+    );
+    expect(screen.getByTestId("cart-subtotal")).toHaveTextContent(
+      "1.000.000 ₫",
+    );
+    expect(screen.getByTestId("cart-shipping-fee")).toHaveTextContent(
+      "30.000 ₫",
+    );
+    expect(screen.getByTestId("cart-total")).toHaveTextContent("1.030.000 ₫");
+    expect(screen.getByTestId("freeship-progress-notice")).toBeInTheDocument();
+    expect(screen.getByTestId("freeship-progress-notice")).toHaveTextContent(
+      "Mua thêm 4.000.000 ₫ để được Miễn phí vận chuyển!",
+    );
+  });
+
+  it("calculates and displays free shipping and subtotal when equal or above 5M threshold", async () => {
+    mockedGetCart.mockResolvedValue(mockCartOverThreshold);
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-summary")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("cart-total-items")).toHaveTextContent(
+      "2 sản phẩm",
+    );
+    expect(screen.getByTestId("cart-subtotal")).toHaveTextContent(
+      "51.980.000 ₫",
+    );
+    expect(screen.getByTestId("cart-shipping-fee")).toHaveTextContent(
+      "Miễn phí",
+    );
+    expect(screen.getByText("FREE SHIP")).toBeInTheDocument();
+    expect(screen.getByTestId("cart-total")).toHaveTextContent("51.980.000 ₫");
+    expect(screen.getByTestId("freeship-eligible-notice")).toBeInTheDocument();
+    expect(screen.getByTestId("freeship-eligible-notice")).toHaveTextContent(
+      "Đơn hàng đủ điều kiện Miễn phí vận chuyển toàn quốc!",
+    );
+  });
+
+  it("recalculates total and shipping dynamically when quantity increases above free shipping threshold", async () => {
+    mockedGetCart.mockResolvedValue(mockCartUnderThreshold);
+    mockedUpdateCartItemQuantity.mockResolvedValue({
+      id: 1,
+      totalItems: 5,
+      subtotal: 5000000,
+      shippingFee: 0,
+      discountAmount: 0,
+      total: 5000000,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "Tai nghe Bluetooth",
+          sku: "TN-BT-01",
+          price: 1000000,
+          originalPrice: 1200000,
+          quantity: 5,
+          availableStock: 10,
+          subtotal: 5000000,
+        },
+      ],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-subtotal")).toHaveTextContent(
+        "1.000.000 ₫",
+      );
+      expect(screen.getByTestId("cart-shipping-fee")).toHaveTextContent(
+        "30.000 ₫",
+      );
+      expect(screen.getByTestId("cart-total")).toHaveTextContent("1.030.000 ₫");
+    });
+
+    fireEvent.click(screen.getByTestId("increase-qty-btn-1"));
+
+    await waitFor(() => {
+      expect(mockedUpdateCartItemQuantity).toHaveBeenCalledWith(1, 2);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-subtotal")).toHaveTextContent(
+        "5.000.000 ₫",
+      );
+      expect(screen.getByTestId("cart-shipping-fee")).toHaveTextContent(
+        "Miễn phí",
+      );
+      expect(screen.getByTestId("cart-total")).toHaveTextContent("5.000.000 ₫");
+      expect(
+        screen.getByTestId("freeship-eligible-notice"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("displays discount voucher row if discountAmount is greater than zero", async () => {
+    mockedGetCart.mockResolvedValue({
+      id: 1,
+      totalItems: 1,
+      subtotal: 2000000,
+      shippingFee: 30000,
+      discountAmount: 200000,
+      total: 1830000,
+      items: [
+        {
+          id: 1,
+          variantId: 101,
+          productId: 1,
+          productName: "Tai nghe Bluetooth",
+          sku: "TN-BT-01",
+          price: 2000000,
+          originalPrice: 2000000,
+          quantity: 1,
+          availableStock: 10,
+          subtotal: 2000000,
+        },
+      ],
+    });
+
+    render(
+      <ThemeProvider theme={appTheme}>
+        <AuthContext.Provider value={mockAuthValue}>
+          <CartProvider>
+            <MemoryRouter initialEntries={["/cart"]}>
+              <CartPage />
+            </MemoryRouter>
+          </CartProvider>
+        </AuthContext.Provider>
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("cart-discount")).toBeInTheDocument();
+      expect(screen.getByTestId("cart-discount")).toHaveTextContent(
+        "-200.000 ₫",
+      );
+      expect(screen.getByTestId("cart-total")).toHaveTextContent("1.830.000 ₫");
+    });
+  });
+});

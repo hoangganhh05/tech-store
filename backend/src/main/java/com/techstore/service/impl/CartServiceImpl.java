@@ -34,6 +34,9 @@ import java.util.UUID;
 @Service
 public class CartServiceImpl implements CartService {
 
+    public static final BigDecimal DEFAULT_SHIPPING_FEE = new BigDecimal("30000");
+    public static final BigDecimal FREE_SHIPPING_THRESHOLD = new BigDecimal("5000000");
+
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final UserRepository userRepository;
@@ -120,7 +123,7 @@ public class CartServiceImpl implements CartService {
     public CartResponse getCart(Long userId, String sessionId) {
         Optional<Cart> cartOpt = findCart(userId, sessionId);
         if (cartOpt.isEmpty()) {
-            return new CartResponse(null, 0, BigDecimal.ZERO, List.of());
+            return new CartResponse(null, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, List.of());
         }
         return mapToCartResponse(cartOpt.get());
     }
@@ -271,7 +274,19 @@ public class CartServiceImpl implements CartService {
             ));
         }
 
-        return new CartResponse(cart.getId(), totalItems, subtotal, itemResponses);
+        BigDecimal shippingFee;
+        if (totalItems == 0 || subtotal.compareTo(BigDecimal.ZERO) == 0) {
+            shippingFee = BigDecimal.ZERO;
+        } else if (subtotal.compareTo(FREE_SHIPPING_THRESHOLD) >= 0) {
+            shippingFee = BigDecimal.ZERO;
+        } else {
+            shippingFee = DEFAULT_SHIPPING_FEE;
+        }
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        BigDecimal total = subtotal.add(shippingFee).subtract(discountAmount);
+
+        return new CartResponse(cart.getId(), totalItems, subtotal, shippingFee, discountAmount, total, itemResponses);
     }
 
     private String resolveVariantImageUrl(ProductVariant variant, Product product) {
