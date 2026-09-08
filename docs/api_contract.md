@@ -391,3 +391,31 @@ constructor; `orders.payment_method` persists its string value and is NOT NULL.
 Errors: 400 `VALIDATION_ERROR` for missing/null/unknown/numeric method or malformed
 JSON; 401 `INVALID_ACCESS_TOKEN` for missing/invalid/expired authentication;
 403 `ACCESS_DENIED` for a session without CUSTOMER role.
+
+## Checkout order review (US-08.3)
+
+### POST /api/v1/checkout/review
+
+Requires a Bearer access token with the CUSTOMER role. The server reloads the
+authenticated customer's current cart and verifies that the selected address
+belongs to that customer.
+
+Request:
+
+```json
+{
+  "addressId": 12,
+  "paymentMethod": "COD"
+}
+```
+
+The standard response envelope contains `cart`, `shippingAddress`,
+`paymentMethod`, and `readyToPlaceOrder`. The cart includes the product and
+variant lines, quantities, prices, subtotal, shipping fee, discount and total.
+`readyToPlaceOrder` is true only when the cart is non-empty and has no current
+stock issue. This endpoint does not create an order or deduct inventory.
+
+Errors: 400 `VALIDATION_ERROR` for a missing/non-positive address or missing/
+unknown payment method; 401 `INVALID_ACCESS_TOKEN`; 403 `ACCESS_DENIED`; 404
+`ADDRESS_NOT_FOUND` for an unknown or another customer's address; 404
+`CART_NOT_FOUND` for an empty cart.

@@ -17,7 +17,6 @@ import {
   Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
@@ -31,6 +30,7 @@ import { getMyAddresses, type Address } from "../../services/userService";
 import { AddressFormDialog } from "../profile/AddressFormDialog";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import type { PaymentOption } from "../../services/checkoutService";
+import { OrderReviewStep } from "./OrderReviewStep";
 
 function formatPrice(val: number): string {
   return new Intl.NumberFormat("vi-VN", {
@@ -397,19 +397,16 @@ export function CheckoutPage() {
                     </Typography>
                   </Stack>
                   <Divider sx={{ mb: 3 }} />
-                  <Alert severity="info" sx={{ mb: 3 }}>
-                    Xác nhận thông tin lần cuối trước khi hoàn tất đặt hàng.
-                  </Alert>
-                  {paymentOption && <Alert severity="success" sx={{ mb: 3 }}>
-                    Phương thức thanh toán: {paymentOption.label}
-                  </Alert>}
-                  <Button
-                    variant="outlined"
-                    startIcon={<ArrowBackIcon />}
-                    onClick={handleBack}
-                  >
-                    Quay lại phương thức thanh toán
-                  </Button>
+                  {selectedAddressId && paymentOption ? (
+                    <OrderReviewStep
+                      addressId={selectedAddressId}
+                      paymentOption={paymentOption}
+                      onEditAddress={() => setActiveStep(0)}
+                      onEditPayment={() => setActiveStep(1)}
+                    />
+                  ) : (
+                    <Alert severity="warning">Vui lòng hoàn tất địa chỉ và phương thức thanh toán.</Alert>
+                  )}
                 </CardContent>
               </Card>
             )}

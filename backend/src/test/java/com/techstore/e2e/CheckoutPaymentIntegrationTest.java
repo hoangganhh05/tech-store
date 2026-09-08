@@ -107,4 +107,24 @@ class CheckoutPaymentIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"paymentMethod\":\"COD\"}"))
                 .andExpect(status().isForbidden());
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"addressId\":0,\"paymentMethod\":\"COD\"}",
+            "{\"addressId\":1}", "{\"addressId\":1,\"paymentMethod\":\"INVALID\"}", "{"})
+    void reviewRejectsInvalidInput(String body) throws Exception {
+        mvc.perform(post("/api/v1/checkout/review").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void reviewRequiresCustomerAndDoesNotExposeAnotherUsersAddress() throws Exception {
+        mvc.perform(post("/api/v1/checkout/review").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressId\":1,\"paymentMethod\":\"COD\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/checkout/review").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressId\":999999,\"paymentMethod\":\"COD\"}"))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("ADDRESS_NOT_FOUND"));
+    }
 }
