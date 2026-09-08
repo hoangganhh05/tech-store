@@ -8,6 +8,16 @@ import { CartContext } from "../modules/cart/CartStore";
 import { AuthContext } from "../modules/auth/AuthStore";
 import * as userService from "../services/userService";
 import type { Cart } from "../services/cartService";
+import * as checkoutService from "../services/checkoutService";
+
+const paymentOption: checkoutService.PaymentOption = {
+  paymentMethod: "COD", label: "Thanh toán khi nhận hàng (COD)", instructions: "Trả tiền khi nhận hàng.",
+};
+
+vi.mock("../services/checkoutService", () => ({
+  getPaymentMethods: vi.fn(),
+  selectPaymentMethod: vi.fn(),
+}));
 
 vi.mock("../services/userService", () => ({
   getMyAddresses: vi.fn(),
@@ -106,6 +116,8 @@ const mockAddresses: userService.Address[] = [
 describe("US-08.1: Chọn hoặc nhập địa chỉ giao hàng ở bước checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(checkoutService.getPaymentMethods).mockResolvedValue([paymentOption]);
+    vi.mocked(checkoutService.selectPaymentMethod).mockResolvedValue(paymentOption);
   });
 
   it("hiển thị danh sách địa chỉ đã lưu và tự động chọn địa chỉ mặc định", async () => {
@@ -325,12 +337,21 @@ describe("US-08.1: Chọn hoặc nhập địa chỉ giao hàng ở bước chec
       expect(screen.getByText(/Đã chọn địa chỉ:/i)).toBeInTheDocument();
     });
 
+    fireEvent.click(await screen.findByRole("radio", { name: paymentOption.label }));
+
     // Bấm quay lại bước chọn địa chỉ
     fireEvent.click(screen.getByTestId("back-to-address-btn"));
 
     await waitFor(() => {
       expect(screen.getByText("1. Địa chỉ giao hàng")).toBeInTheDocument();
     });
+    fireEvent.click(screen.getByTestId("continue-to-payment-btn"));
+    expect(await screen.findByRole("radio", { name: paymentOption.label })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục xem lại đơn hàng" }));
+    expect(await screen.findByTestId("checkout-step-review")).toHaveTextContent(paymentOption.label);
+    expect(checkoutService.selectPaymentMethod).toHaveBeenCalledWith("COD");
+    fireEvent.click(screen.getByRole("button", { name: "Quay lại phương thức thanh toán" }));
+    expect(await screen.findByRole("radio", { name: paymentOption.label })).toBeChecked();
   });
 
   it("hiển thị cảnh báo và nút về trang sản phẩm khi giỏ hàng trống", async () => {

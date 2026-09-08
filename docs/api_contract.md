@@ -362,3 +362,32 @@ Error responses:
   same as the current password.
 - `423 Locked`, code `ACCOUNT_LOCKED`, or `403 Forbidden`, code
   `ACCOUNT_DISABLED`: the account cannot use authenticated features.
+
+## Checkout payment methods (US-08.2)
+
+Both endpoints require a valid Bearer access token with the CUSTOMER role.
+
+### GET /api/v1/checkout/payment-methods
+
+Returns the standard `ApiResponse` envelope with `data` containing options:
+`{ "paymentMethod": "COD", "label": "...", "instructions": "..." }`.
+Supported values: `COD`, `BANK_TRANSFER`, `ONLINE`. Transfer and online
+instructions explicitly describe a simulation; no payment gateway is contacted.
+
+### POST /api/v1/checkout/payment-method
+
+Request:
+
+```json
+{ "paymentMethod": "BANK_TRANSFER" }
+```
+
+Returns 200 with the selected option in `data`. This endpoint validates a
+checkout selection; it does not create an order, persist a draft or mark a
+payment as paid. The frontend retains the selection while navigating checkout.
+The order submission in US-08.4 must pass the selected enum to the Order
+constructor; `orders.payment_method` persists its string value and is NOT NULL.
+
+Errors: 400 `VALIDATION_ERROR` for missing/null/unknown/numeric method or malformed
+JSON; 401 `INVALID_ACCESS_TOKEN` for missing/invalid/expired authentication;
+403 `ACCESS_DENIED` for a session without CUSTOMER role.
