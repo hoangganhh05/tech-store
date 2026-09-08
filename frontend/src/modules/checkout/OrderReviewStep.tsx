@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import type { AxiosError } from "axios";
 import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { getCheckoutReview, type CheckoutReview, type PaymentOption } from "../../services/checkoutService";
+import { placeOrder } from "../../services/orderService";
 
 const formatPrice = (value: number) => new Intl.NumberFormat("vi-VN", {
   style: "currency", currency: "VND",
@@ -13,12 +15,14 @@ type Props = {
   paymentOption: PaymentOption;
   onEditAddress: () => void;
   onEditPayment: () => void;
+  onPlaced: (orderNumber: string) => void;
 };
 
-export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEditPayment }: Props) {
+export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEditPayment, onPlaced }: Props) {
   const [review, setReview] = useState<CheckoutReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [placing, setPlacing] = useState(false);
 
   const loadReview = useCallback(async () => {
     setLoading(true);
@@ -43,6 +47,17 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   </Alert>;
 
   const { cart, shippingAddress, paymentMethod, readyToPlaceOrder } = review;
+  const submitOrder = async () => {
+    if (!readyToPlaceOrder || placing) return;
+    setPlacing(true); setError(null);
+    try {
+      const order = await placeOrder(addressId, paymentMethod.paymentMethod);
+      onPlaced(order.orderNumber);
+    } catch (requestError: unknown) {
+      const responseMessage = (requestError as AxiosError<{ message?: string }>).response?.data?.message;
+      setError(responseMessage || "Không thể đặt hàng. Vui lòng kiểm tra lại tồn kho và thử lại.");
+    } finally { setPlacing(false); }
+  };
   return <Stack spacing={3} data-testid="order-review-content">
     {!readyToPlaceOrder && <Alert severity="warning">Giỏ hàng có sản phẩm không còn đủ tồn kho. Vui lòng chỉnh sửa giỏ hàng.</Alert>}
 
@@ -95,7 +110,8 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
       </Stack>
     </Box>
 
-    <Button variant="contained" size="large" disabled={!readyToPlaceOrder}
-      data-testid="place-order-btn">Đặt hàng</Button>
+    {error && <Alert severity="error">{error}</Alert>}
+    <Button variant="contained" size="large" disabled={!readyToPlaceOrder || placing}
+      onClick={submitOrder} data-testid="place-order-btn">{placing ? "Đang đặt hàng..." : "Đặt hàng"}</Button>
   </Stack>;
 }

@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Order persistence model. Order creation from the cart is implemented in US-08.4. */
 @Entity
@@ -37,6 +39,10 @@ public class Order {
     private Instant placedAt;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private OrderAddress shippingAddress;
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
 
     protected Order() {}
 
@@ -59,4 +65,11 @@ public class Order {
     public Long getId() { return id; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public String getPaymentStatus() { return paymentStatus; }
+    public String getOrderNumber() { return orderNumber; }
+    public String getStatus() { return status; }
+    public BigDecimal getTotalAmount() { return totalAmount; }
+    public Instant getPlacedAt() { return placedAt; }
+    public List<OrderItem> getItems() { return items; }
+    public void setShippingAddress(OrderAddress address) { this.shippingAddress = address; }
+    public void addItem(OrderItem item) { items.add(item); item.setOrder(this); }
 }

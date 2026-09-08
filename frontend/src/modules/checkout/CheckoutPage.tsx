@@ -22,7 +22,7 @@ import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import PaymentOutlinedIcon from "@mui/icons-material/PaymentOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { PageIntro } from "../../components/common/PageIntro";
 import { ROUTES } from "../../constants/routes";
 import { useCart } from "../../hooks/useCart";
@@ -47,6 +47,7 @@ const steps = [
 
 export function CheckoutPage() {
   const { cart } = useCart();
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState<number>(0);
   const [paymentOption, setPaymentOption] = useState<PaymentOption | null>(null);
 
@@ -403,6 +404,7 @@ export function CheckoutPage() {
                       paymentOption={paymentOption}
                       onEditAddress={() => setActiveStep(0)}
                       onEditPayment={() => setActiveStep(1)}
+                      onPlaced={(orderNumber) => navigate(`/order-confirmation/${encodeURIComponent(orderNumber)}`)}
                     />
                   ) : (
                     <Alert severity="warning">Vui lòng hoàn tất địa chỉ và phương thức thanh toán.</Alert>

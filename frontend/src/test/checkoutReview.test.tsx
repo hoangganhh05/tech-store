@@ -21,7 +21,7 @@ describe("US-08.3 order review", () => {
   it("loads and displays products, variant, address, payment and every total", async () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD" }).reply(200, { data: review });
-    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} />);
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
     expect(screen.getByText("Đang kiểm tra đơn hàng...")).toBeInTheDocument();
     expect(await screen.findByText("iPhone 15 Pro")).toBeInTheDocument();
     expect(screen.getByText("Titan tự nhiên · 256GB")).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe("US-08.3 order review", () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review").reply(200, { data: review });
     const editAddress = vi.fn(); const editPayment = vi.fn();
-    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={editAddress} onEditPayment={editPayment} />);
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={editAddress} onEditPayment={editPayment} onPlaced={vi.fn()} />);
     const buttons = await screen.findAllByRole("button", { name: "Thay đổi" });
     fireEvent.click(buttons[0]); fireEvent.click(buttons[1]);
     expect(editAddress).toHaveBeenCalledOnce(); expect(editPayment).toHaveBeenCalledOnce();
@@ -47,7 +47,7 @@ describe("US-08.3 order review", () => {
   it("disables placing an invalid order and shows the stock warning", async () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review").reply(200, { data: { ...review, readyToPlaceOrder: false } });
-    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} />);
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
     expect(await screen.findByText(/không còn đủ tồn kho/)).toBeInTheDocument();
     expect(screen.getByTestId("place-order-btn")).toBeDisabled();
   });
@@ -55,9 +55,21 @@ describe("US-08.3 order review", () => {
   it("shows an error and retries the review request", async () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review").replyOnce(500).onPost("/checkout/review").reply(200, { data: review });
-    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} />);
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Thử lại" }));
     await waitFor(() => expect(screen.getByTestId("order-review-content")).toBeInTheDocument());
     expect(mock.history.post).toHaveLength(2);
+  });
+
+  it("places a valid order and returns its order number", async () => {
+    mock = new MockAdapter(httpClient);
+    mock.onPost("/checkout/review").reply(200, { data: review });
+    mock.onPost("/orders", { addressId: 5, paymentMethod: "COD" }).reply(200, {
+      data: { id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000, placedAt: "2026-09-08T00:00:00Z" },
+    });
+    const onPlaced = vi.fn();
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={onPlaced} />);
+    fireEvent.click(await screen.findByTestId("place-order-btn"));
+    await waitFor(() => expect(onPlaced).toHaveBeenCalledWith("TS-ABC123"));
   });
 });

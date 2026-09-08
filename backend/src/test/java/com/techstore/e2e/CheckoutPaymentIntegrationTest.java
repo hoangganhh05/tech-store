@@ -127,4 +127,14 @@ class CheckoutPaymentIntegrationTest {
                         .content("{\"addressId\":999999,\"paymentMethod\":\"COD\"}"))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("ADDRESS_NOT_FOUND"));
     }
+
+    @Test
+    void placeOrderRequiresCustomerAuthentication() throws Exception {
+        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressId\":1,\"paymentMethod\":\"COD\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/orders").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
 }
