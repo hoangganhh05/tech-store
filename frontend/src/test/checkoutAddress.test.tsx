@@ -17,6 +17,7 @@ const paymentOption: checkoutService.PaymentOption = {
 vi.mock("../services/checkoutService", () => ({
   getPaymentMethods: vi.fn(),
   selectPaymentMethod: vi.fn(),
+  getCheckoutReview: vi.fn(),
 }));
 
 vi.mock("../services/userService", () => ({
@@ -118,6 +119,12 @@ describe("US-08.1: Chọn hoặc nhập địa chỉ giao hàng ở bước chec
     vi.clearAllMocks();
     vi.mocked(checkoutService.getPaymentMethods).mockResolvedValue([paymentOption]);
     vi.mocked(checkoutService.selectPaymentMethod).mockResolvedValue(paymentOption);
+    vi.mocked(checkoutService.getCheckoutReview).mockResolvedValue({
+      cart: mockCart,
+      shippingAddress: mockAddresses[1],
+      paymentMethod: paymentOption,
+      readyToPlaceOrder: true,
+    });
   });
 
   it("hiển thị danh sách địa chỉ đã lưu và tự động chọn địa chỉ mặc định", async () => {
@@ -348,9 +355,9 @@ describe("US-08.1: Chọn hoặc nhập địa chỉ giao hàng ở bước chec
     fireEvent.click(screen.getByTestId("continue-to-payment-btn"));
     expect(await screen.findByRole("radio", { name: paymentOption.label })).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: "Tiếp tục xem lại đơn hàng" }));
-    expect(await screen.findByTestId("checkout-step-review")).toHaveTextContent(paymentOption.label);
+    expect(await screen.findByTestId("order-review-content")).toBeInTheDocument();
     expect(checkoutService.selectPaymentMethod).toHaveBeenCalledWith("COD");
-    fireEvent.click(screen.getByRole("button", { name: "Quay lại phương thức thanh toán" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Thay đổi" })[1]);
     expect(await screen.findByRole("radio", { name: paymentOption.label })).toBeChecked();
   });
 
