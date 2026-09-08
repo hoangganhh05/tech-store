@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { ThemeProvider } from '@mui/material'
 import { appTheme } from '../configs/theme'
@@ -7,6 +7,20 @@ import { AuthProvider } from '../modules/auth/AuthContext'
 import { HomePage } from '../modules/home/HomePage'
 import { ProductListPage } from '../modules/products/ProductListPage'
 import { NotFoundPage } from '../modules/not-found/NotFoundPage'
+import { vi } from 'vitest'
+
+vi.mock('../services/storefrontService', () => ({
+  getStorefrontHomeData: vi.fn().mockResolvedValue({
+    featuredProducts: [], newArrivals: [], onSaleProducts: [], featuredCategories: [],
+  }),
+  getStorefrontProducts: vi.fn().mockResolvedValue([]),
+  getStorefrontCategories: vi.fn().mockResolvedValue([]),
+  getStorefrontBrands: vi.fn().mockResolvedValue([]),
+  searchStorefrontProducts: vi.fn().mockResolvedValue([]),
+  getFeaturedProducts: vi.fn().mockResolvedValue([]),
+  getNewArrivals: vi.fn().mockResolvedValue([]),
+  getOnSaleProducts: vi.fn().mockResolvedValue([]),
+}))
 
 function renderRoute(path: string) {
   const router = createMemoryRouter([
@@ -27,14 +41,16 @@ function renderRoute(path: string) {
 }
 
 describe('application routing', () => {
-  it('renders the storefront home route', () => {
+  it('renders the storefront home route', async () => {
     renderRoute('/')
     expect(screen.getByRole('heading', { name: /thiết bị công nghệ/i })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Chưa có sản phẩm nổi bật nào.')).toBeInTheDocument())
   })
 
-  it('renders the product list route', () => {
+  it('renders the product list route', async () => {
     renderRoute('/products')
     expect(screen.getByRole('heading', { name: 'Sản phẩm' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Tìm thấy 0 sản phẩm')).toBeInTheDocument())
   })
 
   it('renders a friendly not-found route', () => {

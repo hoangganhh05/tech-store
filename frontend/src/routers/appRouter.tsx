@@ -6,6 +6,7 @@ import { ProductListPage } from "../modules/products/ProductListPage";
 import { ProductDetailPage } from "../modules/products/ProductDetailPage";
 import { CartPage } from "../modules/cart/CartPage";
 import { CheckoutPage } from "../modules/checkout/CheckoutPage";
+import { OrderConfirmationPage } from "../modules/checkout/OrderConfirmationPage";
 import { LoginPage } from "../modules/auth/LoginPage";
 import { RegisterPage } from "../modules/auth/RegisterPage";
 import { ForgotPasswordPage } from "../modules/auth/ForgotPasswordPage";
@@ -41,6 +42,7 @@ export const appRouter = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      { path: ROUTES.orderConfirmation, element: <RequireAuth><OrderConfirmationPage /></RequireAuth> },
       { path: ROUTES.login, element: <LoginPage /> },
       { path: ROUTES.register, element: <RegisterPage /> },
       { path: ROUTES.forgotPassword, element: <ForgotPasswordPage /> },

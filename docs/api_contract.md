@@ -362,3 +362,83 @@ Error responses:
   same as the current password.
 - `423 Locked`, code `ACCOUNT_LOCKED`, or `403 Forbidden`, code
   `ACCOUNT_DISABLED`: the account cannot use authenticated features.
+
+## Checkout payment methods (US-08.2)
+
+Both endpoints require a valid Bearer access token with the CUSTOMER role.
+
+### GET /api/v1/checkout/payment-methods
+
+Returns the standard `ApiResponse` envelope with `data` containing options:
+`{ "paymentMethod": "COD", "label": "...", "instructions": "..." }`.
+Supported values: `COD`, `BANK_TRANSFER`, `ONLINE`. Transfer and online
+instructions explicitly describe a simulation; no payment gateway is contacted.
+
+### POST /api/v1/checkout/payment-method
+
+Request:
+
+```json
+{ "paymentMethod": "BANK_TRANSFER" }
+```
+
+Returns 200 with the selected option in `data`. This endpoint validates a
+checkout selection; it does not create an order, persist a draft or mark a
+payment as paid. The frontend retains the selection while navigating checkout.
+The order submission in US-08.4 must pass the selected enum to the Order
+constructor; `orders.payment_method` persists its string value and is NOT NULL.
+
+Errors: 400 `VALIDATION_ERROR` for missing/null/unknown/numeric method or malformed
+JSON; 401 `INVALID_ACCESS_TOKEN` for missing/invalid/expired authentication;
+403 `ACCESS_DENIED` for a session without CUSTOMER role.
+
+## Place order (US-08.4)
+
+`POST /api/v1/orders` requires a CUSTOMER access token and accepts `addressId`
+and the selected `paymentMethod`. The server reads the authenticated user's
+cart, creates an Order plus immutable item/address snapshots, locks inventory
+rows in deterministic variant order, deducts stock, and clears CartItems in one
+transaction. Any inventory failure rolls back the order, stock and cart changes.
+
+The success response contains `id`, `orderNumber`, `status`, `totalAmount` and
+`placedAt`; the frontend navigates to the order confirmation page. The endpoint
+returns 400 for invalid input or insufficient stock, 401 for missing/invalid
+authentication, 403 for a non-CUSTOMER role, and 404 for an unknown/foreign
+address or empty cart.
+
+## Order confirmation (US-08.5)
+
+The place-order success response also contains `estimatedProcessingTime` and
+the immutable `items` summary used by the confirmation page. After the order
+transaction commits, the backend publishes an event and sends an email with
+the order code, placed time, item summary, total and expected processing time
+asynchronously. SMTP errors are logged and do not change the successful order
+response.
+
+## Checkout order review (US-08.3)
+
+### POST /api/v1/checkout/review
+
+Requires a Bearer access token with the CUSTOMER role. The server reloads the
+authenticated customer's current cart and verifies that the selected address
+belongs to that customer.
+
+Request:
+
+```json
+{
+  "addressId": 12,
+  "paymentMethod": "COD"
+}
+```
+
+The standard response envelope contains `cart`, `shippingAddress`,
+`paymentMethod`, and `readyToPlaceOrder`. The cart includes the product and
+variant lines, quantities, prices, subtotal, shipping fee, discount and total.
+`readyToPlaceOrder` is true only when the cart is non-empty and has no current
+stock issue. This endpoint does not create an order or deduct inventory.
+
+Errors: 400 `VALIDATION_ERROR` for a missing/non-positive address or missing/
+unknown payment method; 401 `INVALID_ACCESS_TOKEN`; 403 `ACCESS_DENIED`; 404
+`ADDRESS_NOT_FOUND` for an unknown or another customer's address; 404
+`CART_NOT_FOUND` for an empty cart.

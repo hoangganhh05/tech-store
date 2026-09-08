@@ -157,12 +157,14 @@ export function ProductListPage() {
   }, []);
 
   // Load products based on query or combined filters
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (isActive: () => boolean = () => true) => {
+    if (!isActive()) return;
     try {
       setLoading(true);
       setError(null);
       if (searchQuery) {
         const data = await searchStorefrontProducts(searchQuery);
+        if (!isActive()) return;
         const sortedData = [...data];
         if (sortBy === "price") {
           sortedData.sort((a, b) =>
@@ -205,6 +207,7 @@ export function ProductListPage() {
           page: currentPage - 1,
           size: pageSize,
         });
+        if (!isActive()) return;
         if (Array.isArray(res)) {
           setProducts(res);
           setTotalElements(res.length);
@@ -217,11 +220,12 @@ export function ProductListPage() {
         }
       }
     } catch (err: unknown) {
+      if (!isActive()) return;
       const msg =
         err instanceof Error ? err.message : "Không thể tải danh sách sản phẩm";
       setError(msg);
     } finally {
-      setLoading(false);
+      if (isActive()) setLoading(false);
     }
   }, [
     searchQuery,
@@ -238,7 +242,11 @@ export function ProductListPage() {
   ]);
 
   useEffect(() => {
-    loadProducts();
+    let cancelled = false;
+    void loadProducts(() => !cancelled);
+    return () => {
+      cancelled = true;
+    };
   }, [loadProducts]);
 
   // Update URL helper (resets page to 1 on filter changes)
@@ -876,7 +884,7 @@ export function ProductListPage() {
                   color="inherit"
                   size="small"
                   startIcon={<RefreshRoundedIcon />}
-                  onClick={loadProducts}
+                  onClick={() => void loadProducts()}
                 >
                   Thử lại
                 </Button>
