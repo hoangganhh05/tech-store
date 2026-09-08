@@ -4,5 +4,6 @@ public record CheckoutReviewResponse(
         CartResponse cart,
         AddressResponse shippingAddress,
         PaymentMethodResponse paymentMethod,
-        boolean readyToPlaceOrder
+        boolean readyToPlaceOrder,
+        VoucherApplicationResponse voucher
 ) {}

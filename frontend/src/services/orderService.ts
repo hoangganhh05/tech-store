@@ -19,7 +19,11 @@ export type PlacedOrder = {
   items: PlacedOrderItem[]
 }
 
-export async function placeOrder(addressId: number, paymentMethod: PaymentMethod): Promise<PlacedOrder> {
-  const response = await httpClient.post<{ data: PlacedOrder }>('/orders', { addressId, paymentMethod })
+export async function placeOrder(addressId: number, paymentMethod: PaymentMethod, voucherCode?: string): Promise<PlacedOrder> {
+  const response = await httpClient.post<{ data: PlacedOrder }>('/orders', {
+    addressId,
+    paymentMethod,
+    ...(voucherCode?.trim() ? { voucherCode: voucherCode.trim() } : {}),
+  })
   return response.data.data
 }

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AxiosError } from "axios";
-import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Divider, Stack, TextField, Typography } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import { getCheckoutReview, type CheckoutReview, type PaymentOption } from "../../services/checkoutService";
+import { applyVoucher, getCheckoutReview, type CheckoutReview, type PaymentOption, type VoucherApplication } from "../../services/checkoutService";
 import { placeOrder, type PlacedOrder } from "../../services/orderService";
 
 const formatPrice = (value: number) => new Intl.NumberFormat("vi-VN", {
@@ -23,19 +23,24 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [voucherCode, setVoucherCode] = useState("");
+  const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | undefined>(undefined);
+  const [appliedVoucher, setAppliedVoucher] = useState<VoucherApplication | null>(null);
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
 
   const loadReview = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setReview(await getCheckoutReview(addressId, paymentOption.paymentMethod));
+      setReview(await getCheckoutReview(addressId, paymentOption.paymentMethod, appliedVoucherCode));
     } catch {
       setReview(null);
       setError("Không thể tải thông tin xem lại đơn hàng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-  }, [addressId, paymentOption.paymentMethod]);
+  }, [addressId, paymentOption.paymentMethod, appliedVoucherCode]);
 
   useEffect(() => { void loadReview(); }, [loadReview]);
 
@@ -47,11 +52,26 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   </Alert>;
 
   const { cart, shippingAddress, paymentMethod, readyToPlaceOrder } = review;
+  const applyVoucherCode = async () => {
+    if (!voucherCode.trim() || applyingVoucher) return;
+    setApplyingVoucher(true); setVoucherError(null);
+    try {
+      const result = await applyVoucher(voucherCode);
+      setAppliedVoucher(result);
+      setVoucherCode(result.code);
+      setAppliedVoucherCode(result.code);
+    } catch (requestError: unknown) {
+      const responseMessage = (requestError as AxiosError<{ message?: string }>).response?.data?.message;
+      setAppliedVoucher(null);
+      setAppliedVoucherCode(undefined);
+      setVoucherError(responseMessage || "Mã voucher không hợp lệ hoặc không đủ điều kiện.");
+    } finally { setApplyingVoucher(false); }
+  };
   const submitOrder = async () => {
     if (!readyToPlaceOrder || placing) return;
     setPlacing(true); setError(null);
     try {
-      const order = await placeOrder(addressId, paymentMethod.paymentMethod);
+      const order = await placeOrder(addressId, paymentMethod.paymentMethod, voucherCode);
       onPlaced(order);
     } catch (requestError: unknown) {
       const responseMessage = (requestError as AxiosError<{ message?: string }>).response?.data?.message;
@@ -100,6 +120,15 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
     </Box>
 
     <Box data-testid="review-totals">
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={2}>
+        <TextField size="small" label="Mã voucher" value={voucherCode}
+          onChange={(event) => { setVoucherCode(event.target.value.toUpperCase()); setVoucherError(null); setAppliedVoucher(null); setAppliedVoucherCode(undefined); }}
+          inputProps={{ "data-testid": "voucher-code-input" }} disabled={applyingVoucher || placing} />
+        <Button variant="outlined" onClick={applyVoucherCode} disabled={!voucherCode.trim() || applyingVoucher || placing}
+          data-testid="apply-voucher-btn">{applyingVoucher ? <CircularProgress size={18} /> : "Áp dụng"}</Button>
+      </Stack>
+      {voucherError && <Alert severity="error" sx={{ mb: 2 }} data-testid="voucher-error">{voucherError}</Alert>}
+      {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success">Đã áp dụng mã {appliedVoucher.code}</Alert>}
       <Divider sx={{ mb: 2 }} />
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between"><Typography>Tạm tính</Typography><Typography>{formatPrice(cart.subtotal)}</Typography></Stack>

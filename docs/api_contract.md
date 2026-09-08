@@ -442,3 +442,16 @@ Errors: 400 `VALIDATION_ERROR` for a missing/non-positive address or missing/
 unknown payment method; 401 `INVALID_ACCESS_TOKEN`; 403 `ACCESS_DENIED`; 404
 `ADDRESS_NOT_FOUND` for an unknown or another customer's address; 404
 `CART_NOT_FOUND` for an empty cart.
+
+## Apply voucher (US-08.6)
+
+`POST /api/v1/checkout/voucher` requires a CUSTOMER token and accepts
+`{ "code": "SAVE10" }`. The server validates the code against the current
+cart and returns the discount and recalculated total. Checkout review and
+place-order also accept an optional `voucherCode`; place-order validates the
+voucher again while locking its usage row so a stale review cannot apply an
+expired or exhausted code.
+
+Invalid, expired, minimum-order and usage-limit cases return a descriptive
+`VOUCHER_NOT_FOUND`, `VOUCHER_NOT_ELIGIBLE` or `VOUCHER_USAGE_LIMIT_REACHED`
+error. The discount never exceeds the product subtotal.
