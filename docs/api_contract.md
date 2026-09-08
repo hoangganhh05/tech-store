@@ -392,6 +392,20 @@ Errors: 400 `VALIDATION_ERROR` for missing/null/unknown/numeric method or malfor
 JSON; 401 `INVALID_ACCESS_TOKEN` for missing/invalid/expired authentication;
 403 `ACCESS_DENIED` for a session without CUSTOMER role.
 
+## Place order (US-08.4)
+
+`POST /api/v1/orders` requires a CUSTOMER access token and accepts `addressId`
+and the selected `paymentMethod`. The server reads the authenticated user's
+cart, creates an Order plus immutable item/address snapshots, locks inventory
+rows in deterministic variant order, deducts stock, and clears CartItems in one
+transaction. Any inventory failure rolls back the order, stock and cart changes.
+
+The success response contains `id`, `orderNumber`, `status`, `totalAmount` and
+`placedAt`; the frontend navigates to the order confirmation page. The endpoint
+returns 400 for invalid input or insufficient stock, 401 for missing/invalid
+authentication, 403 for a non-CUSTOMER role, and 404 for an unknown/foreign
+address or empty cart.
+
 ## Checkout order review (US-08.3)
 
 ### POST /api/v1/checkout/review
