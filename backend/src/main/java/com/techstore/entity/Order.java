@@ -20,6 +20,9 @@ public class Order {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voucher_id")
+    private Voucher voucher;
     @Column(nullable = false, length = 25)
     private String status = "PENDING";
     @Enumerated(EnumType.STRING)
@@ -68,6 +71,8 @@ public class Order {
     public String getOrderNumber() { return orderNumber; }
     public String getStatus() { return status; }
     public BigDecimal getTotalAmount() { return totalAmount; }
+    public Voucher getVoucher() { return voucher; }
+    public void setVoucher(Voucher voucher) { this.voucher = voucher; }
     public Instant getPlacedAt() { return placedAt; }
     public List<OrderItem> getItems() { return items; }
     public void setShippingAddress(OrderAddress address) { this.shippingAddress = address; }

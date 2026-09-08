@@ -75,6 +75,34 @@ describe("US-08.3 order review", () => {
     await waitFor(() => expect(onPlaced).toHaveBeenCalledWith(expect.objectContaining({ orderNumber: "TS-ABC123" })));
   });
 
+  it("applies a valid voucher and refreshes the discounted checkout totals", async () => {
+    mock = new MockAdapter(httpClient);
+    mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD" }).reply(200, { data: review });
+    mock.onPost("/checkout/voucher", { code: "SAVE10" }).reply(200, {
+      data: { code: "SAVE10", name: "Giảm 10%", discountType: "PERCENT", discountAmount: 5000000, subtotal: 50000000, shippingFee: 30000, total: 45030000 },
+    });
+    mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD", voucherCode: "SAVE10" }).reply(200, {
+      data: { ...review, cart: { ...review.cart, discountAmount: 5000000, total: 45030000 }, voucher: { code: "SAVE10", name: "Giảm 10%", discountType: "PERCENT", discountAmount: 5000000, subtotal: 50000000, shippingFee: 30000, total: 45030000 } },
+    });
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
+    await screen.findByText("iPhone 15 Pro");
+    fireEvent.change(screen.getByTestId("voucher-code-input"), { target: { value: "save10" } });
+    fireEvent.click(screen.getByTestId("apply-voucher-btn"));
+    expect(await screen.findByTestId("voucher-success")).toHaveTextContent("SAVE10");
+    await waitFor(() => expect(screen.getByTestId("review-totals")).toHaveTextContent("45.030.000"));
+  });
+
+  it("shows the backend message for an invalid voucher", async () => {
+    mock = new MockAdapter(httpClient);
+    mock.onPost("/checkout/review").reply(200, { data: review });
+    mock.onPost("/checkout/voucher", { code: "OLD" }).reply(400, { message: "Mã voucher đã hết hạn" });
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
+    await screen.findByText("iPhone 15 Pro");
+    fireEvent.change(screen.getByTestId("voucher-code-input"), { target: { value: "OLD" } });
+    fireEvent.click(screen.getByTestId("apply-voucher-btn"));
+    expect(await screen.findByTestId("voucher-error")).toHaveTextContent("Mã voucher đã hết hạn");
+  });
+
   it("shows the order number, summary and estimated processing time", () => {
     const order = {
       id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000,
