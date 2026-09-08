@@ -29,6 +29,8 @@ import { ROUTES } from "../../constants/routes";
 import { useCart } from "../../hooks/useCart";
 import { getMyAddresses, type Address } from "../../services/userService";
 import { AddressFormDialog } from "../profile/AddressFormDialog";
+import { PaymentMethodStep } from "./PaymentMethodStep";
+import type { PaymentOption } from "../../services/checkoutService";
 
 function formatPrice(val: number): string {
   return new Intl.NumberFormat("vi-VN", {
@@ -46,6 +48,7 @@ const steps = [
 export function CheckoutPage() {
   const { cart } = useCart();
   const [activeStep, setActiveStep] = useState<number>(0);
+  const [paymentOption, setPaymentOption] = useState<PaymentOption | null>(null);
 
   // Addresses state
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -371,32 +374,15 @@ export function CheckoutPage() {
                     </Alert>
                   )}
 
-                  <Alert severity="info" sx={{ mb: 3 }}>
-                    Tính năng chọn phương thức thanh toán và đặt hàng sẽ được
-                    thực hiện trong các bước tiếp theo.
-                  </Alert>
-
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    sx={{ mt: 3 }}
-                  >
-                    <Button
-                      variant="outlined"
-                      startIcon={<ArrowBackIcon />}
-                      onClick={handleBack}
-                      data-testid="back-to-address-btn"
-                    >
-                      Quay lại chọn địa chỉ
-                    </Button>
-                    <Button
-                      variant="contained"
-                      endIcon={<ArrowForwardIcon />}
-                      onClick={handleContinue}
-                    >
-                      Tiếp tục xem lại đơn hàng
-                    </Button>
-                  </Stack>
+                  <PaymentMethodStep
+                    selected={paymentOption}
+                    onSelectionChange={setPaymentOption}
+                    onBack={handleBack}
+                    onContinue={(option) => {
+                      setPaymentOption(option);
+                      handleContinue();
+                    }}
+                  />
                 </CardContent>
               </Card>
             )}
@@ -414,6 +400,9 @@ export function CheckoutPage() {
                   <Alert severity="info" sx={{ mb: 3 }}>
                     Xác nhận thông tin lần cuối trước khi hoàn tất đặt hàng.
                   </Alert>
+                  {paymentOption && <Alert severity="success" sx={{ mb: 3 }}>
+                    Phương thức thanh toán: {paymentOption.label}
+                  </Alert>}
                   <Button
                     variant="outlined"
                     startIcon={<ArrowBackIcon />}

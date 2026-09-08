@@ -67,6 +67,12 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ErrorCode.IMAGE_SIZE_EXCEEDED.name(), "Dung lượng ảnh vượt quá giới hạn cho phép (tối đa 5MB)"));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    ResponseEntity<ApiResponse<Void>> handleUnreadableBody(org.springframework.http.converter.HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(ErrorCode.VALIDATION_ERROR.name(), "Dữ liệu yêu cầu không hợp lệ"));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> handleUnexpectedException(Exception exception) {
         log.error("Unhandled application error", exception);
