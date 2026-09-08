@@ -406,6 +406,15 @@ returns 400 for invalid input or insufficient stock, 401 for missing/invalid
 authentication, 403 for a non-CUSTOMER role, and 404 for an unknown/foreign
 address or empty cart.
 
+## Order confirmation (US-08.5)
+
+The place-order success response also contains `estimatedProcessingTime` and
+the immutable `items` summary used by the confirmation page. After the order
+transaction commits, the backend publishes an event and sends an email with
+the order code, placed time, item summary, total and expected processing time
+asynchronously. SMTP errors are logged and do not change the successful order
+response.
+
 ## Checkout order review (US-08.3)
 
 ### POST /api/v1/checkout/review

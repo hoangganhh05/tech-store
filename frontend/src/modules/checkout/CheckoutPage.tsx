@@ -404,7 +404,7 @@ export function CheckoutPage() {
                       paymentOption={paymentOption}
                       onEditAddress={() => setActiveStep(0)}
                       onEditPayment={() => setActiveStep(1)}
-                      onPlaced={(orderNumber) => navigate(`/order-confirmation/${encodeURIComponent(orderNumber)}`)}
+                      onPlaced={(order) => navigate(`/order-confirmation/${encodeURIComponent(order.orderNumber)}`, { state: { order } })}
                     />
                   ) : (
                     <Alert severity="warning">Vui lòng hoàn tất địa chỉ và phương thức thanh toán.</Alert>

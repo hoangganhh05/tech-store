@@ -2,8 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import MockAdapter from "axios-mock-adapter";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrderReviewStep } from "../modules/checkout/OrderReviewStep";
+import { OrderConfirmationPage } from "../modules/checkout/OrderConfirmationPage";
 import { httpClient } from "../services/httpClient";
 import type { CheckoutReview, PaymentOption } from "../services/checkoutService";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const payment: PaymentOption = { paymentMethod: "COD", label: "Thanh toán khi nhận hàng (COD)", instructions: "Trả tiền khi nhận hàng." };
 const review: CheckoutReview = {
@@ -65,11 +67,25 @@ describe("US-08.3 order review", () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review").reply(200, { data: review });
     mock.onPost("/orders", { addressId: 5, paymentMethod: "COD" }).reply(200, {
-      data: { id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000, placedAt: "2026-09-08T00:00:00Z" },
+      data: { id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000, placedAt: "2026-09-08T00:00:00Z", estimatedProcessingTime: "1-2 ngày làm việc", items: [{ productName: "iPhone 15 Pro", variantLabel: "Titan tự nhiên / 256GB", unitPrice: 25000000, quantity: 2, subtotal: 50000000 }] },
     });
     const onPlaced = vi.fn();
     render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={onPlaced} />);
     fireEvent.click(await screen.findByTestId("place-order-btn"));
-    await waitFor(() => expect(onPlaced).toHaveBeenCalledWith("TS-ABC123"));
+    await waitFor(() => expect(onPlaced).toHaveBeenCalledWith(expect.objectContaining({ orderNumber: "TS-ABC123" })));
+  });
+
+  it("shows the order number, summary and estimated processing time", () => {
+    const order = {
+      id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000,
+      placedAt: "2026-09-08T00:00:00Z", estimatedProcessingTime: "1-2 ngày làm việc",
+      items: [{ productName: "iPhone 15 Pro", variantLabel: "Titan tự nhiên / 256GB", unitPrice: 25000000, quantity: 2, subtotal: 50000000 }],
+    };
+    render(<MemoryRouter initialEntries={[{ pathname: "/order-confirmation/TS-ABC123", state: { order } }]}>
+      <Routes><Route path="/order-confirmation/:orderNumber" element={<OrderConfirmationPage />} /></Routes>
+    </MemoryRouter>);
+    expect(screen.getByTestId("order-number")).toHaveTextContent("TS-ABC123");
+    expect(screen.getByTestId("order-summary")).toHaveTextContent("iPhone 15 Pro");
+    expect(screen.getByTestId("order-summary")).toHaveTextContent("1-2 ngày làm việc");
   });
 });
