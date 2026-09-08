@@ -7,9 +7,11 @@ import com.techstore.dto.response.CartResponse;
 import com.techstore.entity.Address;
 import com.techstore.entity.User;
 import com.techstore.enums.PaymentMethod;
+import com.techstore.event.OrderPlacedEvent;
 import com.techstore.repository.*;
 import com.techstore.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -25,7 +27,8 @@ class OrderServiceImplTest {
     private final OrderRepository orders = mock(OrderRepository.class);
     private final CartService cartService = mock(CartService.class);
     private final InventoryService inventory = mock(InventoryService.class);
-    private final OrderServiceImpl service = new OrderServiceImpl(users, addresses, carts, cartItems, orders, cartService, inventory);
+    private final ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+    private final OrderServiceImpl service = new OrderServiceImpl(users, addresses, carts, cartItems, orders, cartService, inventory, eventPublisher);
 
     private final User user = new User("order@example.com", "hash", "Order User", "0912345678");
     private final Address address = new Address(user, "Order User", "0912345678", "Ha Noi", "Cau Giay", "Dich Vong", "1 Duy Tan");
@@ -50,6 +53,7 @@ class OrderServiceImplTest {
         verify(orders).saveAndFlush(any());
         verify(inventory).deductInventoryForOrder(eq(7L), any(OrderInventoryDeductionRequest.class));
         verify(cartItems).deleteByCartId(10L);
+        verify(eventPublisher).publishEvent(any(OrderPlacedEvent.class));
     }
 
     @Test

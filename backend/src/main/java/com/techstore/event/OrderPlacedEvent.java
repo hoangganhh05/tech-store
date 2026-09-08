@@ -1,13 +1,15 @@
-package com.techstore.dto.response;
+package com.techstore.event;
+
+import com.techstore.dto.response.PlacedOrderItemResponse;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-public record PlacedOrderResponse(
-        Long id,
+public record OrderPlacedEvent(
+        String recipientEmail,
+        String recipientName,
         String orderNumber,
-        String status,
         BigDecimal totalAmount,
         Instant placedAt,
         String estimatedProcessingTime,

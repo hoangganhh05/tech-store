@@ -24,6 +24,10 @@ public class OrderItem {
         this.subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
     }
     public void setOrder(Order order) { this.order = order; }
+    public String getProductName() { return productName; }
+    public String getVariantLabel() { return variantLabel; }
+    public BigDecimal getUnitPrice() { return unitPrice; }
     public Long getVariantId() { return variantId; }
     public Integer getQuantity() { return quantity; }
+    public BigDecimal getSubtotal() { return subtotal; }
 }
