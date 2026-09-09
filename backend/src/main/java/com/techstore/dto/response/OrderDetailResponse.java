@@ -16,6 +16,7 @@ public record OrderDetailResponse(
         String status,
         PaymentMethod paymentMethod,
         String paymentStatus,
+        String cancellationReason,
         BigDecimal subtotal,
         BigDecimal discountAmount,
         BigDecimal shippingFee,
@@ -28,7 +29,7 @@ public record OrderDetailResponse(
     public static OrderDetailResponse from(Order order) {
         OrderAddress address = order.getShippingAddress();
         return new OrderDetailResponse(
-                order.getId(), order.getOrderNumber(), order.getStatus(), order.getPaymentMethod(), order.getPaymentStatus(),
+                order.getId(), order.getOrderNumber(), order.getStatus(), order.getPaymentMethod(), order.getPaymentStatus(), order.getCancellationReason(),
                 order.getSubtotal(),
                 order.getDiscountAmount(), order.getShippingFee(), order.getTotalAmount(), order.getPlacedAt(),
                 address == null ? null : ShippingAddress.from(address),

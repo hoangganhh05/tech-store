@@ -3,14 +3,15 @@ import { ThemeProvider } from '@mui/material'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { appTheme } from '../configs/theme'
 import { OrderDetailPage } from '../modules/orders/OrderDetailPage'
-import { getOrderDetail, type OrderDetail } from '../services/orderService'
+import { cancelOrder, getOrderDetail, type OrderDetail } from '../services/orderService'
 
-vi.mock('../services/orderService', () => ({ getOrderDetail: vi.fn() }))
+vi.mock('../services/orderService', () => ({ getOrderDetail: vi.fn(), cancelOrder: vi.fn() }))
 
 const mockedGetOrderDetail = vi.mocked(getOrderDetail)
+const mockedCancelOrder = vi.mocked(cancelOrder)
 
 const order: OrderDetail = {
-  id: 12, orderNumber: 'TS-DETAIL-12', status: 'SHIPPING', paymentMethod: 'BANK_TRANSFER', paymentStatus: 'PAID',
+  id: 12, orderNumber: 'TS-DETAIL-12', status: 'SHIPPING', paymentMethod: 'BANK_TRANSFER', paymentStatus: 'PAID', cancellationReason: null,
   subtotal: 1000000, discountAmount: 0, shippingFee: 30000, totalAmount: 1030000, placedAt: '2026-09-09T10:00:00Z',
   shippingAddress: { recipientName: 'Nguyễn Văn A', recipientPhone: '0900000000', line1: '1 Duy Tân', ward: 'Dịch Vọng', district: 'Cầu Giấy', province: 'Hà Nội' },
   items: [{ productName: 'Điện thoại', sku: 'PHONE-BLACK-128', variantLabel: 'Đen / 128GB', unitPrice: 500000, quantity: 2, subtotal: 1000000 }],
@@ -29,6 +30,7 @@ describe('US-09.2: order detail page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockedGetOrderDetail.mockResolvedValue(order)
+    mockedCancelOrder.mockResolvedValue({ id: 12, orderNumber: 'TS-DETAIL-12', status: 'CANCELLED', cancellationReason: 'Đổi ý' })
   })
 
   it('displays order products, shipping address, payment and visual status steps', async () => {
@@ -56,5 +58,18 @@ describe('US-09.2: order detail page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }))
     await waitFor(() => expect(mockedGetOrderDetail).toHaveBeenCalledTimes(2))
     expect(await screen.findByText('TS-DETAIL-12')).toBeInTheDocument()
+  })
+
+  it('only shows cancellation action for an eligible order and submits an optional reason', async () => {
+    mockedGetOrderDetail.mockResolvedValue({ ...order, status: 'CONFIRMED' })
+    renderPage()
+
+    expect(await screen.findByRole('button', { name: 'Huỷ đơn hàng' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Huỷ đơn hàng' }))
+    fireEvent.change(screen.getByLabelText('Lý do huỷ (tuỳ chọn)'), { target: { value: 'Đổi ý' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận huỷ' }))
+
+    await waitFor(() => expect(mockedCancelOrder).toHaveBeenCalledWith(12, 'Đổi ý'))
+    expect(await screen.findByText('Đơn hàng đã được huỷ và tồn kho đã được hoàn lại.')).toBeInTheDocument()
   })
 })

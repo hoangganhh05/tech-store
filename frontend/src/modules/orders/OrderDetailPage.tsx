@@ -7,6 +7,10 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Stack,
   Table,
   TableBody,
@@ -14,13 +18,14 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import { PageIntro } from '../../components/common/PageIntro'
-import { getOrderDetail, type OrderDetail } from '../../services/orderService'
+import { cancelOrder, getOrderDetail, type OrderDetail } from '../../services/orderService'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
@@ -97,6 +102,11 @@ export function OrderDetailPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancellationReason, setCancellationReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   const loadOrder = useCallback(async (isActive: () => boolean = () => true) => {
     if (!Number.isInteger(orderId) || orderId < 1) {
@@ -117,6 +127,33 @@ export function OrderDetailPage() {
       if (isActive()) setLoading(false)
     }
   }, [orderId])
+
+  const handleCancel = async () => {
+    if (!order) return
+    setCancelling(true)
+    setActionError('')
+    setSuccessMessage('')
+    try {
+      const cancellation = await cancelOrder(order.id, cancellationReason)
+      setOrder((current) => current ? {
+        ...current,
+        status: cancellation.status,
+        cancellationReason: cancellation.cancellationReason,
+        statusHistory: [...current.statusHistory, {
+          status: cancellation.status,
+          changedAt: new Date().toISOString(),
+        }],
+      } : current)
+      setCancelDialogOpen(false)
+      setCancellationReason('')
+      setSuccessMessage('Đơn hàng đã được huỷ và tồn kho đã được hoàn lại.')
+    } catch (requestError: unknown) {
+      const message = isAxiosError<{ message?: string }>(requestError) ? requestError.response?.data?.message : undefined
+      setActionError(message || 'Không thể huỷ đơn hàng. Vui lòng thử lại.')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -154,10 +191,21 @@ export function OrderDetailPage() {
                   <Typography variant="h6">{order.orderNumber}</Typography>
                   <Typography color="text.secondary">Đặt lúc {formatDate(order.placedAt)}</Typography>
                 </Box>
-                <Chip label={statusLabels[order.status] || order.status} color={order.status === 'CANCELLED' ? 'error' : 'primary'} />
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip label={statusLabels[order.status] || order.status} color={order.status === 'CANCELLED' ? 'error' : 'primary'} />
+                  {['PENDING', 'CONFIRMED'].includes(order.status) && (
+                    <Button color="error" variant="outlined" onClick={() => { setActionError(''); setCancelDialogOpen(true) }}>
+                      Huỷ đơn hàng
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
+              {order.cancellationReason && <Typography color="text.secondary" mt={1}>Lý do huỷ: {order.cancellationReason}</Typography>}
             </CardContent>
           </Card>
+
+          {successMessage && <Alert severity="success">{successMessage}</Alert>}
+          {actionError && <Alert severity="error">{actionError}</Alert>}
 
           <Card>
             <CardContent>
@@ -195,6 +243,30 @@ export function OrderDetailPage() {
           <Card><CardContent><Typography variant="h6" component="h2" mb={2}>Tiến trình xử lý đơn hàng</Typography><Divider sx={{ mb: 2 }} /><StatusTimeline order={order} /></CardContent></Card>
         </>
       )}
+
+      <Dialog open={cancelDialogOpen} onClose={() => !cancelling && setCancelDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Huỷ đơn hàng</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary" mb={2}>Bạn có chắc muốn huỷ đơn hàng này? Tồn kho sẽ được hoàn lại sau khi huỷ thành công.</Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            label="Lý do huỷ (tuỳ chọn)"
+            value={cancellationReason}
+            onChange={(event) => setCancellationReason(event.target.value)}
+            inputProps={{ maxLength: 500 }}
+            helperText={`${cancellationReason.length}/500`}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)} disabled={cancelling}>Đóng</Button>
+          <Button color="error" variant="contained" onClick={() => void handleCancel()} disabled={cancelling}>
+            {cancelling ? 'Đang huỷ...' : 'Xác nhận huỷ'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }
