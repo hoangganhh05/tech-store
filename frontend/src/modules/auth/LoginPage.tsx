@@ -4,6 +4,7 @@ import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
 import { useAuth } from '../../hooks/useAuth'
+import { env } from '../../configs/env'
 import { loginAccount, type LoginPayload } from '../../services/authService'
 
 type LoginField = keyof LoginPayload
@@ -72,7 +73,7 @@ export function LoginPage() {
     <Container maxWidth="sm">
       <Card><CardContent sx={{ p: { xs: 3, sm: 5 } }}>
         <Typography component="h1" variant="h2" mb={1}>Đăng nhập</Typography>
-        <Typography color="text.secondary" mb={3}>Truy cập tài khoản TechStore của bạn.</Typography>
+        <Typography color="text.secondary" mb={3}>Truy cập tài khoản {env.brand.name} của bạn.</Typography>
         {confirmationMessage && <Alert severity="success" sx={{ mb: 2 }}>{confirmationMessage}</Alert>}
         <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate>
           {submitError && <Alert severity="error">{submitError}</Alert>}

@@ -1,6 +1,7 @@
 package com.techstore.infrastructure.mail;
 
 import com.techstore.event.OrderStatusUpdatedEvent;
+import com.techstore.config.StoreBrandProperties;
 import com.techstore.security.PasswordResetProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,15 +23,18 @@ public class SmtpOrderStatusUpdateEmailSender implements OrderStatusUpdateEmailS
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final PasswordResetProperties mailProperties;
+    private final StoreBrandProperties brand;
     private final String mailHost;
 
     public SmtpOrderStatusUpdateEmailSender(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             PasswordResetProperties mailProperties,
+            StoreBrandProperties brand,
             @Value("${spring.mail.host:}") String mailHost
     ) {
         this.mailSenderProvider = mailSenderProvider;
         this.mailProperties = mailProperties;
+        this.brand = brand;
         this.mailHost = mailHost;
     }
 
@@ -64,11 +68,11 @@ public class SmtpOrderStatusUpdateEmailSender implements OrderStatusUpdateEmailS
 
     String resolveSubject(OrderStatusUpdatedEvent event) {
         return switch (event.status()) {
-            case "CONFIRMED" -> "[TechStore] Đơn hàng " + event.orderNumber() + " đã được xác nhận";
-            case "SHIPPING" -> "[TechStore] Đơn hàng " + event.orderNumber() + " đang được giao";
-            case "COMPLETED" -> "[TechStore] Đơn hàng " + event.orderNumber() + " đã giao thành công";
-            case "CANCELLED" -> "[TechStore] Đơn hàng " + event.orderNumber() + " đã bị huỷ";
-            default -> "[TechStore] Cập nhật trạng thái đơn hàng " + event.orderNumber();
+            case "CONFIRMED" -> "[" + brand.getName() + "] Đơn hàng " + event.orderNumber() + " đã được xác nhận";
+            case "SHIPPING" -> "[" + brand.getName() + "] Đơn hàng " + event.orderNumber() + " đang được giao";
+            case "COMPLETED" -> "[" + brand.getName() + "] Đơn hàng " + event.orderNumber() + " đã giao thành công";
+            case "CANCELLED" -> "[" + brand.getName() + "] Đơn hàng " + event.orderNumber() + " đã bị huỷ";
+            default -> "[" + brand.getName() + "] Cập nhật trạng thái đơn hàng " + event.orderNumber();
         };
     }
 
@@ -79,7 +83,8 @@ public class SmtpOrderStatusUpdateEmailSender implements OrderStatusUpdateEmailS
         switch (event.status()) {
             case "CONFIRMED" -> body.append("Đơn hàng của bạn đã được xác nhận và đang được chuẩn bị đóng gói.\n");
             case "SHIPPING" -> body.append("Đơn hàng của bạn đã được bàn giao cho đơn vị vận chuyển và đang trên đường giao đến bạn.\n");
-            case "COMPLETED" -> body.append("Đơn hàng của bạn đã được giao thành công. Cảm ơn bạn đã mua sắm tại TechStore!\n");
+            case "COMPLETED" -> body.append("Đơn hàng của bạn đã được giao thành công. Cảm ơn bạn đã mua sắm tại ")
+                    .append(brand.getName()).append("!\n");
             case "CANCELLED" -> {
                 body.append("Đơn hàng của bạn đã bị huỷ.\n");
                 if (event.cancellationReason() != null && !event.cancellationReason().isBlank()) {
@@ -118,7 +123,10 @@ public class SmtpOrderStatusUpdateEmailSender implements OrderStatusUpdateEmailS
         }
 
         body.append("\nNếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với đội ngũ hỗ trợ của chúng tôi.\n\n")
-                .append("Trân trọng,\nĐội ngũ TechStore.");
+                .append("Liên hệ: ").append(brand.getContactPhone())
+                .append(" | ").append(brand.getContactEmail()).append("\n")
+                .append(brand.getAddress()).append("\n\n")
+                .append("Trân trọng,\n").append(brand.getName()).append(".");
 
         return body.toString();
     }

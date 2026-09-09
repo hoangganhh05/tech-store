@@ -1,6 +1,6 @@
 # Continuous Integration
 
-TechStore uses two GitHub Actions workflows for pull requests targeting
+Đăng Tùng Mobile uses two GitHub Actions workflows for pull requests targeting
 `develop` or `main`:
 
 - `Backend CI`: Java 21, Maven dependency cache, tests and application build.

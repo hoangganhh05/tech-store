@@ -30,6 +30,6 @@ class BackendSkeletonIntegrationTest {
 
         assertEquals(HttpStatus.OK, openApi.getStatusCode());
         assertNotNull(openApi.getBody());
-        assertTrue(openApi.getBody().contains("TechStore API"));
+        assertTrue(openApi.getBody().contains("Đăng Tùng Mobile API"));
     }
 }

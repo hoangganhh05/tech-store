@@ -6,7 +6,7 @@
 
 ## Context
 
-TechStore có nhiều domain nhưng được phát triển bởi một nhóm nhỏ. Microservices
+Đăng Tùng Mobile có nhiều domain nhưng được phát triển bởi một nhóm nhỏ. Microservices
 sẽ làm tăng chi phí deployment, quan sát hệ thống, consistency và xử lý lỗi phân
 tán trước khi có nhu cầu scale độc lập thực tế.
 

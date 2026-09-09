@@ -130,7 +130,7 @@ describe("US-05.1: HomePage Storefront Component", () => {
     renderHomePage();
 
     expect(
-      screen.getByText(/Thiết bị công nghệ đỉnh cao — Trải nghiệm xứng tầm/i),
+      screen.getByRole("heading", { name: "Đăng Tùng Mobile" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Khám phá sản phẩm/i)).toBeInTheDocument();
   });
@@ -162,11 +162,11 @@ describe("US-05.1: HomePage Storefront Component", () => {
     expect(screen.getByText("Sản phẩm mới về")).toBeInTheDocument();
     expect(screen.getByText("MacBook Pro M3 Max")).toBeInTheDocument();
 
-    // 6. Trust guarantees
-    expect(screen.getByText("100% Chính Hãng")).toBeInTheDocument();
-    expect(screen.getByText("Giao Hàng Toàn Quốc")).toBeInTheDocument();
-    expect(screen.getByText("Đổi Trả Trong 30 Ngày")).toBeInTheDocument();
-    expect(screen.getByText("Hỗ Trợ Tận Tâm 24/7")).toBeInTheDocument();
+    // Store commitments remain hidden until their terms are configured.
+    expect(screen.queryByText("100% Chính Hãng")).not.toBeInTheDocument();
+    expect(screen.queryByText("Giao Hàng Toàn Quốc")).not.toBeInTheDocument();
+    expect(screen.queryByText("Đổi Trả Trong 30 Ngày")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hỗ Trợ Tận Tâm 24/7")).not.toBeInTheDocument();
   });
 
   it("renders error alert and retries when clicking retry button", async () => {

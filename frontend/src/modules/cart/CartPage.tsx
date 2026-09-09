@@ -460,25 +460,13 @@ export function CartPage() {
                       Phí vận chuyển dự kiến:
                     </Typography>
                     {cart.shippingFee === 0 ? (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography
-                          fontWeight={600}
-                          color="success.main"
-                          data-testid="cart-shipping-fee"
-                        >
-                          Miễn phí
-                        </Typography>
-                        <Chip
-                          label="FREE SHIP"
-                          color="success"
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: "0.68rem",
-                            fontWeight: 700,
-                          }}
-                        />
-                      </Stack>
+                      <Typography
+                        fontWeight={600}
+                        color="success.main"
+                        data-testid="cart-shipping-fee"
+                      >
+                        Miễn phí
+                      </Typography>
                     ) : (
                       <Typography
                         fontWeight={600}
@@ -488,45 +476,6 @@ export function CartPage() {
                       </Typography>
                     )}
                   </Stack>
-
-                  {/* Freeship notification hint */}
-                  {cart.subtotal < 5000000 ? (
-                    <Box
-                      data-testid="freeship-progress-notice"
-                      sx={{
-                        bgcolor: "info.lighter",
-                        p: 1,
-                        borderRadius: 1,
-                        border: "1px dashed",
-                        borderColor: "info.light",
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        Mua thêm{" "}
-                        <strong>{formatPrice(5000000 - cart.subtotal)}</strong>{" "}
-                        để được <strong>Miễn phí vận chuyển</strong>!
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box
-                      data-testid="freeship-eligible-notice"
-                      sx={{
-                        bgcolor: "success.lighter",
-                        p: 1,
-                        borderRadius: 1,
-                        border: "1px dashed",
-                        borderColor: "success.light",
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        color="success.main"
-                        fontWeight={600}
-                      >
-                        ✓ Đơn hàng đủ điều kiện Miễn phí vận chuyển toàn quốc!
-                      </Typography>
-                    </Box>
-                  )}
 
                   {cart.discountAmount > 0 && (
                     <Stack direction="row" justifyContent="space-between">

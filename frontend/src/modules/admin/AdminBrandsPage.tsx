@@ -218,8 +218,8 @@ export function AdminBrandsPage() {
     <Stack spacing={3}>
       <PageIntro
         eyebrow="Quản trị"
-        title="Quản lý thương hiệu"
-        description="Quản lý danh sách thương hiệu của hệ thống cửa hàng công nghệ, thêm mới, sửa và xoá thương hiệu."
+        title="Quản lý thương hiệu sản phẩm"
+        description="Quản lý danh sách thương hiệu của sản phẩm; không phải tên cửa hàng."
         action={
           <Stack direction="row" spacing={1.5}>
             <Button
@@ -283,7 +283,7 @@ export function AdminBrandsPage() {
                 Chưa có thương hiệu nào
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Bắt đầu bằng việc thêm thương hiệu đầu tiên cho hệ thống sản phẩm.
+                Bắt đầu bằng việc thêm thương hiệu sản phẩm đầu tiên.
               </Typography>
               <Button
                 variant="contained"
