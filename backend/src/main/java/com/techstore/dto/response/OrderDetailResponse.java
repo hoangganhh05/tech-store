@@ -27,13 +27,17 @@ public record OrderDetailResponse(
         List<StatusHistory> statusHistory
 ) {
     public static OrderDetailResponse from(Order order) {
+        return from(order, java.util.Map.of());
+    }
+
+    public static OrderDetailResponse from(Order order, java.util.Map<Long, Long> variantToProductId) {
         OrderAddress address = order.getShippingAddress();
         return new OrderDetailResponse(
                 order.getId(), order.getOrderNumber(), order.getStatus(), order.getPaymentMethod(), order.getPaymentStatus(), order.getCancellationReason(),
                 order.getSubtotal(),
                 order.getDiscountAmount(), order.getShippingFee(), order.getTotalAmount(), order.getPlacedAt(),
                 address == null ? null : ShippingAddress.from(address),
-                order.getItems().stream().map(Item::from).toList(),
+                order.getItems().stream().map(item -> Item.from(item, variantToProductId.get(item.getVariantId()))).toList(),
                 order.getStatusHistory().stream().map(StatusHistory::from).toList()
         );
     }
@@ -46,10 +50,14 @@ public record OrderDetailResponse(
         }
     }
 
-    public record Item(String productName, String sku, String variantLabel, BigDecimal unitPrice, Integer quantity,
+    public record Item(Long variantId, Long productId, String productName, String sku, String variantLabel, BigDecimal unitPrice, Integer quantity,
                        BigDecimal subtotal) {
         static Item from(OrderItem item) {
-            return new Item(item.getProductName(), item.getSku(), item.getVariantLabel(), item.getUnitPrice(),
+            return from(item, null);
+        }
+
+        static Item from(OrderItem item, Long productId) {
+            return new Item(item.getVariantId(), productId, item.getProductName(), item.getSku(), item.getVariantLabel(), item.getUnitPrice(),
                     item.getQuantity(), item.getSubtotal());
         }
     }
