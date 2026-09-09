@@ -1,9 +1,11 @@
 package com.techstore.controller;
 
 import com.techstore.dto.request.PlaceOrderRequest;
+import com.techstore.dto.request.CancelOrderRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.OrderHistoryResponse;
 import com.techstore.dto.response.OrderDetailResponse;
+import com.techstore.dto.response.OrderCancellationResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.security.RequireRole;
@@ -49,5 +51,16 @@ public class OrderController {
             @PathVariable Long id
     ) {
         return ApiResponse.success("Lấy chi tiết đơn hàng thành công", service.getOrderDetail(userId, id));
+    }
+
+    @PatchMapping("/{id}/cancel")
+    @RequireRole(RoleCode.CUSTOMER)
+    @Operation(summary = "Khách hàng huỷ đơn hàng khi đơn chưa giao")
+    public ApiResponse<OrderCancellationResponse> cancelOrder(
+            @RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
+            @PathVariable Long id,
+            @Valid @RequestBody(required = false) CancelOrderRequest request
+    ) {
+        return ApiResponse.success("Huỷ đơn hàng thành công", service.cancelOrder(userId, id, request));
     }
 }

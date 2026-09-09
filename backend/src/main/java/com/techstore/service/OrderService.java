@@ -1,10 +1,12 @@
 package com.techstore.service;
 
 import com.techstore.dto.request.PlaceOrderRequest;
+import com.techstore.dto.request.CancelOrderRequest;
 import com.techstore.dto.response.OrderHistoryResponse;
 import com.techstore.dto.response.OrderDetailResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
+import com.techstore.dto.response.OrderCancellationResponse;
 
 public interface OrderService {
     PlacedOrderResponse placeOrder(Long userId, PlaceOrderRequest request);
@@ -12,4 +14,6 @@ public interface OrderService {
     PageResponse<OrderHistoryResponse> getMyOrders(Long userId, String status, int page, int size);
 
     OrderDetailResponse getOrderDetail(Long userId, Long orderId);
+
+    OrderCancellationResponse cancelOrder(Long userId, Long orderId, CancelOrderRequest request);
 }

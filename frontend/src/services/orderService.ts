@@ -48,6 +48,7 @@ export type OrderDetail = {
   status: string
   paymentMethod: PaymentMethod
   paymentStatus: string
+  cancellationReason: string | null
   subtotal: number
   discountAmount: number
   shippingFee: number
@@ -98,5 +99,20 @@ export async function getMyOrders(params: {
 
 export async function getOrderDetail(orderId: number): Promise<OrderDetail> {
   const response = await httpClient.get<{ data: OrderDetail }>(`/orders/${orderId}`)
+  return response.data.data
+}
+
+export async function cancelOrder(orderId: number, reason?: string): Promise<{
+  id: number
+  orderNumber: string
+  status: string
+  cancellationReason: string | null
+}> {
+  const response = await httpClient.patch<{ data: {
+    id: number
+    orderNumber: string
+    status: string
+    cancellationReason: string | null
+  } }>(`/orders/${orderId}/cancel`, reason?.trim() ? { reason: reason.trim() } : {})
   return response.data.data
 }

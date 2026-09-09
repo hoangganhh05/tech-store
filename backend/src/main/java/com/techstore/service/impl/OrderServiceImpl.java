@@ -1,13 +1,16 @@
 package com.techstore.service.impl;
 
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
+import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.request.OrderItemStockRequest;
 import com.techstore.dto.request.PlaceOrderRequest;
+import com.techstore.dto.request.CancelOrderRequest;
 import com.techstore.dto.response.CartResponse;
 import com.techstore.dto.response.OrderHistoryResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderItemResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
+import com.techstore.dto.response.OrderCancellationResponse;
 import com.techstore.entity.*;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
@@ -31,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -134,6 +138,32 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
         }
         return com.techstore.dto.response.OrderDetailResponse.from(order);
+    }
+
+    @Override
+    @Transactional
+    public OrderCancellationResponse cancelOrder(Long userId, Long orderId, CancelOrderRequest request) {
+        Order order = orders.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "Đơn hàng không tồn tại"));
+        if (!order.getUser().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "Bạn không có quyền huỷ đơn hàng này");
+        }
+        if (!Set.of("PENDING", "CONFIRMED").contains(order.getStatus())) {
+            throw new BusinessException(ErrorCode.ORDER_CANNOT_CANCEL,
+                    "Chỉ có thể huỷ đơn hàng đang chờ xác nhận hoặc đã xác nhận");
+        }
+
+        String reason = request == null || request.reason() == null || request.reason().isBlank()
+                ? "Khách hàng yêu cầu huỷ đơn hàng"
+                : request.reason().trim();
+        List<OrderItemStockRequest> items = order.getItems().stream()
+                .map(item -> new OrderItemStockRequest(item.getVariantId(), item.getQuantity()))
+                .collect(Collectors.toList());
+        inventory.restoreInventoryForOrder(userId,
+                new OrderInventoryRestoreRequest(order.getId(), order.getOrderNumber(), items, reason));
+        order.cancel(reason);
+        orders.saveAndFlush(order);
+        return new OrderCancellationResponse(order.getId(), order.getOrderNumber(), order.getStatus(), order.getCancellationReason());
     }
 
     private String normalizeStatus(String status) {
