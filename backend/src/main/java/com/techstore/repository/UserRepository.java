@@ -17,4 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.code = :roleCode")
+    java.util.List<User> findByRoleCode(@Param("roleCode") com.techstore.enums.RoleCode roleCode);
 }

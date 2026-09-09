@@ -15,6 +15,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { ROUTES } from "../constants/routes";
 import { useAuthEvents } from "../hooks/useAuthEvents";
 import { useAuth } from "../hooks/useAuth";
+import { AdminNotificationBell } from "../modules/admin/components/AdminNotificationBell";
 
 const drawerWidth = 240;
 const adminItems = [
@@ -50,6 +51,7 @@ export function AdminLayout() {
           <Typography variant="h6" fontWeight={800} flex={1}>
             TechStore Admin
           </Typography>
+          <AdminNotificationBell />
           <Button component={Link} to={ROUTES.home} color="inherit">
             Về cửa hàng
           </Button>
