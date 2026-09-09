@@ -182,6 +182,9 @@ export function StorefrontLayout() {
                 <Button component={Link} to={ROUTES.profile} color="inherit">
                   Tài khoản
                 </Button>
+                <Button component={Link} to={ROUTES.orders} color="inherit">
+                  Đơn hàng
+                </Button>
                 <Button
                   color="inherit"
                   onClick={handleLogout}

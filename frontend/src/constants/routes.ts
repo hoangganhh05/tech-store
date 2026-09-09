@@ -11,6 +11,8 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   profile: "/account/profile",
   addresses: "/account/addresses",
+  orders: "/account/orders",
+  orderDetail: "/account/orders/:id",
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",
@@ -20,4 +22,5 @@ export const ROUTES = {
   adminProducts: "/admin/products",
   adminInventory: "/admin/inventory",
   adminOrders: "/admin/orders",
+  adminOrderDetail: "/admin/orders/:id",
 } as const;

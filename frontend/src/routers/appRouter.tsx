@@ -13,6 +13,8 @@ import { ForgotPasswordPage } from "../modules/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "../modules/auth/ResetPasswordPage";
 import { ProfilePage } from "../modules/profile/ProfilePage";
 import { AddressesPage } from "../modules/profile/AddressesPage";
+import { OrderHistoryPage } from "../modules/orders/OrderHistoryPage";
+import { OrderDetailPage } from "../modules/orders/OrderDetailPage";
 import { ForbiddenPage } from "../modules/auth/ForbiddenPage";
 import { RequireAuth } from "../modules/auth/RequireAuth";
 import { AdminDashboardPage } from "../modules/admin/AdminDashboardPage";
@@ -23,6 +25,7 @@ import { AdminBrandsPage } from "../modules/admin/AdminBrandsPage";
 import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
+import { AdminOrderDetailPage } from "../modules/admin/AdminOrderDetailPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
 
@@ -63,6 +66,22 @@ export const appRouter = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      {
+        path: ROUTES.orders,
+        element: (
+          <RequireAuth>
+            <OrderHistoryPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: ROUTES.orderDetail,
+        element: (
+          <RequireAuth>
+            <OrderDetailPage />
+          </RequireAuth>
+        ),
+      },
       { path: ROUTES.forbidden, element: <ForbiddenPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
@@ -86,6 +105,7 @@ export const appRouter = createBrowserRouter([
       { path: "products", element: <AdminProductsPage /> },
       { path: "inventory", element: <AdminInventoryPage /> },
       { path: "orders", element: <AdminOrdersPage /> },
+      { path: "orders/:id", element: <AdminOrderDetailPage /> },
     ],
   },
 ]);
