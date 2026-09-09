@@ -206,11 +206,15 @@ export function AdminOrderDetailPage() {
     setStatusActionError("");
     setStatusSuccessMessage("");
     try {
-      const response = await updateAdminOrderStatus(
-        order.id,
-        selectedStatus,
-        selectedStatus === "CANCELLED" ? cancelReason : undefined,
-      );
+      const trimmedReason = cancelReason.trim();
+      const response =
+        selectedStatus === "CANCELLED" && trimmedReason
+          ? await updateAdminOrderStatus(
+              order.id,
+              selectedStatus,
+              trimmedReason,
+            )
+          : await updateAdminOrderStatus(order.id, selectedStatus);
       setOrder(response);
       setSelectedStatus("");
       setCancelReason("");

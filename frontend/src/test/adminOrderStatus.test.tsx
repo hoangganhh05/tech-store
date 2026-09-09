@@ -266,7 +266,6 @@ describe("US-09.6: Cập nhật trạng thái đơn hàng (admin)", () => {
       expect(mockedUpdateAdminOrderStatus).toHaveBeenCalledWith(
         15,
         "CONFIRMED",
-        undefined,
       );
     });
 
@@ -312,7 +311,6 @@ describe("US-09.6: Cập nhật trạng thái đơn hàng (admin)", () => {
       expect(mockedUpdateAdminOrderStatus).toHaveBeenCalledWith(
         15,
         "CONFIRMED",
-        undefined,
       );
     });
 
