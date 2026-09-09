@@ -46,6 +46,9 @@ public class Order {
     private OrderAddress shippingAddress;
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("changedAt ASC, id ASC")
+    private List<OrderStatusHistory> statusHistory = new ArrayList<>();
 
     protected Order() {}
 
@@ -58,6 +61,7 @@ public class Order {
         this.discountAmount = Objects.requireNonNull(discountAmount);
         this.shippingFee = Objects.requireNonNull(shippingFee);
         this.totalAmount = subtotal.subtract(discountAmount).add(shippingFee);
+        addStatusHistory(new OrderStatusHistory(this, status));
     }
 
     @PrePersist
@@ -70,11 +74,18 @@ public class Order {
     public String getPaymentStatus() { return paymentStatus; }
     public String getOrderNumber() { return orderNumber; }
     public String getStatus() { return status; }
+    public User getUser() { return user; }
+    public BigDecimal getSubtotal() { return subtotal; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public BigDecimal getShippingFee() { return shippingFee; }
     public BigDecimal getTotalAmount() { return totalAmount; }
     public Voucher getVoucher() { return voucher; }
     public void setVoucher(Voucher voucher) { this.voucher = voucher; }
     public Instant getPlacedAt() { return placedAt; }
     public List<OrderItem> getItems() { return items; }
+    public OrderAddress getShippingAddress() { return shippingAddress; }
+    public List<OrderStatusHistory> getStatusHistory() { return statusHistory; }
     public void setShippingAddress(OrderAddress address) { this.shippingAddress = address; }
     public void addItem(OrderItem item) { items.add(item); item.setOrder(this); }
+    public void addStatusHistory(OrderStatusHistory entry) { statusHistory.add(entry); entry.setOrder(this); }
 }

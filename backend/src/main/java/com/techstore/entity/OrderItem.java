@@ -25,6 +25,7 @@ public class OrderItem {
     }
     public void setOrder(Order order) { this.order = order; }
     public String getProductName() { return productName; }
+    public String getSku() { return sku; }
     public String getVariantLabel() { return variantLabel; }
     public BigDecimal getUnitPrice() { return unitPrice; }
     public Long getVariantId() { return variantId; }

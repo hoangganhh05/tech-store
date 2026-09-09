@@ -13,5 +13,5 @@ import java.lang.annotation.Target;
 @Documented
 public @interface RequireRole {
 
-    RoleCode value() default RoleCode.ADMIN;
+    RoleCode[] value() default RoleCode.ADMIN;
 }

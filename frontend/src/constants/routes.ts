@@ -12,6 +12,7 @@ export const ROUTES = {
   profile: "/account/profile",
   addresses: "/account/addresses",
   orders: "/account/orders",
+  orderDetail: "/account/orders/:id",
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",

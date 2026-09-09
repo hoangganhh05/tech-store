@@ -20,4 +20,11 @@ public class OrderAddress {
         this.order = order; this.recipientName = recipientName; this.recipientPhone = recipientPhone;
         this.line1 = line1; this.ward = ward; this.district = district; this.province = province;
     }
+
+    public String getRecipientName() { return recipientName; }
+    public String getRecipientPhone() { return recipientPhone; }
+    public String getLine1() { return line1; }
+    public String getWard() { return ward; }
+    public String getDistrict() { return district; }
+    public String getProvince() { return province; }
 }

@@ -10,6 +10,7 @@ import com.techstore.dto.response.PlacedOrderItemResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.entity.*;
 import com.techstore.enums.ErrorCode;
+import com.techstore.enums.RoleCode;
 import com.techstore.event.OrderPlacedEvent;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.*;
@@ -118,6 +119,21 @@ public class OrderServiceImpl implements OrderService {
                 ? orders.findByUserId(userId, pageable)
                 : orders.findByUserIdAndStatus(userId, normalizedStatus, pageable);
         return PageResponse.of(ordersPage.map(OrderHistoryResponse::from));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.techstore.dto.response.OrderDetailResponse getOrderDetail(Long userId, Long orderId) {
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "Đơn hàng không tồn tại"));
+        User requester = users.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN, "Phiên đăng nhập không hợp lệ hoặc đã hết hạn"));
+        boolean isOwner = order.getUser().getId().equals(userId);
+        boolean isAdmin = requester.getRoleCodes().contains(RoleCode.ADMIN);
+        if (!isOwner && !isAdmin) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
+        }
+        return com.techstore.dto.response.OrderDetailResponse.from(order);
     }
 
     private String normalizeStatus(String status) {

@@ -22,6 +22,7 @@ import {
 } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useCallback, useEffect, useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { PageIntro } from '../../components/common/PageIntro'
 import { getMyOrders, type OrderHistoryItem } from '../../services/orderService'
 
@@ -166,6 +167,7 @@ export function OrderHistoryPage() {
                       <TableCell>Ngày đặt</TableCell>
                       <TableCell align="right">Tổng tiền</TableCell>
                       <TableCell>Trạng thái</TableCell>
+                      <TableCell align="right">Thao tác</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -180,6 +182,11 @@ export function OrderHistoryPage() {
                             color={getStatusColor(order.status)}
                             label={statusLabels.get(order.status) || order.status}
                           />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button component={RouterLink} to={`/account/orders/${order.id}`} size="small">
+                            Xem chi tiết
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

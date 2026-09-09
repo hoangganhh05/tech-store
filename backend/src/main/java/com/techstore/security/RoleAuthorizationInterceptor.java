@@ -9,6 +9,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
+
 @Component
 public class RoleAuthorizationInterceptor implements HandlerInterceptor {
 
@@ -32,13 +36,15 @@ public class RoleAuthorizationInterceptor implements HandlerInterceptor {
         RequireRole requireRole = methodAnnotation != null ? methodAnnotation : classAnnotation;
 
         boolean isAdminPath = request.getRequestURI().contains("/admin") && !request.getRequestURI().contains("/auth/");
-        RoleCode requiredRole = requireRole != null ? requireRole.value() : (isAdminPath ? RoleCode.ADMIN : null);
+        Set<RoleCode> requiredRoles = requireRole != null
+                ? EnumSet.copyOf(Arrays.asList(requireRole.value()))
+                : (isAdminPath ? Set.of(RoleCode.ADMIN) : Set.of());
 
-        if (requiredRole != null) {
+        if (!requiredRoles.isEmpty()) {
             AccessTokenAuthenticator authenticator = accessTokenAuthenticatorProvider.getIfAvailable();
             if (authenticator != null) {
                 String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-                AccessTokenClaims claims = authenticator.requireRole(authorizationHeader, requiredRole);
+                AccessTokenClaims claims = authenticator.requireAnyRole(authorizationHeader, requiredRoles);
                 request.setAttribute(CURRENT_USER_CLAIMS_ATTRIBUTE, claims);
                 request.setAttribute(CURRENT_USER_ID_ATTRIBUTE, claims.userId());
             }

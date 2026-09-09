@@ -3,6 +3,7 @@ package com.techstore.controller;
 import com.techstore.dto.request.PlaceOrderRequest;
 import com.techstore.dto.response.ApiResponse;
 import com.techstore.dto.response.OrderHistoryResponse;
+import com.techstore.dto.response.OrderDetailResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.security.RequireRole;
@@ -16,12 +17,12 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("${app.api.base-path}/orders")
-@RequireRole(RoleCode.CUSTOMER)
 @Tag(name = "Orders", description = "Customer order placement")
 public class OrderController {
     private final OrderService service;
     public OrderController(OrderService service) { this.service = service; }
     @PostMapping
+    @RequireRole(RoleCode.CUSTOMER)
     @Operation(summary = "Tạo đơn hàng và trừ tồn kho trong một transaction")
     public ApiResponse<PlacedOrderResponse> place(@RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
                                                    @Valid @RequestBody PlaceOrderRequest request) {
@@ -29,6 +30,7 @@ public class OrderController {
     }
 
     @GetMapping("/my-orders")
+    @RequireRole(RoleCode.CUSTOMER)
     @Operation(summary = "Xem lịch sử đơn hàng của khách hàng hiện tại")
     public ApiResponse<PageResponse<OrderHistoryResponse>> getMyOrders(
             @RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
@@ -37,5 +39,15 @@ public class OrderController {
             @RequestParam(name = "size", defaultValue = "10") int size
     ) {
         return ApiResponse.success("Lấy lịch sử đơn hàng thành công", service.getMyOrders(userId, status, page, size));
+    }
+
+    @GetMapping("/{id}")
+    @RequireRole({RoleCode.CUSTOMER, RoleCode.ADMIN})
+    @Operation(summary = "Xem chi tiết đơn hàng và lịch sử trạng thái")
+    public ApiResponse<OrderDetailResponse> getOrderDetail(
+            @RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
+            @PathVariable Long id
+    ) {
+        return ApiResponse.success("Lấy chi tiết đơn hàng thành công", service.getOrderDetail(userId, id));
     }
 }
