@@ -10,7 +10,7 @@ public class OrderItem {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "order_id", nullable = false) private Order order;
     @Column(name = "variant_id", nullable = false) private Long variantId;
     @Column(name = "product_name", nullable = false, length = 255) private String productName;
-    @Column(nullable = false, length = 80) private String sku;
+    @Column(nullable = false, length = 100) private String sku;
     @Column(name = "variant_label", length = 180) private String variantLabel;
     @Column(name = "unit_price", nullable = false, precision = 15, scale = 2) private BigDecimal unitPrice;
     @Column(nullable = false) private Integer quantity;

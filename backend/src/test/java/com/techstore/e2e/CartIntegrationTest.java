@@ -45,6 +45,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -674,6 +675,26 @@ class CartIntegrationTest {
                 .andExpect(jsonPath("$.data.valid", equalTo(false)))
                 .andExpect(jsonPath("$.data.issues", hasSize(1)))
                 .andExpect(jsonPath("$.data.issues[0].issueType", equalTo("INACTIVE_OR_DELETED")));
+    }
+
+    @Test
+    @DisplayName("US-07.5: Biến thể bị ngừng kinh doanh không được cho checkout")
+    void getCart_inactiveVariant_returnsStockIssue() throws Exception {
+        AddToCartRequest addReq = new AddToCartRequest(testVariant.getId(), 1);
+        mockMvc.perform(post("/api/v1/cart/items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(addReq)))
+                .andExpect(status().isOk());
+
+        testVariant.setStatus(com.techstore.enums.VariantStatus.INACTIVE);
+        productVariantRepository.save(testVariant);
+
+        mockMvc.perform(get("/api/v1/cart")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.canCheckout", equalTo(false)))
+                .andExpect(jsonPath("$.data.items[0].stockStatusMessage", equalTo("Sản phẩm đã ngừng kinh doanh hoặc không tồn tại")));
     }
 
     @Test

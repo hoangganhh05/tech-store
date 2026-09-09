@@ -16,12 +16,14 @@ type Props = {
   onEditAddress: () => void;
   onEditPayment: () => void;
   onPlaced: (order: PlacedOrder) => void;
+  onReviewCartChange?: (cart: CheckoutReview["cart"] | null) => void;
 };
 
-export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEditPayment, onPlaced }: Props) {
+export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEditPayment, onPlaced, onReviewCartChange }: Props) {
   const [review, setReview] = useState<CheckoutReview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [orderError, setOrderError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucherCode, setAppliedVoucherCode] = useState<string | undefined>(undefined);
@@ -31,30 +33,32 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
 
   const loadReview = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setReviewError(null);
     try {
-      setReview(await getCheckoutReview(addressId, paymentOption.paymentMethod, appliedVoucherCode));
+      const nextReview = await getCheckoutReview(addressId, paymentOption.paymentMethod, appliedVoucherCode);
+      setReview(nextReview);
+      onReviewCartChange?.(nextReview.cart);
     } catch {
-      setReview(null);
-      setError("Không thể tải thông tin xem lại đơn hàng. Vui lòng thử lại.");
+      onReviewCartChange?.(null);
+      setReviewError("Không thể tải thông tin xem lại đơn hàng. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
-  }, [addressId, paymentOption.paymentMethod, appliedVoucherCode]);
+  }, [addressId, paymentOption.paymentMethod, appliedVoucherCode, onReviewCartChange]);
 
   useEffect(() => { void loadReview(); }, [loadReview]);
 
   if (loading) return <Stack alignItems="center" py={5} spacing={2}>
     <CircularProgress /><Typography color="text.secondary">Đang kiểm tra đơn hàng...</Typography>
   </Stack>;
-  if (error || !review) return <Alert severity="error" action={<Button onClick={loadReview}>Thử lại</Button>}>
-    {error}
+  if (!review) return <Alert severity="error" action={<Button onClick={loadReview}>Thử lại</Button>}>
+    {reviewError}
   </Alert>;
 
   const { cart, shippingAddress, paymentMethod, readyToPlaceOrder } = review;
   const applyVoucherCode = async () => {
     if (!voucherCode.trim() || applyingVoucher) return;
-    setApplyingVoucher(true); setVoucherError(null);
+    setApplyingVoucher(true); setVoucherError(null); setOrderError(null); setReviewError(null);
     try {
       const result = await applyVoucher(voucherCode);
       setAppliedVoucher(result);
@@ -69,16 +73,17 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   };
   const submitOrder = async () => {
     if (!readyToPlaceOrder || placing) return;
-    setPlacing(true); setError(null);
+    setPlacing(true); setOrderError(null);
     try {
-      const order = await placeOrder(addressId, paymentMethod.paymentMethod, voucherCode);
+      const order = await placeOrder(addressId, paymentMethod.paymentMethod, appliedVoucherCode);
       onPlaced(order);
     } catch (requestError: unknown) {
       const responseMessage = (requestError as AxiosError<{ message?: string }>).response?.data?.message;
-      setError(responseMessage || "Không thể đặt hàng. Vui lòng kiểm tra lại tồn kho và thử lại.");
+      setOrderError(responseMessage || "Không thể đặt hàng. Vui lòng kiểm tra lại tồn kho và thử lại.");
     } finally { setPlacing(false); }
   };
   return <Stack spacing={3} data-testid="order-review-content">
+    {reviewError && <Alert severity="error" action={<Button onClick={loadReview}>Thử lại</Button>}>{reviewError}</Alert>}
     {!readyToPlaceOrder && <Alert severity="warning">Giỏ hàng có sản phẩm không còn đủ tồn kho. Vui lòng chỉnh sửa giỏ hàng.</Alert>}
 
     <Box>
@@ -122,7 +127,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
     <Box data-testid="review-totals">
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={2}>
         <TextField size="small" label="Mã voucher" value={voucherCode}
-          onChange={(event) => { setVoucherCode(event.target.value.toUpperCase()); setVoucherError(null); setAppliedVoucher(null); setAppliedVoucherCode(undefined); }}
+          onChange={(event) => { setVoucherCode(event.target.value.toUpperCase()); setVoucherError(null); setOrderError(null); setReviewError(null); setAppliedVoucher(null); setAppliedVoucherCode(undefined); }}
           inputProps={{ "data-testid": "voucher-code-input" }} disabled={applyingVoucher || placing} />
         <Button variant="outlined" onClick={applyVoucherCode} disabled={!voucherCode.trim() || applyingVoucher || placing}
           data-testid="apply-voucher-btn">{applyingVoucher ? <CircularProgress size={18} /> : "Áp dụng"}</Button>
@@ -139,7 +144,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
       </Stack>
     </Box>
 
-    {error && <Alert severity="error">{error}</Alert>}
+    {orderError && <Alert severity="error" data-testid="order-error">{orderError}</Alert>}
     <Button variant="contained" size="large" disabled={!readyToPlaceOrder || placing}
       onClick={submitOrder} data-testid="place-order-btn">{placing ? "Đang đặt hàng..." : "Đặt hàng"}</Button>
   </Stack>;

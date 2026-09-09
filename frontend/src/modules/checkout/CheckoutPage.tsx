@@ -27,6 +27,7 @@ import { PageIntro } from "../../components/common/PageIntro";
 import { ROUTES } from "../../constants/routes";
 import { useCart } from "../../hooks/useCart";
 import { getMyAddresses, type Address } from "../../services/userService";
+import type { Cart } from "../../services/cartService";
 import { AddressFormDialog } from "../profile/AddressFormDialog";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import type { PaymentOption } from "../../services/checkoutService";
@@ -46,10 +47,11 @@ const steps = [
 ];
 
 export function CheckoutPage() {
-  const { cart } = useCart();
+  const { cart, refreshCart } = useCart();
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState<number>(0);
   const [paymentOption, setPaymentOption] = useState<PaymentOption | null>(null);
+  const [reviewCart, setReviewCart] = useState<Cart | null>(null);
 
   // Addresses state
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -114,6 +116,12 @@ export function CheckoutPage() {
   const handleBack = () => {
     setActiveStep((prev) => Math.max(prev - 1, 0));
   };
+
+  const handleReviewCartChange = useCallback((nextCart: Cart | null) => {
+    setReviewCart(nextCart);
+  }, []);
+
+  const summaryCart = reviewCart || cart;
 
   const selectedAddress =
     addresses.find((a) => a.id === selectedAddressId) || null;
@@ -402,9 +410,13 @@ export function CheckoutPage() {
                     <OrderReviewStep
                       addressId={selectedAddressId}
                       paymentOption={paymentOption}
-                      onEditAddress={() => setActiveStep(0)}
-                      onEditPayment={() => setActiveStep(1)}
-                      onPlaced={(order) => navigate(`/order-confirmation/${encodeURIComponent(order.orderNumber)}`, { state: { order } })}
+                      onEditAddress={() => { setReviewCart(null); setActiveStep(0); }}
+                      onEditPayment={() => { setReviewCart(null); setActiveStep(1); }}
+                      onReviewCartChange={handleReviewCartChange}
+                      onPlaced={async (order) => {
+                        await refreshCart();
+                        navigate(`/order-confirmation/${encodeURIComponent(order.orderNumber)}`, { state: { order } });
+                      }}
                     />
                   ) : (
                     <Alert severity="warning">Vui lòng hoàn tất địa chỉ và phương thức thanh toán.</Alert>
@@ -433,10 +445,10 @@ export function CheckoutPage() {
                     alignItems="center"
                   >
                     <Typography color="text.secondary">
-                      Tạm tính ({cart?.totalItems || 0} sản phẩm)
+                      Tạm tính ({summaryCart?.totalItems || 0} sản phẩm)
                     </Typography>
                     <Typography fontWeight={500}>
-                      {formatPrice(cart?.subtotal || 0)}
+                      {formatPrice(summaryCart?.subtotal || 0)}
                     </Typography>
                   </Stack>
 
@@ -451,16 +463,16 @@ export function CheckoutPage() {
                     <Typography
                       fontWeight={500}
                       color={
-                        cart?.shippingFee === 0 ? "success.main" : "inherit"
+                        summaryCart?.shippingFee === 0 ? "success.main" : "inherit"
                       }
                     >
-                      {cart?.shippingFee === 0
+                      {summaryCart?.shippingFee === 0
                         ? "Miễn phí"
-                        : formatPrice(cart?.shippingFee || 0)}
+                        : formatPrice(summaryCart?.shippingFee || 0)}
                     </Typography>
                   </Stack>
 
-                  {Boolean(cart?.discountAmount && cart.discountAmount > 0) && (
+                  {Boolean(summaryCart?.discountAmount && summaryCart.discountAmount > 0) && (
                     <Stack
                       direction="row"
                       justifyContent="space-between"
@@ -468,7 +480,7 @@ export function CheckoutPage() {
                     >
                       <Typography color="text.secondary">Giảm giá</Typography>
                       <Typography fontWeight={500} color="error.main">
-                        -{formatPrice(cart?.discountAmount || 0)}
+                        -{formatPrice(summaryCart?.discountAmount || 0)}
                       </Typography>
                     </Stack>
                   )}
@@ -491,7 +503,7 @@ export function CheckoutPage() {
                     fontWeight={700}
                     data-testid="checkout-total-amount"
                   >
-                    {formatPrice(cart?.total || 0)}
+                    {formatPrice(summaryCart?.total || 0)}
                   </Typography>
                 </Stack>
 

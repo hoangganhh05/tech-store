@@ -17,6 +17,7 @@ import com.techstore.entity.User;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.ProductStatus;
 import com.techstore.enums.StockIssueType;
+import com.techstore.enums.VariantStatus;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.CartItemRepository;
 import com.techstore.repository.CartRepository;
@@ -426,7 +427,8 @@ public class CartServiceImpl implements CartService {
             boolean itemHasStockIssue = false;
             String stockStatusMessage = null;
 
-            if (variant == null || variant.isDeleted() || product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
+            if (variant == null || variant.isDeleted() || variant.getStatus() != VariantStatus.ACTIVE
+                    || product == null || product.isDeleted() || product.getStatus() != ProductStatus.ACTIVE) {
                 itemHasStockIssue = true;
                 stockStatusMessage = "Sản phẩm đã ngừng kinh doanh hoặc không tồn tại";
             } else if (stock <= 0) {
