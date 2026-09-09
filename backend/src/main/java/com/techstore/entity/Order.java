@@ -97,9 +97,12 @@ public class Order {
     public void setInternalNote(String internalNote) {
         this.internalNote = internalNote == null || internalNote.isBlank() ? null : internalNote.trim();
     }
+    public void updateStatus(String status, User changedBy) {
+        this.status = Objects.requireNonNull(status);
+        addStatusHistory(new OrderStatusHistory(this, status, changedBy));
+    }
     public void cancel(String reason) {
-        this.status = "CANCELLED";
         this.cancellationReason = reason == null || reason.isBlank() ? null : reason.trim();
-        addStatusHistory(new OrderStatusHistory(this, this.status));
+        updateStatus("CANCELLED", null);
     }
 }

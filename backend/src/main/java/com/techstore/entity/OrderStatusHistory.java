@@ -31,12 +31,21 @@ public class OrderStatusHistory {
     @Column(name = "changed_at", nullable = false, updatable = false)
     private Instant changedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "changed_by")
+    private User changedBy;
+
     protected OrderStatusHistory() {
     }
 
     public OrderStatusHistory(Order order, String status) {
+        this(order, status, null);
+    }
+
+    public OrderStatusHistory(Order order, String status, User changedBy) {
         this.order = Objects.requireNonNull(order);
         this.status = Objects.requireNonNull(status);
+        this.changedBy = changedBy;
     }
 
     @PrePersist
@@ -47,4 +56,5 @@ public class OrderStatusHistory {
     public void setOrder(Order order) { this.order = order; }
     public String getStatus() { return status; }
     public Instant getChangedAt() { return changedAt; }
+    public User getChangedBy() { return changedBy; }
 }

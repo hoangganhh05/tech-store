@@ -66,6 +66,10 @@ export type AdminOrderDetail = {
   statusHistory: Array<{
     status: string
     changedAt: string
+    changedBy: {
+      id: number
+      fullName: string
+    } | null
   }>
 }
 
@@ -94,5 +98,10 @@ export async function getAdminOrders(params: GetAdminOrdersParams = {}): Promise
 
 export async function getAdminOrderDetail(orderId: number): Promise<AdminOrderDetail> {
   const response = await httpClient.get<ApiResponse<AdminOrderDetail>>(`/admin/orders/${orderId}`)
+  return response.data.data
+}
+
+export async function updateAdminOrderStatus(orderId: number, status: string): Promise<AdminOrderDetail> {
+  const response = await httpClient.patch<ApiResponse<AdminOrderDetail>>(`/admin/orders/${orderId}/status`, { status })
   return response.data.data
 }

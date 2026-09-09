@@ -5,6 +5,7 @@ import com.techstore.dto.request.OrderInventoryRestoreRequest;
 import com.techstore.dto.request.OrderItemStockRequest;
 import com.techstore.dto.request.PlaceOrderRequest;
 import com.techstore.dto.request.CancelOrderRequest;
+import com.techstore.dto.request.UpdateOrderStatusRequest;
 import com.techstore.dto.response.CartResponse;
 import com.techstore.dto.response.OrderHistoryResponse;
 import com.techstore.dto.response.PageResponse;
@@ -34,6 +35,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -45,6 +47,13 @@ public class OrderServiceImpl implements OrderService {
     private static final int MAX_HISTORY_PAGE_SIZE = 50;
     private static final Set<String> ORDER_STATUSES = Set.of(
             "PENDING", "CONFIRMED", "SHIPPING", "COMPLETED", "CANCELLED"
+    );
+    private static final Map<String, Set<String>> ALLOWED_STATUS_TRANSITIONS = Map.of(
+            "PENDING", Set.of("CONFIRMED", "CANCELLED"),
+            "CONFIRMED", Set.of("SHIPPING", "CANCELLED"),
+            "SHIPPING", Set.of("COMPLETED"),
+            "COMPLETED", Set.of(),
+            "CANCELLED", Set.of()
     );
 
     private final UserRepository users; private final AddressRepository addresses; private final CartRepository carts;
@@ -209,6 +218,41 @@ public class OrderServiceImpl implements OrderService {
         }
         Order order = orders.findById(orderId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "Đơn hàng không tồn tại"));
+        return AdminOrderDetailResponse.from(order);
+    }
+
+    @Override
+    @Transactional
+    public AdminOrderDetailResponse updateAdminOrderStatus(
+            Long adminUserId,
+            Long orderId,
+            UpdateOrderStatusRequest request
+    ) {
+        if (orderId == null || orderId < 1) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã đơn hàng không hợp lệ");
+        }
+        if (request == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Trạng thái đơn hàng không được để trống");
+        }
+
+        String nextStatus = normalizeStatus(request.status());
+        if (nextStatus == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Trạng thái đơn hàng không được để trống");
+        }
+
+        User admin = users.findById(adminUserId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.INVALID_ACCESS_TOKEN,
+                        "Phiên đăng nhập không hợp lệ hoặc đã hết hạn"));
+        Order order = orders.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "Đơn hàng không tồn tại"));
+        Set<String> allowedStatuses = ALLOWED_STATUS_TRANSITIONS.getOrDefault(order.getStatus(), Set.of());
+        if (!allowedStatuses.contains(nextStatus)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Không thể chuyển trạng thái từ " + order.getStatus() + " sang " + nextStatus);
+        }
+
+        order.updateStatus(nextStatus, admin);
+        orders.saveAndFlush(order);
         return AdminOrderDetailResponse.from(order);
     }
 
