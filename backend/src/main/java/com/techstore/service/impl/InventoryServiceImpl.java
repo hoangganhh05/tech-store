@@ -24,6 +24,8 @@ import com.techstore.repository.InventoryTransactionRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.service.InventoryService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,9 @@ import java.util.Map;
 
 @Service
 public class InventoryServiceImpl implements InventoryService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private final InventoryRepository inventoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
@@ -223,6 +228,9 @@ public class InventoryServiceImpl implements InventoryService {
             Inventory inventory = inventoryRepository.findByVariantIdWithLock(variantId)
                     .orElseThrow(() -> new BusinessException(ErrorCode.INVENTORY_NOT_FOUND,
                             "Không tìm thấy thông tin tồn kho cho biến thể ID: " + variantId));
+            // The cart review may have loaded this row earlier in the same persistence context.
+            // Refresh after taking the lock so the deduction uses the committed stock value.
+            entityManager.refresh(inventory);
 
             ProductVariant variant = inventory.getVariant();
             if (variant == null || variant.isDeleted()) {
