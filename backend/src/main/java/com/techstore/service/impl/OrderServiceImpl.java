@@ -11,6 +11,7 @@ import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderItemResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.dto.response.OrderCancellationResponse;
+import com.techstore.dto.response.AdminOrderSummaryResponse;
 import com.techstore.entity.*;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
@@ -29,6 +30,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -164,6 +167,46 @@ public class OrderServiceImpl implements OrderService {
         order.cancel(reason);
         orders.saveAndFlush(order);
         return new OrderCancellationResponse(order.getId(), order.getOrderNumber(), order.getStatus(), order.getCancellationReason());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AdminOrderSummaryResponse> getAdminOrders(
+            String search,
+            String status,
+            LocalDate fromDate,
+            LocalDate toDate,
+            int page,
+            int size
+    ) {
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số trang phải lớn hơn hoặc bằng 0");
+        }
+        if (size < 1 || size > MAX_HISTORY_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Kích thước trang phải nằm trong khoảng từ 1 đến " + MAX_HISTORY_PAGE_SIZE);
+        }
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Ngày bắt đầu không được sau ngày kết thúc");
+        }
+
+        String normalizedSearch = normalizeSearch(search);
+        String normalizedStatus = normalizeStatus(status);
+        Instant fromInclusive = fromDate == null ? null : fromDate.atStartOfDay().toInstant(ZoneOffset.UTC);
+        Instant toExclusive = toDate == null ? null : toDate.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC);
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("placedAt"), Sort.Order.desc("id")));
+        Page<Order> ordersPage = orders.findAdminOrders(normalizedSearch, normalizedStatus, fromInclusive, toExclusive, pageable);
+        return PageResponse.of(ordersPage.map(AdminOrderSummaryResponse::from));
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) return null;
+        String normalized = search.trim();
+        if (normalized.length() > 100) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Từ khoá tìm kiếm không được vượt quá 100 ký tự");
+        }
+        return normalized;
     }
 
     private String normalizeStatus(String status) {

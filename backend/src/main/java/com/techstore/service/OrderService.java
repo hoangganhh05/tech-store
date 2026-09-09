@@ -7,6 +7,9 @@ import com.techstore.dto.response.OrderDetailResponse;
 import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.dto.response.OrderCancellationResponse;
+import com.techstore.dto.response.AdminOrderSummaryResponse;
+
+import java.time.LocalDate;
 
 public interface OrderService {
     PlacedOrderResponse placeOrder(Long userId, PlaceOrderRequest request);
@@ -16,4 +19,13 @@ public interface OrderService {
     OrderDetailResponse getOrderDetail(Long userId, Long orderId);
 
     OrderCancellationResponse cancelOrder(Long userId, Long orderId, CancelOrderRequest request);
+
+    PageResponse<AdminOrderSummaryResponse> getAdminOrders(
+            String search,
+            String status,
+            LocalDate fromDate,
+            LocalDate toDate,
+            int page,
+            int size
+    );
 }
