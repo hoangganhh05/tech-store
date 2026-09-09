@@ -11,6 +11,7 @@ export const ROUTES = {
   resetPassword: "/reset-password",
   profile: "/account/profile",
   addresses: "/account/addresses",
+  orders: "/account/orders",
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",

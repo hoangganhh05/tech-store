@@ -13,6 +13,7 @@ import { ForgotPasswordPage } from "../modules/auth/ForgotPasswordPage";
 import { ResetPasswordPage } from "../modules/auth/ResetPasswordPage";
 import { ProfilePage } from "../modules/profile/ProfilePage";
 import { AddressesPage } from "../modules/profile/AddressesPage";
+import { OrderHistoryPage } from "../modules/orders/OrderHistoryPage";
 import { ForbiddenPage } from "../modules/auth/ForbiddenPage";
 import { RequireAuth } from "../modules/auth/RequireAuth";
 import { AdminDashboardPage } from "../modules/admin/AdminDashboardPage";
@@ -60,6 +61,14 @@ export const appRouter = createBrowserRouter([
         element: (
           <RequireAuth>
             <AddressesPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: ROUTES.orders,
+        element: (
+          <RequireAuth>
+            <OrderHistoryPage />
           </RequireAuth>
         ),
       },

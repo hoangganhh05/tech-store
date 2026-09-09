@@ -4,6 +4,8 @@ import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.OrderItemStockRequest;
 import com.techstore.dto.request.PlaceOrderRequest;
 import com.techstore.dto.response.CartResponse;
+import com.techstore.dto.response.OrderHistoryResponse;
+import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderItemResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.entity.*;
@@ -17,15 +19,25 @@ import com.techstore.service.OrderService;
 import com.techstore.service.VoucherRedemption;
 import com.techstore.service.VoucherService;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+    private static final int MAX_HISTORY_PAGE_SIZE = 50;
+    private static final Set<String> ORDER_STATUSES = Set.of(
+            "PENDING", "CONFIRMED", "SHIPPING", "COMPLETED", "CANCELLED"
+    );
+
     private final UserRepository users; private final AddressRepository addresses; private final CartRepository carts;
     private final CartItemRepository cartItems; private final OrderRepository orders; private final CartService cartService;
     private final InventoryService inventory; private final ApplicationEventPublisher eventPublisher;
@@ -83,5 +95,38 @@ public class OrderServiceImpl implements OrderService {
                 order.getTotalAmount(), placedAt, estimatedProcessingTime, immutableItems));
         return new PlacedOrderResponse(order.getId(), order.getOrderNumber(), order.getStatus(), order.getTotalAmount(),
                 placedAt, estimatedProcessingTime, immutableItems);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<OrderHistoryResponse> getMyOrders(Long userId, String status, int page, int size) {
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số trang phải lớn hơn hoặc bằng 0");
+        }
+        if (size < 1 || size > MAX_HISTORY_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Kích thước trang phải nằm trong khoảng từ 1 đến " + MAX_HISTORY_PAGE_SIZE);
+        }
+
+        String normalizedStatus = normalizeStatus(status);
+        Sort newestFirst = Sort.by(
+                Sort.Order.desc("placedAt"),
+                Sort.Order.desc("id")
+        );
+        PageRequest pageable = PageRequest.of(page, size, newestFirst);
+        Page<Order> ordersPage = normalizedStatus == null
+                ? orders.findByUserId(userId, pageable)
+                : orders.findByUserIdAndStatus(userId, normalizedStatus, pageable);
+        return PageResponse.of(ordersPage.map(OrderHistoryResponse::from));
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) return null;
+        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        if (!ORDER_STATUSES.contains(normalized)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Trạng thái đơn hàng không hợp lệ: " + status);
+        }
+        return normalized;
     }
 }
