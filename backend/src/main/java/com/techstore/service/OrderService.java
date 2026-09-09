@@ -8,6 +8,7 @@ import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.dto.response.OrderCancellationResponse;
 import com.techstore.dto.response.AdminOrderSummaryResponse;
+import com.techstore.dto.response.AdminOrderDetailResponse;
 
 import java.time.LocalDate;
 
@@ -28,4 +29,6 @@ public interface OrderService {
             int page,
             int size
     );
+
+    AdminOrderDetailResponse getAdminOrderDetail(Long orderId);
 }

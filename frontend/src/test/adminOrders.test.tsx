@@ -61,6 +61,7 @@ describe('US-09.4: admin order list page', () => {
     expect(screen.getByText('Hoàn thành')).toBeInTheDocument()
     expect(screen.getByText('Chờ xác nhận')).toBeInTheDocument()
     expect(screen.getByText(/1.030.000/)).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Xem chi tiết' })[0]).toHaveAttribute('href', '/admin/orders/3')
     expect(mockedGetAdminOrders).toHaveBeenCalledWith({
       search: '', status: '', fromDate: '', toDate: '', page: 0, size: 10,
     })

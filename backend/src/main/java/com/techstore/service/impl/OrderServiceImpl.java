@@ -12,6 +12,7 @@ import com.techstore.dto.response.PlacedOrderItemResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.dto.response.OrderCancellationResponse;
 import com.techstore.dto.response.AdminOrderSummaryResponse;
+import com.techstore.dto.response.AdminOrderDetailResponse;
 import com.techstore.entity.*;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
@@ -198,6 +199,17 @@ public class OrderServiceImpl implements OrderService {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("placedAt"), Sort.Order.desc("id")));
         Page<Order> ordersPage = orders.findAdminOrders(normalizedSearch, normalizedStatus, fromInclusive, toExclusive, pageable);
         return PageResponse.of(ordersPage.map(AdminOrderSummaryResponse::from));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminOrderDetailResponse getAdminOrderDetail(Long orderId) {
+        if (orderId == null || orderId < 1) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã đơn hàng không hợp lệ");
+        }
+        Order order = orders.findById(orderId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND, "Đơn hàng không tồn tại"));
+        return AdminOrderDetailResponse.from(order);
     }
 
     private String normalizeSearch(String search) {
