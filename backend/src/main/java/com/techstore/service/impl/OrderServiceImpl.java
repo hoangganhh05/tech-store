@@ -18,6 +18,7 @@ import com.techstore.entity.*;
 import com.techstore.enums.ErrorCode;
 import com.techstore.enums.RoleCode;
 import com.techstore.event.OrderPlacedEvent;
+import com.techstore.event.OrderStatusUpdatedEvent;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.*;
 import com.techstore.service.CartService;
@@ -41,6 +42,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -176,6 +178,7 @@ public class OrderServiceImpl implements OrderService {
                 new OrderInventoryRestoreRequest(order.getId(), order.getOrderNumber(), items, reason));
         order.cancel(reason);
         orders.saveAndFlush(order);
+        publishOrderStatusUpdatedEvent(order, "CANCELLED", reason);
         return new OrderCancellationResponse(order.getId(), order.getOrderNumber(), order.getStatus(), order.getCancellationReason());
     }
 
@@ -263,11 +266,56 @@ public class OrderServiceImpl implements OrderService {
                         new OrderInventoryRestoreRequest(order.getId(), order.getOrderNumber(), items, cancelReason));
             }
             order.cancel(cancelReason, admin);
+            orders.saveAndFlush(order);
+            publishOrderStatusUpdatedEvent(order, "CANCELLED", cancelReason);
         } else {
             order.updateStatus(nextStatus, admin);
+            orders.saveAndFlush(order);
+            publishOrderStatusUpdatedEvent(order, nextStatus, null);
         }
         orders.saveAndFlush(order);
         return AdminOrderDetailResponse.from(order);
+    }
+
+    private void publishOrderStatusUpdatedEvent(Order order, String status, String cancellationReason) {
+        if (eventPublisher == null || order == null) return;
+        User customer = order.getUser();
+        if (customer == null || customer.getEmail() == null || customer.getEmail().isBlank()) return;
+
+        OrderAddress address = order.getShippingAddress();
+        String fullAddress = null;
+        String recipientPhone = null;
+        if (address != null) {
+            recipientPhone = address.getRecipientPhone();
+            fullAddress = Stream.of(address.getLine1(), address.getWard(), address.getDistrict(), address.getProvince())
+                    .filter(part -> part != null && !part.isBlank())
+                    .collect(Collectors.joining(", "));
+        }
+
+        List<OrderStatusUpdatedEvent.ItemSummary> itemSummaries = order.getItems().stream()
+                .map(item -> new OrderStatusUpdatedEvent.ItemSummary(
+                        item.getProductName(),
+                        item.getVariantLabel(),
+                        item.getQuantity(),
+                        item.getUnitPrice(),
+                        item.getSubtotal()
+                ))
+                .toList();
+
+        Instant changedAt = Instant.now();
+        eventPublisher.publishEvent(new OrderStatusUpdatedEvent(
+                order.getId(),
+                order.getOrderNumber(),
+                customer.getEmail(),
+                customer.getFullName(),
+                status,
+                cancellationReason,
+                order.getTotalAmount(),
+                recipientPhone,
+                fullAddress,
+                changedAt,
+                itemSummaries
+        ));
     }
 
     private String normalizeSearch(String search) {
