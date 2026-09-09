@@ -1,4 +1,4 @@
-# TechStore Database Design
+# Đăng Tùng Mobile Database Design
 
 **Story:** `US-00.3`  
 **Tasks:** `T-00.3.1`, `T-00.3.2`, `T-00.3.3`  

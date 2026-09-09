@@ -1,11 +1,11 @@
-# TechStore system architecture
+# Đăng Tùng Mobile system architecture
 
 **Story:** `US-00.2`
 **Tasks:** `T-00.2.1`, `T-00.2.2`, `T-00.2.3`
 
 ## 1. Mục tiêu kiến trúc
 
-TechStore là ứng dụng thương mại điện tử gồm storefront cho khách hàng và khu
+Đăng Tùng Mobile là ứng dụng thương mại điện tử gồm storefront cho khách hàng và khu
 vực quản trị cho nhân viên. Kiến trúc ban đầu ưu tiên triển khai đơn giản, giao
 dịch dữ liệu nhất quán và cấu trúc đủ rõ để phát triển các module nghiệp vụ độc
 lập trong cùng một codebase.
@@ -29,7 +29,7 @@ flowchart LR
         Browser --> SPA
     end
 
-    subgraph Application[TechStore application]
+    subgraph Application[Đăng Tùng Mobile application]
         API[Spring Boot REST API]
         Auth[Authentication and RBAC]
         Modules[Business modules]

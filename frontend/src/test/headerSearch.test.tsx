@@ -4,6 +4,7 @@ import { ThemeProvider } from "@mui/material";
 import { appTheme } from "../configs/theme";
 import { StorefrontLayout } from "../layouts/StorefrontLayout";
 import { AuthProvider } from "../modules/auth/AuthContext";
+import { env } from "../configs/env";
 
 function DummyProductsPage() {
   const [params] = useSearchParams();
@@ -37,6 +38,31 @@ function renderHeaderSearch(initialRoute = "/") {
 }
 
 describe("US-05.3: Storefront Header Search", () => {
+  it("renders brand and configured contact links", () => {
+    renderHeaderSearch("/");
+
+    expect(
+      screen.getByRole("link", { name: env.brand.name }),
+    ).toHaveAttribute("href", "/");
+    expect(
+      screen.getByRole("link", { name: env.brand.contact.phone }),
+    ).toHaveAttribute("href", "tel:+84867116863");
+    expect(
+      screen.getByRole("link", { name: env.brand.contact.email }),
+    ).toHaveAttribute("href", "mailto:hoanghd064@gmail.com");
+    expect(screen.getByText(env.brand.address)).toBeInTheDocument();
+    expect(document.title).toBe(env.brand.name);
+    expect(
+      document.head.querySelector('meta[property="og:title"]'),
+    ).toHaveAttribute("content", env.brand.name);
+    expect(
+      document.head.querySelector('meta[name="description"]'),
+    ).toHaveAttribute(
+      "content",
+      `${env.brand.name} - ${env.brand.industry}`,
+    );
+  });
+
   it("renders the search input in the header toolbar", () => {
     renderHeaderSearch("/");
 

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="2040" viewBox="0 0 2400 2040" role="img" aria-labelledby="title desc">
-  <title id="title">TechStore administration wireframes</title>
+  <title id="title">Đăng Tùng Mobile administration wireframes</title>
   <desc id="desc">Low-fidelity wireframes for the admin dashboard, product management, order management, and inventory management screens.</desc>
   <defs>
     <style>
@@ -24,7 +24,7 @@
     </style>
     <g id="admin-shell">
       <rect class="nav" x="0" y="0" width="220" height="880" />
-      <text class="inverse" x="30" y="48">TECHSTORE ADMIN</text>
+      <text class="inverse" x="30" y="48">ĐĂNG TÙNG MOBILE</text>
       <rect x="18" y="92" width="184" height="46" rx="5" fill="#3c5578" />
       <text class="nav-text" x="42" y="122">▣ Dashboard</text>
       <text class="nav-text" x="42" y="180">□ Sản phẩm</text>
@@ -43,7 +43,7 @@
   </defs>
 
   <rect class="canvas" width="2400" height="2040" />
-  <text x="60" y="42" class="heading">TECHSTORE · WIREFRAME KHU VỰC QUẢN TRỊ</text>
+  <text x="60" y="42" class="heading">ĐĂNG TÙNG MOBILE · WIREFRAME KHU VỰC QUẢN TRỊ</text>
 
   <!-- Dashboard -->
   <g transform="translate(60 100)">

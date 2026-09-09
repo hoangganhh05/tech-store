@@ -1,4 +1,4 @@
-# TechStore main-screen wireframes
+# Đăng Tùng Mobile main-screen wireframes
 
 These low-fidelity wireframes define information hierarchy, primary actions,
 and navigation before visual design and feature implementation. They are not a

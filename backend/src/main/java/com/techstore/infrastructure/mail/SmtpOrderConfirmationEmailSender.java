@@ -1,6 +1,7 @@
 package com.techstore.infrastructure.mail;
 
 import com.techstore.event.OrderPlacedEvent;
+import com.techstore.config.StoreBrandProperties;
 import com.techstore.security.PasswordResetProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,15 +23,18 @@ public class SmtpOrderConfirmationEmailSender implements OrderConfirmationEmailS
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final PasswordResetProperties mailProperties;
+    private final StoreBrandProperties brand;
     private final String mailHost;
 
     public SmtpOrderConfirmationEmailSender(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             PasswordResetProperties mailProperties,
+            StoreBrandProperties brand,
             @Value("${spring.mail.host:}") String mailHost
     ) {
         this.mailSenderProvider = mailSenderProvider;
         this.mailProperties = mailProperties;
+        this.brand = brand;
         this.mailHost = mailHost;
     }
 
@@ -52,7 +56,7 @@ public class SmtpOrderConfirmationEmailSender implements OrderConfirmationEmailS
             message.setFrom(mailProperties.getEmailFrom());
         }
         message.setTo(event.recipientEmail());
-        message.setSubject("Xác nhận đặt hàng TechStore - " + event.orderNumber());
+        message.setSubject("Xác nhận đặt hàng " + brand.getName() + " - " + event.orderNumber());
         message.setText(buildBody(event));
 
         try {
@@ -76,6 +80,9 @@ public class SmtpOrderConfirmationEmailSender implements OrderConfirmationEmailS
                 .append(" x ").append(item.quantity())
                 .append(" = ").append(item.subtotal()).append(" VND\n"));
         return body.append("\nTổng cộng: ").append(event.totalAmount()).append(" VND\n\n")
-                .append("Cảm ơn bạn đã mua sắm tại TechStore.").toString();
+                .append("Cảm ơn bạn đã mua sắm tại ").append(brand.getName()).append(".\n")
+                .append("Liên hệ: ").append(brand.getContactPhone())
+                .append(" | ").append(brand.getContactEmail()).append("\n")
+                .append(brand.getAddress()).toString();
     }
 }

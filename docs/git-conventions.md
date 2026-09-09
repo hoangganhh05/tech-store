@@ -3,7 +3,7 @@
 **Story:** `US-00.1`
 **Tasks:** `T-00.1.1`, `T-00.1.3`
 
-Tài liệu này quy định cách làm việc với Git cho dự án TechStore. Mục tiêu là
+Tài liệu này quy định cách làm việc với Git cho dự án Đăng Tùng Mobile. Mục tiêu là
 không push trực tiếp vào các nhánh dùng chung, giữ lịch sử dễ đọc và bảo đảm mọi
 thay đổi đều được CI kiểm tra trước khi merge.
 

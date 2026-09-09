@@ -43,7 +43,7 @@ function renderRoute(path: string) {
 describe('application routing', () => {
   it('renders the storefront home route', async () => {
     renderRoute('/')
-    expect(screen.getByRole('heading', { name: /thiết bị công nghệ/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Đăng Tùng Mobile' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Chưa có sản phẩm nổi bật nào.')).toBeInTheDocument())
   })
 

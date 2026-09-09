@@ -6,7 +6,7 @@
 
 ## Context
 
-TechStore cần một stack dễ phát triển trên Windows, có type safety, hỗ trợ giao
+Đăng Tùng Mobile cần một stack dễ phát triển trên Windows, có type safety, hỗ trợ giao
 dịch thương mại điện tử, sinh tài liệu API và có thể kiểm tra tự động trên CI.
 Nhóm cần ưu tiên công nghệ phổ biến, tài liệu tốt và không tạo thêm hạ tầng vận
 hành ở giai đoạn đầu.

@@ -14,8 +14,8 @@
     <groupId>com.techstore</groupId>
     <artifactId>techstore-backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>TechStore Backend</name>
-    <description>REST API for the TechStore e-commerce platform</description>
+    <name>Đăng Tùng Mobile Backend</name>
+    <description>REST API for the Đăng Tùng Mobile storefront</description>
 
     <properties>
         <java.version>21</java.version>

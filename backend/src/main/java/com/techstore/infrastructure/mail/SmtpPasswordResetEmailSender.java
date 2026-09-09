@@ -1,6 +1,7 @@
 package com.techstore.infrastructure.mail;
 
 import com.techstore.security.PasswordResetProperties;
+import com.techstore.config.StoreBrandProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
@@ -22,17 +23,20 @@ public class SmtpPasswordResetEmailSender implements PasswordResetEmailSender {
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
     private final PasswordResetProperties properties;
+    private final StoreBrandProperties brand;
     private final String mailHost;
     private final Environment environment;
 
     public SmtpPasswordResetEmailSender(
             ObjectProvider<JavaMailSender> mailSenderProvider,
             PasswordResetProperties properties,
+            StoreBrandProperties brand,
             @Value("${spring.mail.host:}") String mailHost,
             Environment environment
     ) {
         this.mailSenderProvider = mailSenderProvider;
         this.properties = properties;
+        this.brand = brand;
         this.mailHost = mailHost;
         this.environment = environment;
     }
@@ -64,11 +68,14 @@ public class SmtpPasswordResetEmailSender implements PasswordResetEmailSender {
             message.setFrom(properties.getEmailFrom());
         }
         message.setTo(recipientEmail);
-        message.setSubject("Đặt lại mật khẩu TechStore");
+        message.setSubject("Đặt lại mật khẩu " + brand.getName());
         message.setText("Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu.\n\n"
                 + "Mở liên kết sau để tạo mật khẩu mới (có hiệu lực đến " + expiresAt + "):\n"
                 + resetUrl + "\n\n"
-                + "Nếu bạn không yêu cầu thao tác này, bạn có thể bỏ qua email.");
+                + "Nếu bạn không yêu cầu thao tác này, bạn có thể bỏ qua email.\n\n"
+                + "Liên hệ: " + brand.getContactPhone() + " | " + brand.getContactEmail() + "\n"
+                + brand.getAddress() + "\n\n"
+                + "Trân trọng,\n" + brand.getName());
 
         try {
             mailSender.send(message);

@@ -12,14 +12,16 @@ import org.springframework.context.annotation.Configuration;
 public class OpenApiConfig {
 
     @Bean
-    OpenAPI techStoreOpenApi() {
+    OpenAPI storeOpenApi(StoreBrandProperties brand) {
         return new OpenAPI()
                 .components(new Components())
                 .info(new Info()
-                        .title("TechStore API")
-                        .description("REST API documentation for TechStore")
+                        .title(brand.getName() + " API")
+                        .description(brand.getName() + " - " + brand.getIndustry())
                         .version("v1")
-                        .contact(new Contact().name("TechStore Team"))
+                        .contact(new Contact()
+                                .name(brand.getName())
+                                .email(brand.getContactEmail()))
                         .license(new License().name("Private project")));
     }
 }

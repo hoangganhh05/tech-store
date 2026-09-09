@@ -5,16 +5,11 @@ import {
   Button,
   Card,
   CardActionArea,
-  CardContent,
   Grid,
   Skeleton,
   Stack,
   Typography,
 } from "@mui/material";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
-import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
-import SupportAgentOutlinedIcon from "@mui/icons-material/SupportAgentOutlined";
-import PublishedWithChangesOutlinedIcon from "@mui/icons-material/PublishedWithChangesOutlined";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import LocalFireDepartmentRoundedIcon from "@mui/icons-material/LocalFireDepartmentRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
@@ -23,6 +18,7 @@ import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { Link } from "react-router-dom";
 import { ROUTES } from "../../constants/routes";
+import { env } from "../../configs/env";
 import { ProductCard } from "../../components/common/ProductCard";
 import {
   getStorefrontHomeData,
@@ -88,7 +84,7 @@ export function HomePage() {
               variant="subtitle2"
               sx={{ color: "#ffd54f", fontWeight: 700, letterSpacing: 1 }}
             >
-              TECHSTORE CHÍNH HÃNG
+              {env.brand.name.toLocaleUpperCase("vi-VN")}
             </Typography>
           </Stack>
           <Typography
@@ -102,7 +98,7 @@ export function HomePage() {
               color: "#ffffff",
             }}
           >
-            Thiết bị công nghệ đỉnh cao — Trải nghiệm xứng tầm
+            {env.brand.name}
           </Typography>
           <Typography
             sx={{
@@ -111,8 +107,7 @@ export function HomePage() {
               lineHeight: 1.6,
             }}
           >
-            Khám phá điện thoại, laptop và phụ kiện chính hãng với ưu đãi đặc
-            quyền, hỗ trợ tận tâm và giao hàng siêu tốc trên toàn quốc.
+            {env.brand.industry}
           </Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} pt={1}>
             <Button
@@ -486,65 +481,6 @@ export function HomePage() {
         )}
       </Box>
 
-      {/* 6. Trust & Guarantees Badges */}
-      <Grid container spacing={2.5} pt={2}>
-        {[
-          {
-            icon: <SecurityOutlinedIcon sx={{ fontSize: 32 }} />,
-            title: "100% Chính Hãng",
-            text: "Cam kết nguồn gốc minh bạch, đầy đủ bảo hành chính hãng từ nhà sản xuất.",
-          },
-          {
-            icon: <LocalShippingOutlinedIcon sx={{ fontSize: 32 }} />,
-            title: "Giao Hàng Toàn Quốc",
-            text: "Giao hàng hỏa tốc trong 2h tại nội thành, miễn phí cho đơn từ 500.000₫.",
-          },
-          {
-            icon: <PublishedWithChangesOutlinedIcon sx={{ fontSize: 32 }} />,
-            title: "Đổi Trả Trong 30 Ngày",
-            text: "Chính sách 1 đổi 1 nhanh chóng nếu thiết bị phát sinh lỗi phần cứng.",
-          },
-          {
-            icon: <SupportAgentOutlinedIcon sx={{ fontSize: 32 }} />,
-            title: "Hỗ Trợ Tận Tâm 24/7",
-            text: "Đội ngũ tư vấn kỹ thuật chuyên sâu sẵn sàng giải đáp mọi thắc mắc của bạn.",
-          },
-        ].map((item) => (
-          <Grid key={item.title} size={{ xs: 12, sm: 6, md: 3 }}>
-            <Card
-              variant="outlined"
-              sx={{
-                height: "100%",
-                borderRadius: 2.5,
-                bgcolor: "#fafafa",
-                borderColor: "#e8e8e8",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: "#ffffff",
-                  boxShadow: "0 6px 20px rgba(0,0,0,0.05)",
-                },
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Box color="primary.main" mb={1.5}>
-                  {item.icon}
-                </Box>
-                <Typography variant="subtitle1" fontWeight={700} mb={0.75}>
-                  {item.title}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  lineHeight={1.5}
-                >
-                  {item.text}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
     </Stack>
   );
 }
