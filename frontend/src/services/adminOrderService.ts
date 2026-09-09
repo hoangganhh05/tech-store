@@ -28,6 +28,47 @@ export type AdminOrderSummary = {
   placedAt: string
 }
 
+export type AdminOrderDetail = {
+  id: number
+  orderNumber: string
+  customer: {
+    id: number
+    fullName: string
+    email: string
+    phone: string | null
+  }
+  status: string
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'ONLINE'
+  paymentStatus: string
+  cancellationReason: string | null
+  internalNote: string | null
+  subtotal: number
+  discountAmount: number
+  shippingFee: number
+  totalAmount: number
+  placedAt: string
+  shippingAddress: {
+    recipientName: string
+    recipientPhone: string
+    line1: string
+    ward: string | null
+    district: string
+    province: string
+  } | null
+  items: Array<{
+    productName: string
+    sku: string
+    variantLabel: string | null
+    unitPrice: number
+    quantity: number
+    subtotal: number
+  }>
+  statusHistory: Array<{
+    status: string
+    changedAt: string
+  }>
+}
+
 export type GetAdminOrdersParams = {
   search?: string
   status?: string
@@ -48,5 +89,10 @@ export async function getAdminOrders(params: GetAdminOrdersParams = {}): Promise
       size: params.size ?? 10,
     },
   })
+  return response.data.data
+}
+
+export async function getAdminOrderDetail(orderId: number): Promise<AdminOrderDetail> {
+  const response = await httpClient.get<ApiResponse<AdminOrderDetail>>(`/admin/orders/${orderId}`)
   return response.data.data
 }

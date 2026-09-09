@@ -32,6 +32,8 @@ public class Order {
     private String paymentStatus = "UNPAID";
     @Column(name = "note", length = 500)
     private String cancellationReason;
+    @Column(name = "internal_note", length = 500)
+    private String internalNote;
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal subtotal;
     @Column(name = "discount_amount", nullable = false, precision = 15, scale = 2)
@@ -75,6 +77,7 @@ public class Order {
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public String getPaymentStatus() { return paymentStatus; }
     public String getCancellationReason() { return cancellationReason; }
+    public String getInternalNote() { return internalNote; }
     public String getOrderNumber() { return orderNumber; }
     public String getStatus() { return status; }
     public User getUser() { return user; }
@@ -91,6 +94,9 @@ public class Order {
     public void setShippingAddress(OrderAddress address) { this.shippingAddress = address; }
     public void addItem(OrderItem item) { items.add(item); item.setOrder(this); }
     public void addStatusHistory(OrderStatusHistory entry) { statusHistory.add(entry); entry.setOrder(this); }
+    public void setInternalNote(String internalNote) {
+        this.internalNote = internalNote == null || internalNote.isBlank() ? null : internalNote.trim();
+    }
     public void cancel(String reason) {
         this.status = "CANCELLED";
         this.cancellationReason = reason == null || reason.isBlank() ? null : reason.trim();

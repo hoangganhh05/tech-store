@@ -25,6 +25,7 @@ import { AdminBrandsPage } from "../modules/admin/AdminBrandsPage";
 import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
+import { AdminOrderDetailPage } from "../modules/admin/AdminOrderDetailPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
 
@@ -104,6 +105,7 @@ export const appRouter = createBrowserRouter([
       { path: "products", element: <AdminProductsPage /> },
       { path: "inventory", element: <AdminInventoryPage /> },
       { path: "orders", element: <AdminOrdersPage /> },
+      { path: "orders/:id", element: <AdminOrderDetailPage /> },
     ],
   },
 ]);

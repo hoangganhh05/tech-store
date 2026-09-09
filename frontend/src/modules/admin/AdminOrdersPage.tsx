@@ -25,6 +25,7 @@ import {
 } from '@mui/material'
 import { isAxiosError } from 'axios'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { PageIntro } from '../../components/common/PageIntro'
 import { getAdminOrders, type AdminOrderSummary } from '../../services/adminOrderService'
 
@@ -94,11 +95,11 @@ export function AdminOrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [activeFilters, page, refreshIndex, rowsPerPage])
+  }, [activeFilters, page, rowsPerPage])
 
   useEffect(() => {
     void loadOrders()
-  }, [loadOrders])
+  }, [loadOrders, refreshIndex])
 
   const applyFilters = (event: FormEvent) => {
     event.preventDefault()
@@ -185,13 +186,14 @@ export function AdminOrdersPage() {
                 <TableCell align="right">Tổng tiền</TableCell>
                 <TableCell>Trạng thái</TableCell>
                 <TableCell>Ngày đặt</TableCell>
+                <TableCell align="right">Thao tác</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}><CircularProgress size={32} /><Typography color="text.secondary" mt={1}>Đang tải danh sách đơn hàng...</Typography></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6 }}><CircularProgress size={32} /><Typography color="text.secondary" mt={1}>Đang tải danh sách đơn hàng...</Typography></TableCell></TableRow>
               ) : orders.length === 0 ? (
-                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 6 }}><Typography color="text.secondary">Không tìm thấy đơn hàng phù hợp.</Typography></TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 6 }}><Typography color="text.secondary">Không tìm thấy đơn hàng phù hợp.</Typography></TableCell></TableRow>
               ) : orders.map((order) => (
                 <TableRow key={order.id} hover>
                   <TableCell sx={{ fontWeight: 700 }}>{order.orderNumber}</TableCell>
@@ -200,6 +202,7 @@ export function AdminOrdersPage() {
                   <TableCell align="right">{formatAmount(order.totalAmount)}</TableCell>
                   <TableCell><Chip size="small" color={statusColor(order.status)} label={statusLabels.get(order.status) || order.status} /></TableCell>
                   <TableCell>{formatDate(order.placedAt)}</TableCell>
+                  <TableCell align="right"><Button component={RouterLink} to={`/admin/orders/${order.id}`} size="small">Xem chi tiết</Button></TableCell>
                 </TableRow>
               ))}
             </TableBody>
