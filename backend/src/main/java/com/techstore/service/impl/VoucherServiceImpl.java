@@ -54,8 +54,7 @@ public class VoucherServiceImpl implements VoucherService {
     @Transactional
     public VoucherRedemption redeem(Long userId, CartResponse cart, String code) {
         String normalized = normalize(code);
-        Voucher candidate = find(normalized);
-        Voucher voucher = vouchers.findByIdForUpdate(candidate.getId()).orElseThrow(
+        Voucher voucher = vouchers.findByCodeIgnoreCaseForUpdate(normalized).orElseThrow(
                 () -> new BusinessException(ErrorCode.VOUCHER_NOT_FOUND, "Mã voucher không tồn tại"));
         return validateWithVoucher(userId, cart, voucher);
     }

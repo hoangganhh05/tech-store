@@ -75,6 +75,41 @@ describe("US-08.3 order review", () => {
     await waitFor(() => expect(onPlaced).toHaveBeenCalledWith(expect.objectContaining({ orderNumber: "TS-ABC123" })));
   });
 
+  it("does not submit a voucher that has not been applied", async () => {
+    mock = new MockAdapter(httpClient);
+    mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD" }).reply(200, { data: review });
+    mock.onPost("/orders", { addressId: 5, paymentMethod: "COD" }).reply(200, {
+      data: { id: 55, orderNumber: "TS-ABC123", status: "PENDING", totalAmount: 49930000, placedAt: "2026-09-08T00:00:00Z", estimatedProcessingTime: "1-2 ngày làm việc", items: [] },
+    });
+    const onPlaced = vi.fn();
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={onPlaced} />);
+    await screen.findByText("iPhone 15 Pro");
+    fireEvent.change(screen.getByTestId("voucher-code-input"), { target: { value: "SAVE10" } });
+    fireEvent.click(screen.getByTestId("place-order-btn"));
+    await waitFor(() => expect(onPlaced).toHaveBeenCalledOnce());
+    expect(JSON.parse(mock.history.post.find((request) => request.url === "/orders")?.data as string)).not.toHaveProperty("voucherCode");
+  });
+
+  it("keeps voucher controls available when placing an applied voucher fails", async () => {
+    mock = new MockAdapter(httpClient);
+    mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD" }).reply(200, { data: review });
+    mock.onPost("/checkout/voucher", { code: "SAVE10" }).reply(200, {
+      data: { code: "SAVE10", name: "Giảm 10%", discountType: "PERCENT", discountAmount: 5000000, subtotal: 50000000, shippingFee: 30000, total: 45030000 },
+    });
+    mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD", voucherCode: "SAVE10" }).reply(200, {
+      data: { ...review, cart: { ...review.cart, discountAmount: 5000000, total: 45030000 }, voucher: { code: "SAVE10", name: "Giảm 10%", discountType: "PERCENT", discountAmount: 5000000, subtotal: 50000000, shippingFee: 30000, total: 45030000 } },
+    });
+    mock.onPost("/orders", { addressId: 5, paymentMethod: "COD", voucherCode: "SAVE10" }).reply(400, { message: "Mã voucher đã hết hạn" });
+    render(<OrderReviewStep addressId={5} paymentOption={payment} onEditAddress={vi.fn()} onEditPayment={vi.fn()} onPlaced={vi.fn()} />);
+    await screen.findByText("iPhone 15 Pro");
+    fireEvent.change(screen.getByTestId("voucher-code-input"), { target: { value: "SAVE10" } });
+    fireEvent.click(screen.getByTestId("apply-voucher-btn"));
+    await screen.findByTestId("voucher-success");
+    fireEvent.click(screen.getByTestId("place-order-btn"));
+    expect(await screen.findByTestId("order-error")).toHaveTextContent("Mã voucher đã hết hạn");
+    expect(screen.getByTestId("voucher-code-input")).toBeInTheDocument();
+  });
+
   it("applies a valid voucher and refreshes the discounted checkout totals", async () => {
     mock = new MockAdapter(httpClient);
     mock.onPost("/checkout/review", { addressId: 5, paymentMethod: "COD" }).reply(200, { data: review });

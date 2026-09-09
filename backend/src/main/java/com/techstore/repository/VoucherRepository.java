@@ -11,6 +11,10 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
     Optional<Voucher> findByCodeIgnoreCase(String code);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from Voucher v where upper(v.code) = upper(:code)")
+    Optional<Voucher> findByCodeIgnoreCaseForUpdate(@Param("code") String code);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select v from Voucher v where v.id = :id")
     Optional<Voucher> findByIdForUpdate(@Param("id") Long id);
 }
