@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -122,21 +123,26 @@ class AdminOrderDetailIntegrationTest {
                 "Dịch Vọng", "Cầu Giấy", "Hà Nội"));
         order.addItem(new OrderItem(101L, "Điện thoại TechStore", "PHONE-BLACK-128", "Đen / 128GB",
                 new BigDecimal("500000"), 2));
+        Instant now = Instant.now();
         orders.saveAndFlush(order);
         entityManager.createNativeQuery("UPDATE orders SET status = :status, payment_status = :paymentStatus WHERE id = :id")
                 .setParameter("status", "SHIPPING")
                 .setParameter("paymentStatus", "PAID")
                 .setParameter("id", order.getId())
                 .executeUpdate();
+        entityManager.createNativeQuery("UPDATE order_status_history SET changed_at = :changedAt WHERE order_id = :orderId AND status = 'PENDING'")
+                .setParameter("orderId", order.getId())
+                .setParameter("changedAt", Timestamp.from(now.minus(2, ChronoUnit.HOURS)))
+                .executeUpdate();
         entityManager.createNativeQuery("INSERT INTO order_status_history (order_id, status, changed_at) VALUES (:orderId, :status, :changedAt)")
                 .setParameter("orderId", order.getId())
                 .setParameter("status", "CONFIRMED")
-                .setParameter("changedAt", Timestamp.from(Instant.parse("2026-09-09T10:30:00Z")))
+                .setParameter("changedAt", Timestamp.from(now.minus(1, ChronoUnit.HOURS)))
                 .executeUpdate();
         entityManager.createNativeQuery("INSERT INTO order_status_history (order_id, status, changed_at) VALUES (:orderId, :status, :changedAt)")
                 .setParameter("orderId", order.getId())
                 .setParameter("status", "SHIPPING")
-                .setParameter("changedAt", Timestamp.from(Instant.parse("2026-09-09T11:00:00Z")))
+                .setParameter("changedAt", Timestamp.from(now))
                 .executeUpdate();
         return order;
     }
