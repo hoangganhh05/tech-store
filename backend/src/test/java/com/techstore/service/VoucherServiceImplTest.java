@@ -74,4 +74,17 @@ class VoucherServiceImplTest {
         assertThatThrownBy(() -> service.applyToCart(7L, cart(), "SAVE10"))
                 .isInstanceOf(BusinessException.class).hasMessageContaining("Đơn hàng tối thiểu");
     }
+
+    @Test
+    void redeemsVoucherThroughLockedCodeLookup() throws Exception {
+        Voucher voucher = voucher(DiscountType.FIXED, new BigDecimal("1000"));
+        when(vouchers.findByCodeIgnoreCaseForUpdate("SAVE10")).thenReturn(Optional.of(voucher));
+        when(usages.countByVoucherIdAndUserId(9L, 7L)).thenReturn(0L);
+
+        var redemption = service.redeem(7L, cart(), " save10 ");
+
+        assertThat(redemption.voucher()).isSameAs(voucher);
+        verify(vouchers).findByCodeIgnoreCaseForUpdate("SAVE10");
+        verify(vouchers, never()).findByCodeIgnoreCase("SAVE10");
+    }
 }
