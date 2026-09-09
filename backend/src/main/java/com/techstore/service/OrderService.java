@@ -2,6 +2,7 @@ package com.techstore.service;
 
 import com.techstore.dto.request.PlaceOrderRequest;
 import com.techstore.dto.request.CancelOrderRequest;
+import com.techstore.dto.request.UpdateOrderStatusRequest;
 import com.techstore.dto.response.OrderHistoryResponse;
 import com.techstore.dto.response.OrderDetailResponse;
 import com.techstore.dto.response.PageResponse;
@@ -31,4 +32,6 @@ public interface OrderService {
     );
 
     AdminOrderDetailResponse getAdminOrderDetail(Long orderId);
+
+    AdminOrderDetailResponse updateAdminOrderStatus(Long adminUserId, Long orderId, UpdateOrderStatusRequest request);
 }

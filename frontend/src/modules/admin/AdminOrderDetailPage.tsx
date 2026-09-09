@@ -7,6 +7,10 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -21,7 +25,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink, useParams } from 'react-router-dom'
 import { PageIntro } from '../../components/common/PageIntro'
 import { ROUTES } from '../../constants/routes'
-import { getAdminOrderDetail, type AdminOrderDetail } from '../../services/adminOrderService'
+import { getAdminOrderDetail, updateAdminOrderStatus, type AdminOrderDetail } from '../../services/adminOrderService'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
@@ -46,6 +50,18 @@ const paymentStatusLabels: Record<string, string> = {
 }
 
 const standardSteps = ['PENDING', 'CONFIRMED', 'SHIPPING', 'COMPLETED']
+
+const nextStatusOptions: Record<string, Array<{ value: string, label: string }>> = {
+  PENDING: [
+    { value: 'CONFIRMED', label: 'Xác nhận đơn hàng' },
+    { value: 'CANCELLED', label: 'Huỷ đơn hàng' },
+  ],
+  CONFIRMED: [
+    { value: 'SHIPPING', label: 'Chuyển sang đang giao' },
+    { value: 'CANCELLED', label: 'Huỷ đơn hàng' },
+  ],
+  SHIPPING: [{ value: 'COMPLETED', label: 'Hoàn thành đơn hàng' }],
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -90,7 +106,9 @@ function StatusTimeline({ order }: { order: AdminOrderDetail }) {
             <Box pb={index < steps.length - 1 ? 1.5 : 0}>
               <Typography fontWeight={completed ? 700 : 400}>{statusLabels[status] || status}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {history ? formatDate(history.changedAt) : 'Chưa đạt trạng thái này'}
+                {history
+                  ? `${formatDate(history.changedAt)} · ${history.changedBy ? `Cập nhật bởi ${history.changedBy.fullName}` : 'Khởi tạo bởi hệ thống'}`
+                  : 'Chưa đạt trạng thái này'}
               </Typography>
             </Box>
           </Stack>
@@ -106,6 +124,10 @@ export function AdminOrderDetailPage() {
   const [order, setOrder] = useState<AdminOrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [statusActionError, setStatusActionError] = useState('')
+  const [statusSuccessMessage, setStatusSuccessMessage] = useState('')
 
   const loadOrder = useCallback(async (isActive: () => boolean = () => true) => {
     if (!Number.isInteger(orderId) || orderId < 1) {
@@ -133,6 +155,24 @@ export function AdminOrderDetailPage() {
     void loadOrder(() => active)
     return () => { active = false }
   }, [loadOrder])
+
+  const updateStatus = async () => {
+    if (!order || !selectedStatus) return
+    setUpdatingStatus(true)
+    setStatusActionError('')
+    setStatusSuccessMessage('')
+    try {
+      const response = await updateAdminOrderStatus(order.id, selectedStatus)
+      setOrder(response)
+      setSelectedStatus('')
+      setStatusSuccessMessage('Đã cập nhật trạng thái đơn hàng.')
+    } catch (requestError: unknown) {
+      const message = isAxiosError<{ message?: string }>(requestError) ? requestError.response?.data?.message : undefined
+      setStatusActionError(message || 'Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại.')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
 
   return (
     <Stack spacing={3}>
@@ -167,6 +207,44 @@ export function AdminOrderDetailPage() {
                 <Chip label={statusLabels[order.status] || order.status} color={statusColor(order.status)} />
               </Stack>
               {order.cancellationReason && <Typography color="text.secondary" mt={1}>Lý do huỷ: {order.cancellationReason}</Typography>}
+            </CardContent>
+          </Card>
+
+          {statusSuccessMessage && <Alert severity="success">{statusSuccessMessage}</Alert>}
+          {statusActionError && <Alert severity="error">{statusActionError}</Alert>}
+
+          <Card>
+            <CardContent>
+              <Typography variant="h6" component="h2" mb={0.5}>Cập nhật trạng thái</Typography>
+              <Typography color="text.secondary" variant="body2" mb={2}>
+                Chỉ các bước chuyển tiếp hợp lệ của đơn hàng hiện tại mới được hiển thị.
+              </Typography>
+              {(nextStatusOptions[order.status] || []).length > 0 ? (
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+                  <FormControl fullWidth>
+                    <InputLabel id="admin-order-next-status-label">Trạng thái mới</InputLabel>
+                    <Select
+                      labelId="admin-order-next-status-label"
+                      label="Trạng thái mới"
+                      value={selectedStatus}
+                      onChange={(event) => setSelectedStatus(event.target.value)}
+                      disabled={updatingStatus}
+                    >
+                      {(nextStatusOptions[order.status] || []).map((option) => (
+                        <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    onClick={() => void updateStatus()}
+                    disabled={!selectedStatus || updatingStatus}
+                    sx={{ minWidth: { sm: 180 } }}
+                  >
+                    {updatingStatus ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
+                  </Button>
+                </Stack>
+              ) : <Typography color="text.secondary">Đơn hàng ở trạng thái cuối, không thể cập nhật thêm.</Typography>}
             </CardContent>
           </Card>
 

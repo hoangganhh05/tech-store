@@ -105,9 +105,19 @@ public record AdminOrderDetailResponse(
         }
     }
 
-    public record StatusHistory(String status, Instant changedAt) {
+    public record StatusHistory(String status, Instant changedAt, ChangedBy changedBy) {
         private static StatusHistory from(OrderStatusHistory history) {
-            return new StatusHistory(history.getStatus(), history.getChangedAt());
+            return new StatusHistory(
+                    history.getStatus(),
+                    history.getChangedAt(),
+                    ChangedBy.from(history.getChangedBy())
+            );
+        }
+    }
+
+    public record ChangedBy(Long id, String fullName) {
+        private static ChangedBy from(com.techstore.entity.User user) {
+            return user == null ? null : new ChangedBy(user.getId(), user.getFullName());
         }
     }
 }
