@@ -2,6 +2,8 @@ package com.techstore.controller;
 
 import com.techstore.dto.request.PlaceOrderRequest;
 import com.techstore.dto.response.ApiResponse;
+import com.techstore.dto.response.OrderHistoryResponse;
+import com.techstore.dto.response.PageResponse;
 import com.techstore.dto.response.PlacedOrderResponse;
 import com.techstore.security.RequireRole;
 import com.techstore.enums.RoleCode;
@@ -24,5 +26,16 @@ public class OrderController {
     public ApiResponse<PlacedOrderResponse> place(@RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
                                                    @Valid @RequestBody PlaceOrderRequest request) {
         return ApiResponse.success("Đặt hàng thành công", service.placeOrder(userId, request));
+    }
+
+    @GetMapping("/my-orders")
+    @Operation(summary = "Xem lịch sử đơn hàng của khách hàng hiện tại")
+    public ApiResponse<PageResponse<OrderHistoryResponse>> getMyOrders(
+            @RequestAttribute(RoleAuthorizationInterceptor.CURRENT_USER_ID_ATTRIBUTE) Long userId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size
+    ) {
+        return ApiResponse.success("Lấy lịch sử đơn hàng thành công", service.getMyOrders(userId, status, page, size));
     }
 }

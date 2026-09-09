@@ -246,6 +246,27 @@ export function ProfilePage() {
           >
             <Box>
               <Typography variant="h6" component="h2">
+                Đơn hàng của tôi
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                Xem lịch sử và trạng thái các đơn hàng đã đặt.
+              </Typography>
+            </Box>
+            <Button component={Link} to={ROUTES.orders} variant="outlined">
+              Xem đơn hàng
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
+      <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
+        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Box>
+              <Typography variant="h6" component="h2">
                 Địa chỉ giao hàng
               </Typography>
               <Typography color="text.secondary" variant="body2">
