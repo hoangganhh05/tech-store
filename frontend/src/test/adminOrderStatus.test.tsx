@@ -266,6 +266,7 @@ describe("US-09.6: Cập nhật trạng thái đơn hàng (admin)", () => {
       expect(mockedUpdateAdminOrderStatus).toHaveBeenCalledWith(
         15,
         "CONFIRMED",
+        undefined,
       );
     });
 
@@ -311,6 +312,7 @@ describe("US-09.6: Cập nhật trạng thái đơn hàng (admin)", () => {
       expect(mockedUpdateAdminOrderStatus).toHaveBeenCalledWith(
         15,
         "CONFIRMED",
+        undefined,
       );
     });
 
@@ -322,5 +324,116 @@ describe("US-09.6: Cập nhật trạng thái đơn hàng (admin)", () => {
     expect(
       screen.getByRole("button", { name: "Cập nhật trạng thái" }),
     ).toBeEnabled();
+  });
+});
+
+describe("US-09.7: Admin huỷ đơn hàng kèm lý do và hoàn tồn kho", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hiển thị ô lý do huỷ khi admin chọn Huỷ đơn hàng từ dropdown", async () => {
+    mockedGetAdminOrderDetail.mockResolvedValueOnce({
+      ...baseOrder,
+      status: "PENDING",
+    });
+    renderOrderDetailPage();
+
+    await screen.findByText("TS-ADMIN-STATUS-15");
+
+    // Mở dropdown và chọn "Huỷ đơn hàng"
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "Trạng thái mới" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Huỷ đơn hàng" }),
+    );
+
+    // Ô lý do huỷ phải xuất hiện
+    const reasonInput = await screen.findByLabelText(/Lý do huỷ đơn/);
+    expect(reasonInput).toBeInTheDocument();
+
+    // Đổi sang Xác nhận → ô lý do biến mất
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "Trạng thái mới" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Xác nhận đơn hàng" }),
+    );
+    expect(screen.queryByLabelText(/Lý do huỷ đơn/)).not.toBeInTheDocument();
+  });
+
+  it("huỷ đơn thành công: gọi API với reason, hiển thị lý do huỷ trong header và ẩn dropdown", async () => {
+    mockedGetAdminOrderDetail.mockResolvedValueOnce({
+      ...baseOrder,
+      status: "PENDING",
+    });
+    const cancelledOrder: AdminOrderDetail = {
+      ...baseOrder,
+      status: "CANCELLED",
+      cancellationReason: "Sản phẩm hết hàng, không thể giao",
+      statusHistory: [
+        {
+          status: "PENDING",
+          changedAt: "2026-09-09T10:00:00Z",
+          changedBy: null,
+        },
+        {
+          status: "CANCELLED",
+          changedAt: "2026-09-09T10:30:00Z",
+          changedBy: { id: 1, fullName: "Nguyễn Admin" },
+        },
+      ],
+    };
+    mockedUpdateAdminOrderStatus.mockResolvedValueOnce(cancelledOrder);
+
+    renderOrderDetailPage();
+
+    await screen.findByText("TS-ADMIN-STATUS-15");
+
+    // Chọn "Huỷ đơn hàng"
+    fireEvent.mouseDown(
+      screen.getByRole("combobox", { name: "Trạng thái mới" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Huỷ đơn hàng" }),
+    );
+
+    // Nhập lý do
+    const reasonInput = await screen.findByLabelText(/Lý do huỷ đơn/);
+    fireEvent.change(reasonInput, {
+      target: { value: "Sản phẩm hết hàng, không thể giao" },
+    });
+
+    // Nhấn nút huỷ
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cập nhật trạng thái" }),
+    );
+
+    await waitFor(() => {
+      expect(mockedUpdateAdminOrderStatus).toHaveBeenCalledWith(
+        15,
+        "CANCELLED",
+        "Sản phẩm hết hàng, không thể giao",
+      );
+    });
+
+    // Thông báo thành công
+    expect(
+      await screen.findByText("Đã cập nhật trạng thái đơn hàng."),
+    ).toBeInTheDocument();
+
+    // Lý do huỷ hiển thị trong header đơn hàng
+    expect(
+      screen.getByText(/Lý do huỷ: Sản phẩm hết hàng, không thể giao/),
+    ).toBeInTheDocument();
+
+    // Đơn đã ở trạng thái cuối → không còn dropdown
+    expect(
+      screen.getByText("Đơn hàng ở trạng thái cuối, không thể cập nhật thêm."),
+    ).toBeInTheDocument();
+
+    // Dòng thời gian ghi tên admin đã huỷ
+    expect(screen.getByText(/Cập nhật bởi Nguyễn Admin/)).toBeInTheDocument();
   });
 });

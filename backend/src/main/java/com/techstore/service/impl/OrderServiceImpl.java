@@ -251,7 +251,21 @@ public class OrderServiceImpl implements OrderService {
                     "Không thể chuyển trạng thái từ " + order.getStatus() + " sang " + nextStatus);
         }
 
-        order.updateStatus(nextStatus, admin);
+        if ("CANCELLED".equals(nextStatus)) {
+            String cancelReason = request.reason() == null || request.reason().isBlank()
+                    ? "Quản trị viên huỷ đơn hàng"
+                    : request.reason().trim();
+            List<OrderItemStockRequest> items = order.getItems().stream()
+                    .map(item -> new OrderItemStockRequest(item.getVariantId(), item.getQuantity()))
+                    .collect(Collectors.toList());
+            if (!items.isEmpty()) {
+                inventory.restoreInventoryForOrder(adminUserId,
+                        new OrderInventoryRestoreRequest(order.getId(), order.getOrderNumber(), items, cancelReason));
+            }
+            order.cancel(cancelReason, admin);
+        } else {
+            order.updateStatus(nextStatus, admin);
+        }
         orders.saveAndFlush(order);
         return AdminOrderDetailResponse.from(order);
     }

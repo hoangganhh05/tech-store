@@ -137,6 +137,40 @@ class AdminOrderStatusIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void adminCancelOrderPersistsCancellationReasonAndActor() throws Exception {
+        Order orderWithReason = saveOrder("TS-ADMIN-CANCEL-REASON");
+        mockMvc.perform(patch("/api/v1/admin/orders/{id}/status", orderWithReason.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"Sản phẩm hết hàng\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.cancellationReason").value("Sản phẩm hết hàng"))
+                .andExpect(jsonPath("$.data.statusHistory[1].status").value("CANCELLED"))
+                .andExpect(jsonPath("$.data.statusHistory[1].changedBy.id").value(admin.getId()))
+                .andExpect(jsonPath("$.data.statusHistory[1].changedBy.fullName").value("Quản trị viên đơn hàng"));
+
+        // Cancel without reason uses default
+        Order orderNoReason = saveOrder("TS-ADMIN-CANCEL-DEFAULT");
+        mockMvc.perform(patch("/api/v1/admin/orders/{id}/status", orderNoReason.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.cancellationReason").value("Quản trị viên huỷ đơn hàng"))
+                .andExpect(jsonPath("$.data.statusHistory[1].changedBy.id").value(admin.getId()));
+
+        // Reason too long (> 500 chars) rejected
+        String longReason = "x".repeat(501);
+        mockMvc.perform(patch("/api/v1/admin/orders/{id}/status", orderNoReason.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\",\"reason\":\"" + longReason + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions updateStatus(Long orderId, String orderStatus) throws Exception {
         return mockMvc.perform(patch("/api/v1/admin/orders/{id}/status", orderId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)

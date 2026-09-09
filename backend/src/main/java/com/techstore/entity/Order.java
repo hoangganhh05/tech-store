@@ -102,7 +102,10 @@ public class Order {
         addStatusHistory(new OrderStatusHistory(this, status, changedBy));
     }
     public void cancel(String reason) {
+        cancel(reason, null);
+    }
+    public void cancel(String reason, User actor) {
         this.cancellationReason = reason == null || reason.isBlank() ? null : reason.trim();
-        updateStatus("CANCELLED", null);
+        updateStatus("CANCELLED", actor);
     }
 }
