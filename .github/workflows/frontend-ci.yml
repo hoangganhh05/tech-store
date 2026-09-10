@@ -47,11 +47,28 @@ jobs:
       - name: Build Frontend
         run: npm run build
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Frontend E2E tests
+        run: npm run test:e2e
+
       - name: Upload Frontend test report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: frontend-test-report-${{ github.run_id }}
           path: frontend/test-results/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Frontend E2E report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: frontend-e2e-report-${{ github.run_id }}
+          path: |
+            frontend/playwright-report
+            frontend/test-results/e2e-junit.xml
           if-no-files-found: ignore
           retention-days: 7
