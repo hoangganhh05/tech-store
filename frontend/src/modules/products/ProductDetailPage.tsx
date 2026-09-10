@@ -23,7 +23,7 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import ZoomInRoundedIcon from "@mui/icons-material/ZoomInRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
@@ -31,6 +31,8 @@ import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlin
 import RemoveCircleOutlineRoundedIcon from "@mui/icons-material/RemoveCircleOutlineRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import FlashOnRoundedIcon from "@mui/icons-material/FlashOnRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
@@ -52,6 +54,7 @@ import {
 import { ProductCard } from "../../components/common/ProductCard";
 import { ROUTES } from "../../constants/routes";
 import { useCart } from "../../hooks/useCart";
+import { useWishlist } from "../../hooks/useWishlist";
 
 function formatPrice(val: number): string {
   return new Intl.NumberFormat("vi-VN").format(val) + " ₫";
@@ -60,6 +63,8 @@ function formatPrice(val: number): string {
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, favoriteIds, loadingIds, toggleFavorite } = useWishlist();
 
   const [product, setProduct] = useState<StorefrontProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,6 +109,39 @@ export function ProductDetailPage() {
     const n = Number(slug);
     return isNaN(n) || n <= 0 ? null : n;
   }, [slug]);
+
+  const isFavorite = product ? favoriteIds.has(product.id) : false;
+  const isFavoriteLoading = product ? loadingIds.has(product.id) : false;
+
+  const handleFavoriteClick = async () => {
+    if (!product) return;
+    if (!isAuthenticated) {
+      navigate(ROUTES.login, {
+        state: {
+          from: `${location.pathname}${location.search}${location.hash}`,
+        },
+      });
+      return;
+    }
+
+    try {
+      const nextValue = await toggleFavorite(product.id);
+      setToastMessage(
+        nextValue
+          ? "Đã thêm sản phẩm vào danh sách yêu thích."
+          : "Đã xoá sản phẩm khỏi danh sách yêu thích.",
+      );
+      setToastSeverity("success");
+    } catch (error: unknown) {
+      setToastMessage(
+        error instanceof Error
+          ? error.message
+          : "Không thể cập nhật danh sách yêu thích.",
+      );
+      setToastSeverity("error");
+    }
+    setToastOpen(true);
+  };
 
   const syncVariantImage = useCallback(
     (
@@ -786,17 +824,36 @@ export function ProductDetailPage() {
             )}
           </Stack>
 
-          {/* Title */}
-          <Typography
-            variant="h4"
-            component="h1"
-            fontWeight={700}
-            color="text.primary"
-            mb={1.5}
-            data-testid="product-title"
-          >
-            {product.name}
-          </Typography>
+          {/* Title & Wishlist */}
+          <Stack direction="row" spacing={1} alignItems="flex-start" mb={1.5}>
+            <Typography
+              variant="h4"
+              component="h1"
+              fontWeight={700}
+              color="text.primary"
+              sx={{ flex: 1 }}
+              data-testid="product-title"
+            >
+              {product.name}
+            </Typography>
+            <IconButton
+              type="button"
+              aria-label={isFavorite ? "Xoá khỏi yêu thích" : "Thêm vào yêu thích"}
+              data-testid="product-detail-favorite-button"
+              onClick={() => void handleFavoriteClick()}
+              disabled={isFavoriteLoading}
+              color={isFavorite ? "error" : "default"}
+              sx={{ border: "1px solid", borderColor: "divider" }}
+            >
+              {isFavoriteLoading ? (
+                <CircularProgress size={22} />
+              ) : isFavorite ? (
+                <FavoriteRoundedIcon />
+              ) : (
+                <FavoriteBorderRoundedIcon />
+              )}
+            </IconButton>
+          </Stack>
 
           {/* Rating & Sales */}
           <Stack direction="row" spacing={2} alignItems="center" mb={2}>

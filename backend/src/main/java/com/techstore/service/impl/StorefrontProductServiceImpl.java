@@ -341,6 +341,22 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         return mapToStorefrontProductResponses(matched);
     }
 
+    @Override
+    public List<StorefrontProductResponse> getProductsByIds(List<Long> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, Product> productsById = productRepository.findAllById(productIds).stream()
+                .filter(product -> product.getStatus() == ProductStatus.ACTIVE && !product.isDeleted())
+                .collect(Collectors.toMap(Product::getId, product -> product));
+        List<Product> orderedProducts = productIds.stream()
+                .map(productsById::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        return mapToStorefrontProductResponses(orderedProducts);
+    }
+
     private boolean matchesSearch(Product product, String normalizedKeyword) {
         if (product.getName() != null && removeAccents(product.getName()).toLowerCase().contains(normalizedKeyword)) {
             return true;

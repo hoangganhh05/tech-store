@@ -13,6 +13,7 @@ export const ROUTES = {
   addresses: "/account/addresses",
   orders: "/account/orders",
   orderDetail: "/account/orders/:id",
+  wishlist: "/account/wishlist",
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",

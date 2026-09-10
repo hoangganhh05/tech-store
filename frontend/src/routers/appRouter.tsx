@@ -15,6 +15,7 @@ import { ProfilePage } from "../modules/profile/ProfilePage";
 import { AddressesPage } from "../modules/profile/AddressesPage";
 import { OrderHistoryPage } from "../modules/orders/OrderHistoryPage";
 import { OrderDetailPage } from "../modules/orders/OrderDetailPage";
+import { WishlistPage } from "../modules/wishlist/WishlistPage";
 import { ForbiddenPage } from "../modules/auth/ForbiddenPage";
 import { RequireAuth } from "../modules/auth/RequireAuth";
 import { AdminDashboardPage } from "../modules/admin/AdminDashboardPage";
@@ -79,6 +80,14 @@ export const appRouter = createBrowserRouter([
         element: (
           <RequireAuth>
             <OrderDetailPage />
+          </RequireAuth>
+        ),
+      },
+      {
+        path: ROUTES.wishlist,
+        element: (
+          <RequireAuth requiredRoles={["CUSTOMER"]}>
+            <WishlistPage />
           </RequireAuth>
         ),
       },

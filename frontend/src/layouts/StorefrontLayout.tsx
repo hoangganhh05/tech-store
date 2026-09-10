@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import { useState, useEffect } from "react";
@@ -214,6 +215,11 @@ export function StorefrontLayout() {
                 <Button component={Link} to={ROUTES.orders} color="inherit">
                   Đơn hàng
                 </Button>
+                {user?.roles?.includes("CUSTOMER") && (
+                  <Button component={Link} to={ROUTES.wishlist} color="inherit" startIcon={<FavoriteBorderRoundedIcon />}>
+                    Yêu thích
+                  </Button>
+                )}
                 <Button
                   color="inherit"
                   onClick={handleLogout}
