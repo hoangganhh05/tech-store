@@ -10,6 +10,9 @@ import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
+import java.time.Instant;
+import java.util.List;
+
 public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
@@ -48,4 +51,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     java.util.Optional<Order> findByIdForUpdate(@Param("id") Long id);
 
     java.util.Optional<Order> findByOrderNumber(String orderNumber);
+
+    @Query("""
+            select distinct o from Order o
+            left join fetch o.items
+            where o.status <> 'CANCELLED'
+              and o.placedAt >= :fromDate
+              and o.placedAt < :toDate
+            """)
+    List<Order> findValidOrdersForDashboard(
+            @Param("fromDate") Instant fromDate,
+            @Param("toDate") Instant toDate
+    );
 }
