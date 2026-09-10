@@ -143,7 +143,8 @@ describe("US-08.3 order review", () => {
     await screen.findByTestId("voucher-success");
     fireEvent.click(screen.getByRole("button", { name: "Gỡ mã" }));
     expect(screen.queryByTestId("voucher-success")).not.toBeInTheDocument();
-    expect(screen.getByTestId("voucher-code-input")).toHaveValue("");
+    expect(await screen.findByTestId("voucher-code-input")).toHaveValue("");
+    await waitFor(() => expect(screen.getByTestId("review-totals")).toHaveTextContent("49.930.000"));
   });
 
   it("shows the backend message for an invalid voucher", async () => {

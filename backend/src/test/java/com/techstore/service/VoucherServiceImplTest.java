@@ -76,6 +76,35 @@ class VoucherServiceImplTest {
     }
 
     @Test
+    void rejectsVoucherWhenGlobalUsageLimitIsExhausted() throws Exception {
+        Voucher voucher = voucher(DiscountType.FIXED, new BigDecimal("1000"));
+        Field usedCount = Voucher.class.getDeclaredField("usedCount");
+        usedCount.setAccessible(true);
+        usedCount.set(voucher, 10);
+        when(vouchers.findByCodeIgnoreCase("SAVE10")).thenReturn(Optional.of(voucher));
+
+        assertThatThrownBy(() -> service.applyToCart(7L, cart(), "SAVE10"))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.VOUCHER_USAGE_LIMIT_REACHED))
+                .hasMessageContaining("hết lượt");
+    }
+
+    @Test
+    void rejectsInactiveVoucherBeforeCalculatingDiscount() throws Exception {
+        Voucher voucher = new Voucher("SAVE10", "Giảm giá", DiscountType.FIXED, new BigDecimal("1000"), null,
+                BigDecimal.ZERO, 10, 1, Instant.now().minus(1, ChronoUnit.DAYS), Instant.now().plus(1, ChronoUnit.DAYS), false);
+        Field id = Voucher.class.getDeclaredField("id");
+        id.setAccessible(true);
+        id.set(voucher, 11L);
+        when(vouchers.findByCodeIgnoreCase("SAVE10")).thenReturn(Optional.of(voucher));
+
+        assertThatThrownBy(() -> service.applyToCart(7L, cart(), "SAVE10"))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.VOUCHER_NOT_ELIGIBLE))
+                .hasMessageContaining("hết hạn");
+    }
+
+    @Test
     void redeemsVoucherThroughLockedCodeLookup() throws Exception {
         Voucher voucher = voucher(DiscountType.FIXED, new BigDecimal("1000"));
         when(vouchers.findByCodeIgnoreCaseForUpdate("SAVE10")).thenReturn(Optional.of(voucher));
