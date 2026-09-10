@@ -8,11 +8,11 @@ import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
 import { createAdminVoucher, deleteAdminVoucher, getAdminVouchers, updateAdminVoucher, type Voucher, type VoucherPayload } from "../../services/voucherService";
+import { toDateTimeLocalValue } from "../../utils/dateTime";
 
 type VoucherForm = Omit<VoucherPayload, "startsAt" | "endsAt"> & { startsAt: string; endsAt: string };
 const emptyForm: VoucherForm = { code: "", name: "", discountType: "PERCENT", discountValue: 10, maxDiscount: null, minimumOrder: 0, usageLimit: null, perUserLimit: 1, startsAt: "", endsAt: "", active: true };
 const money = (amount: number) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
-const dateInput = (value: string) => value ? value.slice(0, 16) : "";
 const getError = (error: unknown, fallback: string) => isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || fallback : fallback;
 
 export function AdminVouchersPage() {
@@ -25,7 +25,7 @@ export function AdminVouchersPage() {
   const load = useCallback(async () => { setLoading(true); try { const result = await getAdminVouchers(search, page, size); setData(result.items); setTotal(result.totalElements); } catch (error) { setFeedback({ type: "error", text: getError(error, "Không thể tải danh sách voucher.") }); } finally { setLoading(false); } }, [page, search, size]);
   useEffect(() => { void load(); }, [load]);
   const openCreate = () => { setEditing(null); setForm(emptyForm); setDialog(true); };
-  const openEdit = (voucher: Voucher) => { setEditing(voucher); setForm({ code: voucher.code, name: voucher.name, discountType: voucher.discountType, discountValue: voucher.discountValue, maxDiscount: voucher.maxDiscount ?? null, minimumOrder: voucher.minimumOrder, usageLimit: voucher.usageLimit ?? null, perUserLimit: voucher.perUserLimit, startsAt: dateInput(voucher.startsAt), endsAt: dateInput(voucher.endsAt), active: voucher.active }); setDialog(true); };
+  const openEdit = (voucher: Voucher) => { setEditing(voucher); setForm({ code: voucher.code, name: voucher.name, discountType: voucher.discountType, discountValue: voucher.discountValue, maxDiscount: voucher.maxDiscount ?? null, minimumOrder: voucher.minimumOrder, usageLimit: voucher.usageLimit ?? null, perUserLimit: voucher.perUserLimit, startsAt: toDateTimeLocalValue(voucher.startsAt), endsAt: toDateTimeLocalValue(voucher.endsAt), active: voucher.active }); setDialog(true); };
   const toPayload = (): VoucherPayload => ({ ...form, code: form.code.trim().toUpperCase(), name: form.name.trim(), startsAt: new Date(form.startsAt).toISOString(), endsAt: new Date(form.endsAt).toISOString(), maxDiscount: form.discountType === "PERCENT" && form.maxDiscount ? Number(form.maxDiscount) : null, usageLimit: form.usageLimit ? Number(form.usageLimit) : null, minimumOrder: Number(form.minimumOrder), perUserLimit: Number(form.perUserLimit), discountValue: Number(form.discountValue) });
   const submit = async (event: FormEvent) => { event.preventDefault(); if (!form.code.trim() || !form.name.trim() || !form.startsAt || !form.endsAt) { setFeedback({ type: "error", text: "Vui lòng nhập đủ mã, tên và thời gian áp dụng." }); return; } if (new Date(form.endsAt) <= new Date(form.startsAt)) { setFeedback({ type: "error", text: "Thời gian kết thúc phải sau thời gian bắt đầu." }); return; } setSubmitting(true); try { const payload = toPayload(); if (editing) await updateAdminVoucher(editing.id, payload); else await createAdminVoucher(payload); setFeedback({ type: "success", text: editing ? "Cập nhật voucher thành công." : "Tạo voucher thành công." }); setDialog(false); await load(); } catch (error) { setFeedback({ type: "error", text: getError(error, "Không thể lưu voucher.") }); } finally { setSubmitting(false); } };
   const confirmDelete = async () => { if (!deleting) return; setSubmitting(true); try { await deleteAdminVoucher(deleting.id); setFeedback({ type: "success", text: "Xoá voucher thành công." }); setDeleting(null); await load(); } catch (error) { setFeedback({ type: "error", text: getError(error, "Không thể xoá voucher.") }); } finally { setSubmitting(false); } };

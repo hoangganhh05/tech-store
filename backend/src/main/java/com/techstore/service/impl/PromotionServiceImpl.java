@@ -90,18 +90,20 @@ public class PromotionServiceImpl implements PromotionService {
         List<Promotion> active = promotions.findActiveAt(Instant.now());
         for (ProductVariant variant : variantsToPrice) {
             if (variant == null || variant.getId() == null || variant.getPrice() == null) continue;
-            int bestPercent = active.stream()
+            BigDecimal bestPercent = active.stream()
                     .filter(promotion -> appliesTo(promotion, variant))
                     .map(Promotion::getDiscountPercent)
-                    .mapToInt(percent -> percent.setScale(0, RoundingMode.HALF_UP).intValue())
-                    .max().orElse(0);
-            BigDecimal effectivePrice = bestPercent == 0 ? variant.getPrice()
-                    : variant.getPrice().multiply(BigDecimal.valueOf(100 - bestPercent))
+                    .filter(percent -> percent != null)
+                    .max(BigDecimal::compareTo)
+                    .orElse(BigDecimal.ZERO);
+            BigDecimal effectivePrice = bestPercent.signum() == 0 ? variant.getPrice()
+                    : variant.getPrice().multiply(BigDecimal.valueOf(100).subtract(bestPercent))
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
             BigDecimal originalPrice = variant.getOriginalPrice() != null
                     && variant.getOriginalPrice().compareTo(effectivePrice) > 0
-                    ? variant.getOriginalPrice() : (bestPercent == 0 ? variant.getOriginalPrice() : variant.getPrice());
-            result.put(variant.getId(), new EffectivePrice(effectivePrice, originalPrice, bestPercent));
+                    ? variant.getOriginalPrice() : (bestPercent.signum() == 0 ? variant.getOriginalPrice() : variant.getPrice());
+            result.put(variant.getId(), new EffectivePrice(effectivePrice, originalPrice,
+                    bestPercent.setScale(0, RoundingMode.HALF_UP).intValue()));
         }
         return result;
     }

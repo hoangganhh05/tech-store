@@ -113,6 +113,20 @@ class AdminPromotionVoucherIntegrationTest {
     }
 
     @Test
+    void fractionalPromotionPercentIsAppliedWithoutRoundingToWholePercent() throws Exception {
+        PromotionRequest request = new PromotionRequest("Fractional flash sale", PromotionTargetType.VARIANT, null, variant.getId(), null,
+                new BigDecimal("12.50"), Instant.now().minus(1, ChronoUnit.HOURS), Instant.now().plus(1, ChronoUnit.DAYS), true);
+        mockMvc.perform(post("/api/v1/admin/promotions").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/products/{id}", product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.variants[0].price").value(875000))
+                .andExpect(jsonPath("$.data.discountPercent").value(13));
+    }
+
+    @Test
     void expiredPromotionAutomaticallyRestoresBasePrice() throws Exception {
         PromotionRequest request = new PromotionRequest("Expired sale", PromotionTargetType.PRODUCT, product.getId(), null, null,
                 new BigDecimal("25"), Instant.now().minus(2, ChronoUnit.DAYS), Instant.now().minus(1, ChronoUnit.HOURS), true);
