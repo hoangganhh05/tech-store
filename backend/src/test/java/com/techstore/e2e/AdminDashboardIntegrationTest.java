@@ -21,9 +21,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -99,6 +101,24 @@ class AdminDashboardIntegrationTest {
     }
 
     @Test
+    void weekDashboardStartsOnMondayAndReturnsSevenDailyRevenuePoints() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        saveOrder("TS-DASH-WEEK", "Sản phẩm tuần", 1, new BigDecimal("200000"), BigDecimal.ZERO, "COMPLETED");
+
+        mockMvc.perform(get("/api/v1/admin/dashboard")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("period", "WEEK")
+                        .param("date", today.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.period").value("WEEK"))
+                .andExpect(jsonPath("$.data.fromDate").value(weekStart.toString()))
+                .andExpect(jsonPath("$.data.toDate").value(weekStart.plusDays(6).toString()))
+                .andExpect(jsonPath("$.data.totalOrders").value(1))
+                .andExpect(jsonPath("$.data.revenueTrend", hasSize(7)));
+    }
+
+    @Test
     void dashboardRequiresAdminAndValidatesPeriod() throws Exception {
         mockMvc.perform(get("/api/v1/admin/dashboard")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken))
@@ -107,7 +127,7 @@ class AdminDashboardIntegrationTest {
 
         mockMvc.perform(get("/api/v1/admin/dashboard")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
-                        .param("period", "WEEK"))
+                        .param("period", "YEAR"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }

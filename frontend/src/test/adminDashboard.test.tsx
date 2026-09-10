@@ -75,6 +75,21 @@ describe("US-13.1: AdminDashboardPage", () => {
     });
   });
 
+  it("loads a seven-day dashboard when selecting the weekly period", async () => {
+    mockedGetAdminDashboard.mockResolvedValue(mockDashboard);
+    renderPage();
+    await screen.findByText("Điện thoại Alpha");
+
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Khoảng xem" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Theo tuần" }));
+
+    await waitFor(() => {
+      expect(mockedGetAdminDashboard).toHaveBeenLastCalledWith(
+        expect.objectContaining({ period: "WEEK", date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }),
+      );
+    });
+  });
+
   it("shows a recoverable error when the dashboard API fails", async () => {
     mockedGetAdminDashboard.mockRejectedValueOnce(new Error("network"));
     renderPage();

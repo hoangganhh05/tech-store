@@ -199,7 +199,7 @@ export function AdminDashboardPage() {
       <PageIntro
         eyebrow="Quản trị · Báo cáo"
         title="Dashboard tổng quan"
-        description="Theo dõi nhanh doanh thu, đơn hàng và sản phẩm bán chạy theo ngày hoặc tháng."
+        description="Theo dõi nhanh doanh thu, đơn hàng và sản phẩm bán chạy theo ngày, tuần hoặc tháng."
         action={
           <Button
             variant="outlined"
@@ -224,13 +224,14 @@ export function AdminDashboardPage() {
                 onChange={(event) => handlePeriodChange(event.target.value as DashboardPeriod)}
               >
                 <MenuItem value="DAY">Theo ngày</MenuItem>
+                <MenuItem value="WEEK">Theo tuần</MenuItem>
                 <MenuItem value="MONTH">Theo tháng</MenuItem>
               </Select>
             </FormControl>
             <TextField
               size="small"
               type={period === "MONTH" ? "month" : "date"}
-              label={period === "MONTH" ? "Tháng" : "Ngày"}
+              label={period === "MONTH" ? "Tháng" : period === "WEEK" ? "Ngày trong tuần" : "Ngày"}
               value={selectedDate}
               onChange={(event) => setSelectedDate(event.target.value)}
               InputLabelProps={{ shrink: true }}
