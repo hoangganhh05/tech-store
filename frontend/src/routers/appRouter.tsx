@@ -31,6 +31,7 @@ import { AdminReviewsPage } from "../modules/admin/AdminReviewsPage";
 import { AdminVouchersPage } from "../modules/admin/AdminVouchersPage";
 import { AdminPromotionsPage } from "../modules/admin/AdminPromotionsPage";
 import { AdminRevenueReportPage } from "../modules/admin/AdminRevenueReportPage";
+import { AdminProductInventoryReportPage } from "../modules/admin/AdminProductInventoryReportPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
 
@@ -123,6 +124,7 @@ export const appRouter = createBrowserRouter([
       { path: "vouchers", element: <AdminVouchersPage /> },
       { path: "promotions", element: <AdminPromotionsPage /> },
       { path: "reports/revenue", element: <AdminRevenueReportPage /> },
+      { path: "reports/products", element: <AdminProductInventoryReportPage /> },
     ],
   },
 ]);
