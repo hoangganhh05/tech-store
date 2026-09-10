@@ -28,6 +28,8 @@ import com.techstore.repository.ProductRepository;
 import com.techstore.repository.ProductSpecificationRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.service.StorefrontProductService;
+import com.techstore.service.EffectivePrice;
+import com.techstore.service.PromotionService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +57,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     private final CategoryRepository categoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final BrandRepository brandRepository;
+    private final PromotionService promotionService;
 
     public StorefrontProductServiceImpl(
             ProductRepository productRepository,
@@ -63,7 +66,8 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             ProductSpecificationRepository productSpecificationRepository,
             CategoryRepository categoryRepository,
             InventoryTransactionRepository inventoryTransactionRepository,
-            BrandRepository brandRepository
+            BrandRepository brandRepository,
+            PromotionService promotionService
     ) {
         this.productRepository = productRepository;
         this.productVariantRepository = productVariantRepository;
@@ -72,6 +76,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         this.categoryRepository = categoryRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
         this.brandRepository = brandRepository;
+        this.promotionService = promotionService;
     }
 
     @Override
@@ -109,12 +114,11 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     @Override
     public List<StorefrontProductResponse> getOnSaleProducts(int limit) {
         int safeLimit = normalizeLimit(limit);
-        List<Product> products = productRepository.findOnSaleProducts(
-                ProductStatus.ACTIVE,
-                VariantStatus.ACTIVE,
-                PageRequest.of(0, safeLimit)
-        );
-        return mapToStorefrontProductResponses(products);
+        List<Product> products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
+        return mapToStorefrontProductResponses(products).stream()
+                .filter(product -> product.discountPercent() != null && product.discountPercent() > 0)
+                .limit(safeLimit)
+                .toList();
     }
 
     @Override
@@ -395,6 +399,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         List<Long> productIds = products.stream().map(Product::getId).toList();
 
         List<ProductVariant> variants = productVariantRepository.findByProductIdInAndIsDeletedFalseOrderByCreatedAtAsc(productIds);
+        Map<Long, EffectivePrice> effectivePrices = promotionService.getEffectivePrices(variants);
         Map<Long, List<ProductVariant>> variantsByProductId = variants.stream()
                 .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
 
@@ -424,11 +429,11 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
 
             if (!pVariants.isEmpty()) {
                 minPrice = pVariants.stream()
-                        .map(ProductVariant::getPrice)
+                        .map(variant -> getEffectivePrice(variant, effectivePrices).price())
                         .min(BigDecimal::compareTo)
                         .orElse(BigDecimal.ZERO);
                 maxPrice = pVariants.stream()
-                        .map(ProductVariant::getPrice)
+                        .map(variant -> getEffectivePrice(variant, effectivePrices).price())
                         .max(BigDecimal::compareTo)
                         .orElse(BigDecimal.ZERO);
 
@@ -440,14 +445,15 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 BigDecimal bestOriginalPrice = null;
 
                 for (ProductVariant v : pVariants) {
-                    if (v.getOriginalPrice() != null && v.getOriginalPrice().compareTo(v.getPrice()) > 0) {
-                        BigDecimal diff = v.getOriginalPrice().subtract(v.getPrice());
+                    EffectivePrice effectivePrice = getEffectivePrice(v, effectivePrices);
+                    if (effectivePrice.originalPrice() != null && effectivePrice.originalPrice().compareTo(effectivePrice.price()) > 0) {
+                        BigDecimal diff = effectivePrice.originalPrice().subtract(effectivePrice.price());
                         int pct = diff.multiply(BigDecimal.valueOf(100))
-                                .divide(v.getOriginalPrice(), 0, RoundingMode.HALF_UP)
+                                .divide(effectivePrice.originalPrice(), 0, RoundingMode.HALF_UP)
                                 .intValue();
                         if (pct > maxDiscount) {
                             maxDiscount = pct;
-                            bestOriginalPrice = v.getOriginalPrice();
+                            bestOriginalPrice = effectivePrice.originalPrice();
                         }
                     }
                 }
@@ -488,6 +494,13 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         }).toList();
     }
 
+    private EffectivePrice getEffectivePrice(ProductVariant variant, Map<Long, EffectivePrice> prices) {
+        EffectivePrice price = prices.get(variant.getId());
+        return price == null
+                ? new EffectivePrice(variant.getPrice(), variant.getOriginalPrice(), 0)
+                : price;
+    }
+
     @Override
     public StorefrontProductDetailResponse getProductDetail(Long id) {
         if (id == null || id <= 0) {
@@ -502,9 +515,16 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         }
 
         List<ProductVariant> variants = productVariantRepository.findByProductIdAndIsDeletedFalseOrderByCreatedAtAsc(id);
+        List<ProductVariant> activeVariants = variants.stream()
+                .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
+                .toList();
+        Map<Long, EffectivePrice> effectivePrices = promotionService.getEffectivePrices(activeVariants);
         List<ProductVariantResponse> variantResponses = variants.stream()
                 .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
-                .map(ProductVariantResponse::from)
+                .map(variant -> {
+                    EffectivePrice effectivePrice = getEffectivePrice(variant, effectivePrices);
+                    return ProductVariantResponse.from(variant, effectivePrice.price(), effectivePrice.originalPrice());
+                })
                 .toList();
 
         List<ProductImage> images = productImageRepository.findByProductIdOrderByIsPrimaryDescDisplayOrderAscIdAsc(id);
@@ -523,17 +543,13 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         int discountPercent = 0;
         int totalStock = 0;
 
-        List<ProductVariant> activeVariants = variants.stream()
-                .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
-                .toList();
-
         if (!activeVariants.isEmpty()) {
             minPrice = activeVariants.stream()
-                    .map(ProductVariant::getPrice)
+                    .map(variant -> getEffectivePrice(variant, effectivePrices).price())
                     .min(BigDecimal::compareTo)
                     .orElse(BigDecimal.ZERO);
             maxPrice = activeVariants.stream()
-                    .map(ProductVariant::getPrice)
+                    .map(variant -> getEffectivePrice(variant, effectivePrices).price())
                     .max(BigDecimal::compareTo)
                     .orElse(BigDecimal.ZERO);
 
@@ -545,14 +561,15 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             BigDecimal bestOriginalPrice = null;
 
             for (ProductVariant v : activeVariants) {
-                if (v.getOriginalPrice() != null && v.getOriginalPrice().compareTo(v.getPrice()) > 0) {
-                    BigDecimal diff = v.getOriginalPrice().subtract(v.getPrice());
+                EffectivePrice effectivePrice = getEffectivePrice(v, effectivePrices);
+                if (effectivePrice.originalPrice() != null && effectivePrice.originalPrice().compareTo(effectivePrice.price()) > 0) {
+                    BigDecimal diff = effectivePrice.originalPrice().subtract(effectivePrice.price());
                     int pct = diff.multiply(BigDecimal.valueOf(100))
-                            .divide(v.getOriginalPrice(), 0, RoundingMode.HALF_UP)
+                            .divide(effectivePrice.originalPrice(), 0, RoundingMode.HALF_UP)
                             .intValue();
                     if (pct > maxDiscount) {
                         maxDiscount = pct;
-                        bestOriginalPrice = v.getOriginalPrice();
+                        bestOriginalPrice = effectivePrice.originalPrice();
                     }
                 }
             }

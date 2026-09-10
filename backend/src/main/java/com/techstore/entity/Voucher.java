@@ -72,4 +72,20 @@ public class Voucher extends BaseEntity {
     public Instant getEndsAt() { return endsAt; }
     public boolean isActive() { return active; }
     public void incrementUsedCount() { usedCount = (usedCount == null ? 0 : usedCount) + 1; }
+
+    public void update(String code, String name, DiscountType discountType, BigDecimal discountValue,
+                       BigDecimal maxDiscount, BigDecimal minimumOrder, Integer usageLimit,
+                       Integer perUserLimit, Instant startsAt, Instant endsAt, boolean active) {
+        this.code = Objects.requireNonNull(code).trim().toUpperCase();
+        this.name = Objects.requireNonNull(name).trim();
+        this.discountType = Objects.requireNonNull(discountType);
+        this.discountValue = Objects.requireNonNull(discountValue);
+        this.maxDiscount = maxDiscount;
+        this.minimumOrder = minimumOrder == null ? BigDecimal.ZERO : minimumOrder;
+        this.usageLimit = usageLimit;
+        this.perUserLimit = perUserLimit == null ? 1 : perUserLimit;
+        this.startsAt = Objects.requireNonNull(startsAt);
+        this.endsAt = Objects.requireNonNull(endsAt);
+        this.active = active;
+    }
 }

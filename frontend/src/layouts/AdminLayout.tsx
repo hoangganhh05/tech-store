@@ -34,6 +34,8 @@ const adminItems = [
   { label: "Tồn kho", to: ROUTES.adminInventory },
   { label: "Đơn hàng", to: ROUTES.adminOrders },
   { label: "Đánh giá", to: ROUTES.adminReviews },
+  { label: "Mã giảm giá", to: ROUTES.adminVouchers },
+  { label: "Khuyến mãi", to: ROUTES.adminPromotions },
 ];
 
 export function AdminLayout() {
