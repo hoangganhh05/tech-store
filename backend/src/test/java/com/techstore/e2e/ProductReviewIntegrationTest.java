@@ -37,8 +37,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 
+import static org.hamcrest.Matchers.hasSize;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -219,6 +221,51 @@ class ProductReviewIntegrationTest {
                 .andExpect(jsonPath("$.data.canReview").value(true))
                 .andExpect(jsonPath("$.data.myReview.rating").value(5))
                 .andExpect(jsonPath("$.data.myReview.comment").value("Tuyệt vời"));
+    }
+
+    @Test
+    void shouldReturnOnlyApprovedReviewsWithAverageAndNewestFirstPagination() throws Exception {
+        User thirdCustomer = saveUser("review-third@example.com", roles.findByCode(RoleCode.CUSTOMER).orElseThrow());
+
+        Review oldestApproved = new Review(customer, product, 5, "Rất tốt");
+        oldestApproved.setCreatedAt(Instant.parse("2026-09-01T10:00:00Z"));
+        Review newestApproved = new Review(otherCustomer, product, 3, "Tạm ổn");
+        newestApproved.setCreatedAt(Instant.parse("2026-09-03T10:00:00Z"));
+        Review hidden = new Review(thirdCustomer, product, 1, "Không hiển thị");
+        hidden.setStatus(ReviewStatus.HIDDEN);
+        hidden.setCreatedAt(Instant.parse("2026-09-04T10:00:00Z"));
+        reviews.saveAllAndFlush(java.util.List.of(oldestApproved, newestApproved, hidden));
+
+        mockMvc.perform(get("/api/v1/products/{productId}/reviews", product.getId())
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.averageRating").value(4.0))
+                .andExpect(jsonPath("$.data.totalReviews").value(2))
+                .andExpect(jsonPath("$.data.reviews.items", hasSize(1)))
+                .andExpect(jsonPath("$.data.reviews.items[0].userFullName").value(otherCustomer.getFullName()))
+                .andExpect(jsonPath("$.data.reviews.items[0].rating").value(3))
+                .andExpect(jsonPath("$.data.reviews.totalPages").value(2));
+
+        mockMvc.perform(get("/api/v1/products/{productId}/reviews", product.getId())
+                        .param("page", "1")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviews.items[0].userFullName").value(customer.getFullName()))
+                .andExpect(jsonPath("$.data.reviews.items[0].rating").value(5));
+    }
+
+    @Test
+    void shouldValidatePublicReviewListParametersAndProduct() throws Exception {
+        mockMvc.perform(get("/api/v1/products/-1/reviews"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/products/{productId}/reviews", product.getId()).param("size", "51"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mockMvc.perform(get("/api/v1/products/999999/reviews"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
     }
 
     private User saveUser(String email, Role role) {
