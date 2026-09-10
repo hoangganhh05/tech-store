@@ -11,6 +11,8 @@ import {
   Grid,
   IconButton,
   Paper,
+  Pagination,
+  Rating,
   Skeleton,
   Snackbar,
   Stack,
@@ -43,6 +45,10 @@ import {
   type ProductVariantDetail,
   type StorefrontProduct,
 } from "../../services/storefrontService";
+import {
+  getProductReviews,
+  type ProductReviews,
+} from "../../services/reviewService";
 import { ProductCard } from "../../components/common/ProductCard";
 import { ROUTES } from "../../constants/routes";
 import { useCart } from "../../hooks/useCart";
@@ -77,6 +83,12 @@ export function ProductDetailPage() {
     [],
   );
   const [relatedLoading, setRelatedLoading] = useState(false);
+
+  // Product review summary and paginated approved reviews
+  const [reviewData, setReviewData] = useState<ProductReviews | null>(null);
+  const [reviewPage, setReviewPage] = useState(0);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
 
   // Cart & Toast state
   const { addToCart } = useCart();
@@ -195,6 +207,32 @@ export function ProductDetailPage() {
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
+
+  const loadReviews = useCallback(async () => {
+    if (!productId) {
+      setReviewData(null);
+      setReviewsError(null);
+      return;
+    }
+
+    try {
+      setReviewsLoading(true);
+      setReviewsError(null);
+      const data = await getProductReviews(productId, reviewPage, 5);
+      setReviewData(data);
+    } catch (err: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message
+        : undefined;
+      setReviewsError(message || "Không thể tải đánh giá sản phẩm.");
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [productId, reviewPage]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
 
   useEffect(() => {
     if (!productId) {
@@ -765,7 +803,7 @@ export function ProductDetailPage() {
             <Stack direction="row" spacing={0.5} alignItems="center">
               <StarRoundedIcon sx={{ fontSize: 20, color: "#f59e0b" }} />
               <Typography variant="body2" fontWeight={700} color="text.primary">
-                {product.rating ? product.rating.toFixed(1) : "5.0"}
+                {(reviewData?.averageRating ?? product.rating ?? 0).toFixed(1)}
               </Typography>
             </Stack>
             <Divider
@@ -1263,6 +1301,94 @@ export function ProductDetailPage() {
           )}
         </Grid>
       </Grid>
+
+      {/* Reviews Section */}
+      <Paper
+        elevation={0}
+        sx={{ mt: 3, p: { xs: 2, md: 3 }, borderRadius: 2.5, border: "1px solid #e2e8f0" }}
+        data-testid="product-reviews-section"
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          spacing={1}
+          mb={2}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700} color="text.primary">
+              Đánh giá & nhận xét
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Những đánh giá đã được duyệt từ khách hàng
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center" data-testid="review-summary">
+            <Rating
+              value={reviewData?.averageRating ?? product.rating ?? 0}
+              precision={0.1}
+              readOnly
+              size="small"
+            />
+            <Typography fontWeight={700}>
+              {(reviewData?.averageRating ?? product.rating ?? 0).toFixed(1)}/5
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              ({reviewData?.totalReviews ?? 0} lượt đánh giá)
+            </Typography>
+          </Stack>
+        </Stack>
+
+        {reviewsLoading ? (
+          <Stack spacing={1.5} data-testid="reviews-loading">
+            <Skeleton variant="rounded" height={72} />
+            <Skeleton variant="rounded" height={72} />
+          </Stack>
+        ) : reviewsError ? (
+          <Alert
+            severity="error"
+            action={<Button color="inherit" size="small" onClick={() => void loadReviews()}>Thử lại</Button>}
+          >
+            {reviewsError}
+          </Alert>
+        ) : reviewData?.reviews.items.length ? (
+          <Stack spacing={0} divider={<Divider flexItem />}>
+            {reviewData.reviews.items.map((review) => (
+              <Box key={review.id} py={2} data-testid="product-review-item">
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "flex-start", sm: "center" }}
+                  spacing={0.75}
+                >
+                  <Typography fontWeight={700}>{review.userFullName}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(review.createdAt))}
+                  </Typography>
+                </Stack>
+                <Rating value={review.rating} readOnly size="small" sx={{ my: 0.5 }} />
+                {review.comment && <Typography variant="body2">{review.comment}</Typography>}
+              </Box>
+            ))}
+          </Stack>
+        ) : (
+          <Typography color="text.secondary" data-testid="reviews-empty">
+            Sản phẩm chưa có đánh giá nào.
+          </Typography>
+        )}
+
+        {reviewData && reviewData.reviews.totalPages > 1 && (
+          <Stack alignItems="center" mt={2}>
+            <Pagination
+              count={reviewData.reviews.totalPages}
+              page={reviewData.reviews.page + 1}
+              onChange={(_, page) => setReviewPage(page - 1)}
+              color="primary"
+              aria-label="Phân trang đánh giá sản phẩm"
+            />
+          </Stack>
+        )}
+      </Paper>
 
       {/* Related Products Section */}
       {(relatedLoading ||
