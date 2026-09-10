@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.QueryHints;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
@@ -91,6 +92,19 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
             @Param("categoryId") Long categoryId,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT i FROM Inventory i
+            JOIN FETCH i.variant pv
+            JOIN FETCH pv.product p
+            LEFT JOIN FETCH p.category c
+            WHERE pv.isDeleted = false
+              AND p.isDeleted = false
+              AND (i.quantityOnHand - i.quantityReserved) <= i.lowStockThreshold
+              AND (:categoryId IS NULL OR c.id = :categoryId)
+            ORDER BY (i.quantityOnHand - i.quantityReserved) ASC, p.name ASC, pv.sku ASC
+            """)
+    List<Inventory> findLowStockForReport(@Param("categoryId") Long categoryId);
 
     @Query("""
             SELECT COUNT(i) FROM Inventory i
