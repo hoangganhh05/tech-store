@@ -20,6 +20,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     Page<Review> findByProductIdAndStatus(Long productId, ReviewStatus status, Pageable pageable);
 
+    Page<Review> findByStatus(ReviewStatus status, Pageable pageable);
+
     long countByProductIdAndStatus(Long productId, ReviewStatus status);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product.id = :productId AND r.status = :status")

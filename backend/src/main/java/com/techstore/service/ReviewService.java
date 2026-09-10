@@ -4,6 +4,8 @@ import com.techstore.dto.request.SubmitReviewRequest;
 import com.techstore.dto.response.ReviewEligibilityResponse;
 import com.techstore.dto.response.ProductReviewsResponse;
 import com.techstore.dto.response.ReviewResponse;
+import com.techstore.enums.ReviewStatus;
+import com.techstore.dto.response.PageResponse;
 
 import java.util.Optional;
 
@@ -16,5 +18,9 @@ public interface ReviewService {
     ReviewEligibilityResponse checkEligibility(Long userId, Long productId);
 
     Optional<ReviewResponse> getMyReview(Long userId, Long productId);
+
+    PageResponse<ReviewResponse> getAdminReviews(ReviewStatus status, int page, int size);
+
+    ReviewResponse updateReviewStatus(Long adminUserId, Long reviewId, ReviewStatus status);
 }
 
