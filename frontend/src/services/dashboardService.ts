@@ -1,6 +1,6 @@
 import { httpClient } from "./httpClient";
 
-export type DashboardPeriod = "DAY" | "MONTH";
+export type DashboardPeriod = "DAY" | "WEEK" | "MONTH";
 
 export type DashboardStatusCount = {
   status: string;

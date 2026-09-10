@@ -16,11 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,12 +49,16 @@ public class DashboardServiceImpl implements DashboardService {
     public AdminDashboardResponse getAdminDashboard(String periodValue, LocalDate requestedDate) {
         DashboardPeriod period = parsePeriod(periodValue);
         LocalDate anchorDate = requestedDate == null ? LocalDate.now(REPORT_ZONE) : requestedDate;
-        LocalDate fromDate = period == DashboardPeriod.DAY
-                ? anchorDate
-                : anchorDate.withDayOfMonth(1);
-        LocalDate toDate = period == DashboardPeriod.DAY
-                ? fromDate.plusDays(1)
-                : fromDate.plusMonths(1);
+        LocalDate fromDate = switch (period) {
+            case DAY -> anchorDate;
+            case WEEK -> anchorDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            case MONTH -> anchorDate.withDayOfMonth(1);
+        };
+        LocalDate toDate = switch (period) {
+            case DAY -> fromDate.plusDays(1);
+            case WEEK -> fromDate.plusWeeks(1);
+            case MONTH -> fromDate.plusMonths(1);
+        };
 
         Instant fromInclusive = fromDate.atStartOfDay().toInstant(REPORT_ZONE);
         Instant toExclusive = toDate.atStartOfDay().toInstant(REPORT_ZONE);
@@ -111,7 +117,7 @@ public class DashboardServiceImpl implements DashboardService {
             return DashboardPeriod.valueOf(periodValue.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
-                    "Khoảng thời gian dashboard chỉ hỗ trợ DAY hoặc MONTH");
+                    "Khoảng thời gian dashboard chỉ hỗ trợ DAY, WEEK hoặc MONTH");
         }
     }
 
