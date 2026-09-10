@@ -36,6 +36,7 @@ const adminItems = [
   { label: "Đánh giá", to: ROUTES.adminReviews },
   { label: "Mã giảm giá", to: ROUTES.adminVouchers },
   { label: "Khuyến mãi", to: ROUTES.adminPromotions },
+  { label: "Báo cáo doanh thu", to: ROUTES.adminRevenueReport },
 ];
 
 export function AdminLayout() {

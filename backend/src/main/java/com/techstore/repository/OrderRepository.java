@@ -63,4 +63,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("fromDate") Instant fromDate,
             @Param("toDate") Instant toDate
     );
+
+    @Query("""
+            select o from Order o
+            where o.status <> 'CANCELLED'
+              and o.placedAt >= :fromDate
+              and o.placedAt < :toDate
+            order by o.placedAt asc
+            """)
+    List<Order> findValidOrdersForRevenueReport(
+            @Param("fromDate") Instant fromDate,
+            @Param("toDate") Instant toDate
+    );
 }
