@@ -19,7 +19,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.test.web.servlet.MvcResult;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -28,6 +32,11 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -108,6 +117,55 @@ class AdminRevenueReportIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
 
         mockMvc.perform(get("/api/v1/admin/reports/revenue")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("fromDate", today.plusDays(1).toString())
+                        .param("toDate", today.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void exportContainsDisplayedRevenueDataAndPeriodInFilename() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        saveOrder("TS-EXPORT-ONE", "Điện thoại Alpha", 2,
+                new BigDecimal("100000"), new BigDecimal("20000"), "COMPLETED");
+        saveOrder("TS-EXPORT-TWO", "Tai nghe Beta", 1,
+                new BigDecimal("150000"), BigDecimal.ZERO, "PENDING");
+
+        MvcResult result = mockMvc.perform(get("/api/v1/admin/reports/revenue/export")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .param("fromDate", today.toString())
+                        .param("toDate", today.toString()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        containsString("bao-cao-doanh-thu-" + today + "-den-" + today)))
+                .andReturn();
+
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        assertTrue(bytes.length > 100);
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            var sheet = workbook.getSheet("Báo cáo doanh thu");
+            assertEquals("BÁO CÁO DOANH THU / ĐƠN HÀNG", sheet.getRow(0).getCell(0).getStringCellValue());
+            assertEquals("Ngày", sheet.getRow(5).getCell(0).getStringCellValue());
+            assertEquals(today.toString(), sheet.getRow(6).getCell(0).getStringCellValue());
+            assertEquals(370000D, sheet.getRow(6).getCell(1).getNumericCellValue());
+            assertEquals(2D, sheet.getRow(6).getCell(2).getNumericCellValue());
+        }
+    }
+
+    @Test
+    void exportRequiresAdminAndValidatesDateRange() throws Exception {
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        mockMvc.perform(get("/api/v1/admin/reports/revenue/export")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + customerToken)
+                        .param("fromDate", today.toString())
+                        .param("toDate", today.toString()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        mockMvc.perform(get("/api/v1/admin/reports/revenue/export")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                         .param("fromDate", today.plusDays(1).toString())
                         .param("toDate", today.toString()))

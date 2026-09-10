@@ -17,12 +17,14 @@ import {
   Typography,
 } from "@mui/material";
 import AttachMoneyOutlinedIcon from "@mui/icons-material/AttachMoneyOutlined";
+import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { PageIntro } from "../../components/common/PageIntro";
 import {
+  exportRevenueReport,
   getRevenueReport,
   type RevenueReport,
 } from "../../services/revenueReportService";
@@ -84,6 +86,7 @@ export function AdminRevenueReportPage() {
   });
   const [report, setReport] = useState<RevenueReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
 
   const loadReport = useCallback(async (range: { fromDate: string; toDate: string }) => {
@@ -115,6 +118,28 @@ export function AdminRevenueReportPage() {
     setRequestedRange({ fromDate, toDate });
   };
 
+  const handleExport = async () => {
+    if (!report || exporting) return;
+    setExporting(true);
+    setError("");
+    try {
+      const { blob, filename } = await exportRevenueReport(requestedRange);
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch {
+      setError("Không thể xuất báo cáo Excel. Vui lòng thử lại.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <>
       <PageIntro
@@ -122,14 +147,26 @@ export function AdminRevenueReportPage() {
         title="Báo cáo doanh thu"
         description="Phân tích doanh thu, số đơn hàng và giá trị đơn trung bình theo khoảng thời gian tùy chọn. Đơn đã huỷ không được tính."
         action={
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => void loadReport(requestedRange)}
-            aria-label="Làm mới báo cáo doanh thu"
-          >
-            Làm mới
-          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              startIcon={<DownloadOutlinedIcon />}
+              onClick={() => void handleExport()}
+              disabled={!report || loading || exporting}
+              aria-label="Xuất báo cáo doanh thu ra Excel"
+            >
+              {exporting ? "Đang xuất..." : "Xuất Excel"}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => void loadReport(requestedRange)}
+              disabled={loading}
+              aria-label="Làm mới báo cáo doanh thu"
+            >
+              Làm mới
+            </Button>
+          </Stack>
         }
       />
 
