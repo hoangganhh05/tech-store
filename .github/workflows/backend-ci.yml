@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 15
     env:
       SPRING_PROFILES_ACTIVE: test
+      SPRING_DATASOURCE_URL: 'jdbc:h2:mem:techstore_ci;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE'
+      SPRING_DATASOURCE_USERNAME: sa
 
     defaults:
       run:
