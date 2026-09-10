@@ -3,13 +3,15 @@ import { ThemeProvider } from "@mui/material";
 import { MemoryRouter } from "react-router-dom";
 import { appTheme } from "../configs/theme";
 import { AdminRevenueReportPage } from "../modules/admin/AdminRevenueReportPage";
-import { getRevenueReport, type RevenueReport } from "../services/revenueReportService";
+import { exportRevenueReport, getRevenueReport, type RevenueReport } from "../services/revenueReportService";
 
 vi.mock("../services/revenueReportService", () => ({
+  exportRevenueReport: vi.fn(),
   getRevenueReport: vi.fn(),
 }));
 
 const mockedGetRevenueReport = vi.mocked(getRevenueReport);
+const mockedExportRevenueReport = vi.mocked(exportRevenueReport);
 
 const mockReport: RevenueReport = {
   fromDate: "2026-09-01",
@@ -34,8 +36,11 @@ function renderPage() {
   );
 }
 
-describe("US-13.2: AdminRevenueReportPage", () => {
-  afterEach(() => mockedGetRevenueReport.mockReset());
+describe("US-13.4: AdminRevenueReportPage", () => {
+  afterEach(() => {
+    mockedGetRevenueReport.mockReset();
+    mockedExportRevenueReport.mockReset();
+  });
 
   it("renders summary metrics and daily revenue table", async () => {
     mockedGetRevenueReport.mockResolvedValue(mockReport);
@@ -70,5 +75,31 @@ describe("US-13.2: AdminRevenueReportPage", () => {
     mockedGetRevenueReport.mockResolvedValueOnce(mockReport);
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
     await waitFor(() => expect(screen.getByText("Chi tiết doanh thu theo ngày")).toBeInTheDocument());
+  });
+
+  it("exports the currently displayed date range to Excel", async () => {
+    mockedGetRevenueReport.mockResolvedValue(mockReport);
+    mockedExportRevenueReport.mockResolvedValue({
+      blob: new Blob(["xlsx"]),
+      filename: "bao-cao-doanh-thu-2026-09-01-den-2026-09-03.xlsx",
+    });
+    const createObjectUrl = vi.fn(() => "blob:test");
+    const revokeObjectUrl = vi.fn();
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    Object.defineProperty(window.URL, "createObjectURL", { configurable: true, value: createObjectUrl });
+    Object.defineProperty(window.URL, "revokeObjectURL", { configurable: true, value: revokeObjectUrl });
+    renderPage();
+
+    await screen.findByText("Chi tiết doanh thu theo ngày");
+    fireEvent.click(screen.getByRole("button", { name: "Xuất báo cáo doanh thu ra Excel" }));
+
+    await waitFor(() => expect(mockedExportRevenueReport).toHaveBeenCalledWith({
+      fromDate: "2026-09-01",
+      toDate: "2026-09-10",
+    }));
+    expect(createObjectUrl).toHaveBeenCalled();
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:test");
+    expect(anchorClick).toHaveBeenCalled();
+    anchorClick.mockRestore();
   });
 });
