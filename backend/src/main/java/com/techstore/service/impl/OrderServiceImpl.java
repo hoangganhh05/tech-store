@@ -108,9 +108,9 @@ public class OrderServiceImpl implements OrderService {
             confirmationItems.add(new PlacedOrderItemResponse(i.productName(), label, i.price(), i.quantity(), i.subtotal()));
         });
         orders.saveAndFlush(order);
-        if (redemption != null) voucherService.recordUsage(user, order, redemption);
         inventory.deductInventoryForOrder(userId, new OrderInventoryDeductionRequest(order.getId(), order.getOrderNumber(), deductions, null));
         cartItems.deleteByCartId(cart.id());
+        if (redemption != null) voucherService.recordUsage(user, order, redemption);
         Instant placedAt = order.getPlacedAt() == null ? Instant.now() : order.getPlacedAt();
         String estimatedProcessingTime = "1-2 ngày làm việc";
         List<PlacedOrderItemResponse> immutableItems = List.copyOf(confirmationItems);

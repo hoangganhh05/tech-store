@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.Locale;
 
 @Service
 public class VoucherServiceImpl implements VoucherService {
@@ -78,7 +79,7 @@ public class VoucherServiceImpl implements VoucherService {
         }
         Instant now = Instant.now();
         if (!voucher.isActive() || now.isBefore(voucher.getStartsAt()) ||
-                (voucher.getEndsAt() != null && now.isAfter(voucher.getEndsAt()))) {
+                (voucher.getEndsAt() != null && !now.isBefore(voucher.getEndsAt()))) {
             throw new BusinessException(ErrorCode.VOUCHER_NOT_ELIGIBLE, "Mã voucher đã hết hạn hoặc chưa đến thời gian áp dụng");
         }
         if (voucher.getUsageLimit() != null && voucher.getUsedCount() >= voucher.getUsageLimit()) {
@@ -116,7 +117,7 @@ public class VoucherServiceImpl implements VoucherService {
 
     private String normalize(String code) {
         if (code == null || code.isBlank()) throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Vui lòng nhập mã voucher");
-        return code.trim().toUpperCase();
+        return code.trim().toUpperCase(Locale.ROOT);
     }
 
     private String formatMoney(BigDecimal amount) { return amount.stripTrailingZeros().toPlainString() + "đ"; }
