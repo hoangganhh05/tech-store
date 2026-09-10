@@ -133,7 +133,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
           data-testid="apply-voucher-btn">{applyingVoucher ? <CircularProgress size={18} /> : "Áp dụng"}</Button>
       </Stack>
       {voucherError && <Alert severity="error" sx={{ mb: 2 }} data-testid="voucher-error">{voucherError}</Alert>}
-      {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success">Đã áp dụng mã {appliedVoucher.code}</Alert>}
+      {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success" action={<Button color="inherit" size="small" onClick={() => { setVoucherCode(""); setAppliedVoucher(null); setAppliedVoucherCode(undefined); setVoucherError(null); }}>Gỡ mã</Button>}>Đã áp dụng mã {appliedVoucher.code}</Alert>}
       <Divider sx={{ mb: 2 }} />
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between"><Typography>Tạm tính</Typography><Typography>{formatPrice(cart.subtotal)}</Typography></Stack>

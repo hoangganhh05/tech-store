@@ -28,6 +28,8 @@ import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
 import { AdminOrderDetailPage } from "../modules/admin/AdminOrderDetailPage";
 import { AdminReviewsPage } from "../modules/admin/AdminReviewsPage";
+import { AdminVouchersPage } from "../modules/admin/AdminVouchersPage";
+import { AdminPromotionsPage } from "../modules/admin/AdminPromotionsPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
 
@@ -117,6 +119,8 @@ export const appRouter = createBrowserRouter([
       { path: "orders", element: <AdminOrdersPage /> },
       { path: "orders/:id", element: <AdminOrderDetailPage /> },
       { path: "reviews", element: <AdminReviewsPage /> },
+      { path: "vouchers", element: <AdminVouchersPage /> },
+      { path: "promotions", element: <AdminPromotionsPage /> },
     ],
   },
 ]);

@@ -26,12 +26,15 @@ import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductVariantRepository;
 import com.techstore.repository.UserRepository;
 import com.techstore.service.CartService;
+import com.techstore.service.EffectivePrice;
+import com.techstore.service.PromotionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +51,7 @@ public class CartServiceImpl implements CartService {
     private final ProductVariantRepository productVariantRepository;
     private final InventoryRepository inventoryRepository;
     private final ProductImageRepository productImageRepository;
+    private final PromotionService promotionService;
 
     public CartServiceImpl(
             CartRepository cartRepository,
@@ -55,7 +59,8 @@ public class CartServiceImpl implements CartService {
             UserRepository userRepository,
             ProductVariantRepository productVariantRepository,
             InventoryRepository inventoryRepository,
-            ProductImageRepository productImageRepository
+            ProductImageRepository productImageRepository,
+            PromotionService promotionService
     ) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
@@ -63,6 +68,7 @@ public class CartServiceImpl implements CartService {
         this.productVariantRepository = productVariantRepository;
         this.inventoryRepository = inventoryRepository;
         this.productImageRepository = productImageRepository;
+        this.promotionService = promotionService;
     }
 
     @Override
@@ -406,6 +412,8 @@ public class CartServiceImpl implements CartService {
     private CartResponse mapToCartResponse(Cart cart) {
         List<CartItem> items = cartItemRepository.findByCartId(cart.getId());
         List<CartItemResponse> itemResponses = new ArrayList<>();
+        Map<Long, EffectivePrice> effectivePrices = promotionService.getEffectivePrices(
+                items.stream().map(CartItem::getVariant).filter(Objects::nonNull).toList());
         int totalItems = 0;
         BigDecimal subtotal = BigDecimal.ZERO;
         boolean cartHasStockIssue = false;
@@ -416,7 +424,9 @@ public class CartServiceImpl implements CartService {
             int qty = item.getQuantity();
             int stock = variant != null ? getAvailableStock(variant) : 0;
 
-            BigDecimal price = (variant != null && variant.getPrice() != null) ? variant.getPrice() : BigDecimal.ZERO;
+            EffectivePrice effectivePrice = variant == null ? null : effectivePrices.get(variant.getId());
+            BigDecimal price = effectivePrice != null ? effectivePrice.price()
+                    : (variant != null && variant.getPrice() != null ? variant.getPrice() : BigDecimal.ZERO);
             BigDecimal lineSubtotal = price.multiply(BigDecimal.valueOf(qty));
 
             totalItems += qty;
@@ -452,7 +462,7 @@ public class CartServiceImpl implements CartService {
                     variant != null ? variant.getColor() : null,
                     variant != null ? variant.getStorage() : null,
                     price,
-                    variant != null ? variant.getOriginalPrice() : null,
+                    effectivePrice != null ? effectivePrice.originalPrice() : (variant != null ? variant.getOriginalPrice() : null),
                     imageUrl,
                     qty,
                     stock,
