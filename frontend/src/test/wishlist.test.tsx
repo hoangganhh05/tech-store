@@ -141,6 +141,30 @@ describe("US-11.3: Wishlist", () => {
     });
   });
 
+  it("renders the flash-sale price together with the original price", async () => {
+    const saleProduct: StorefrontProduct = {
+      ...product,
+      minPrice: 800000,
+      maxPrice: 800000,
+      originalPrice: 1000000,
+      discountPercent: 20,
+    };
+    mockedGetWishlist.mockResolvedValue({ ...wishlistResponse, items: [], totalElements: 0, totalPages: 0 });
+    render(
+      <ThemeProvider theme={appTheme}>
+        <MemoryRouter initialEntries={["/products"]}>
+          <WishlistProvider>
+            <ProductCard product={saleProduct} />
+          </WishlistProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/800\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/1\.000\.000/)).toBeInTheDocument();
+    expect(screen.getByText("-20%")).toBeInTheDocument();
+  });
+
   it("redirects guests to login when they click the favorite icon", async () => {
     render(
       <ThemeProvider theme={appTheme}>

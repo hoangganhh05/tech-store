@@ -109,16 +109,34 @@ public class PromotionServiceImpl implements PromotionService {
     private boolean appliesTo(Promotion promotion, ProductVariant variant) {
         return switch (promotion.getTargetType()) {
             case VARIANT -> promotion.getVariant() != null && promotion.getVariant().getId().equals(variant.getId());
-            case PRODUCT -> promotion.getProduct() != null && promotion.getProduct().getId().equals(variant.getProduct().getId());
-            case CATEGORY -> promotion.getCategory() != null && variant.getProduct().getCategory() != null
-                    && (promotion.getCategory().getId().equals(variant.getProduct().getCategory().getId())
-                    || (variant.getProduct().getCategory().getParent() != null
-                    && promotion.getCategory().getId().equals(variant.getProduct().getCategory().getParent().getId())));
+            case PRODUCT -> promotion.getProduct() != null && variant.getProduct() != null
+                    && promotion.getProduct().getId().equals(variant.getProduct().getId());
+            case CATEGORY -> promotion.getCategory() != null && isInCategoryTree(
+                    variant.getProduct() == null ? null : variant.getProduct().getCategory(), promotion.getCategory().getId());
         };
     }
 
+    private boolean isInCategoryTree(Category category, Long targetCategoryId) {
+        Category current = category;
+        while (current != null) {
+            if (targetCategoryId.equals(current.getId())) return true;
+            current = current.getParent();
+        }
+        return false;
+    }
+
     private Promotion build(Promotion existing, PromotionRequest request) {
-        if (request == null) throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Dữ liệu chương trình khuyến mãi không hợp lệ");
+        if (request == null || request.targetType() == null || request.discountPercent() == null
+                || request.startsAt() == null || request.endsAt() == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Dữ liệu chương trình khuyến mãi không hợp lệ");
+        }
+        if (request.name() == null || request.name().isBlank()) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Tên chương trình không được để trống");
+        }
+        if (request.discountPercent().compareTo(BigDecimal.ZERO) <= 0
+                || request.discountPercent().compareTo(BigDecimal.valueOf(100)) > 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mức giảm phải lớn hơn 0% và không vượt quá 100%");
+        }
         if (!request.endsAt().isAfter(request.startsAt())) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Thời gian kết thúc phải sau thời gian bắt đầu");
         }
@@ -126,15 +144,24 @@ public class PromotionServiceImpl implements PromotionService {
         ProductVariant variant = null;
         Category category = null;
         switch (request.targetType()) {
-            case PRODUCT -> product = products.findByIdAndIsDeletedFalse(request.productId())
+            case PRODUCT -> {
+                requireTargetId(request.productId(), "Mã sản phẩm không hợp lệ");
+                product = products.findByIdAndIsDeletedFalse(request.productId())
                     .filter(item -> item.getStatus() == ProductStatus.ACTIVE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "Không tìm thấy sản phẩm đang hoạt động"));
-            case VARIANT -> variant = variants.findByIdAndIsDeletedFalse(request.variantId())
+            }
+            case VARIANT -> {
+                requireTargetId(request.variantId(), "Mã biến thể không hợp lệ");
+                variant = variants.findByIdAndIsDeletedFalse(request.variantId())
                     .filter(item -> item.getStatus() == VariantStatus.ACTIVE && item.getProduct().getStatus() == ProductStatus.ACTIVE)
                     .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_VARIANT_NOT_FOUND, "Không tìm thấy biến thể đang hoạt động"));
-            case CATEGORY -> category = categories.findById(request.categoryId())
+            }
+            case CATEGORY -> {
+                requireTargetId(request.categoryId(), "Mã danh mục không hợp lệ");
+                category = categories.findById(request.categoryId())
                     .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
                     .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND, "Không tìm thấy danh mục đang hoạt động"));
+            }
         }
         boolean active = request.active() == null || request.active();
         if (existing == null) {
@@ -149,6 +176,12 @@ public class PromotionServiceImpl implements PromotionService {
     private Promotion find(Long id) {
         if (id == null || id < 1) throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã chương trình không hợp lệ");
         return promotions.findById(id).orElseThrow(() -> new BusinessException(ErrorCode.PROMOTION_NOT_FOUND, "Không tìm thấy chương trình khuyến mãi"));
+    }
+
+    private void requireTargetId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, message);
+        }
     }
 
     private void validatePage(int page, int size) {
