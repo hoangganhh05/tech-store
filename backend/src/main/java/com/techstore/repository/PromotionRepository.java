@@ -12,6 +12,6 @@ import java.util.List;
 public interface PromotionRepository extends JpaRepository<Promotion, Long> {
 
     @EntityGraph(attributePaths = {"product", "category", "variant", "variant.product"})
-    @Query("select p from Promotion p where p.active = true and p.startsAt <= :now and p.endsAt >= :now")
+    @Query("select p from Promotion p where p.active = true and p.startsAt <= :now and p.endsAt > :now")
     List<Promotion> findActiveAt(@Param("now") Instant now);
 }

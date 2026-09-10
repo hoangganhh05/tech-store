@@ -61,6 +61,7 @@ class AdminPromotionVoucherIntegrationTest {
     private String customerToken;
     private Product product;
     private ProductVariant variant;
+    private Category category;
 
     @BeforeEach
     void setUp() {
@@ -71,7 +72,7 @@ class AdminPromotionVoucherIntegrationTest {
         adminToken = "Bearer " + tokenIssuer.issue(users.saveAndFlush(admin)).accessToken();
         customerToken = "Bearer " + tokenIssuer.issue(users.saveAndFlush(customer)).accessToken();
         Brand brand = brands.saveAndFlush(new Brand("Promo Brand", "promo-brand", "Brand"));
-        Category category = categories.saveAndFlush(new Category("Promo Category", "promo-category", null, "Category"));
+        category = categories.saveAndFlush(new Category("Promo Category", "promo-category", null, "Category"));
         product = products.saveAndFlush(new Product("Promo Phone", "Description", brand, category, ProductStatus.ACTIVE));
         variant = variants.saveAndFlush(new ProductVariant(product, "PROMO-SKU", "Đen", "128GB", new BigDecimal("1000000"), null, 10, VariantStatus.ACTIVE));
     }
@@ -108,6 +109,43 @@ class AdminPromotionVoucherIntegrationTest {
         mockMvc.perform(get("/api/v1/products/{id}", product.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.variants[0].price").value(800000))
+                .andExpect(jsonPath("$.data.variants[0].originalPrice").value(1000000));
+    }
+
+    @Test
+    void expiredPromotionAutomaticallyRestoresBasePrice() throws Exception {
+        PromotionRequest request = new PromotionRequest("Expired sale", PromotionTargetType.PRODUCT, product.getId(), null, null,
+                new BigDecimal("25"), Instant.now().minus(2, ChronoUnit.DAYS), Instant.now().minus(1, ChronoUnit.HOURS), true);
+        mockMvc.perform(post("/api/v1/admin/promotions").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/products/{id}", product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.variants[0].price").value(1000000))
+                .andExpect(jsonPath("$.data.discountPercent").value(0));
+    }
+
+    @Test
+    void promotionMustSpecifyTargetForSelectedScope() throws Exception {
+        PromotionRequest request = new PromotionRequest("Missing target", PromotionTargetType.PRODUCT, null, null, null,
+                new BigDecimal("10"), Instant.now(), Instant.now().plus(1, ChronoUnit.DAYS), true);
+        mockMvc.perform(post("/api/v1/admin/promotions").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void categoryPromotionChangesAllChildVariants() throws Exception {
+        PromotionRequest request = new PromotionRequest("Category sale", PromotionTargetType.CATEGORY, null, null, category.getId(),
+                new BigDecimal("15"), Instant.now().minus(1, ChronoUnit.HOURS), Instant.now().plus(1, ChronoUnit.DAYS), true);
+        mockMvc.perform(post("/api/v1/admin/promotions").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/products/{id}", product.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.variants[0].price").value(850000))
                 .andExpect(jsonPath("$.data.variants[0].originalPrice").value(1000000));
     }
 
