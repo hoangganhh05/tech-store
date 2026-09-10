@@ -2,9 +2,11 @@ package com.techstore.service;
 
 import com.techstore.dto.request.OrderInventoryDeductionRequest;
 import com.techstore.dto.request.PlaceOrderRequest;
+import com.techstore.dto.request.UpdateOrderStatusRequest;
 import com.techstore.dto.response.CartItemResponse;
 import com.techstore.dto.response.CartResponse;
 import com.techstore.entity.Address;
+import com.techstore.entity.Order;
 import com.techstore.entity.User;
 import com.techstore.entity.Voucher;
 import com.techstore.enums.PaymentMethod;
@@ -15,6 +17,7 @@ import com.techstore.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -109,5 +112,47 @@ class OrderServiceImplTest {
         order.verify(inventory).deductInventoryForOrder(eq(7L), any(OrderInventoryDeductionRequest.class));
         order.verify(cartItems).deleteByCartId(10L);
         order.verify(voucherService).recordUsage(eq(user), any(), same(redemption));
+    }
+
+    @Test
+    void allowsAdminToMovePendingOrderToConfirmed() throws Exception {
+        User admin = new User("admin@example.com", "hash", "Admin", "0900000000");
+        Order order = new Order("TS-100", user, PaymentMethod.COD,
+                new BigDecimal("200000"), BigDecimal.ZERO, new BigDecimal("30000"));
+        setId(order, 100L);
+        when(users.findById(9L)).thenReturn(Optional.of(admin));
+        when(orders.findByIdForUpdate(100L)).thenReturn(Optional.of(order));
+        when(orders.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.updateAdminOrderStatus(9L, 100L,
+                new UpdateOrderStatusRequest(" confirmed ", null));
+
+        assertThat(order.getStatus()).isEqualTo("CONFIRMED");
+        assertThat(result.status()).isEqualTo("CONFIRMED");
+        verify(orders, atLeastOnce()).saveAndFlush(order);
+        verify(eventPublisher).publishEvent(any(com.techstore.event.OrderStatusUpdatedEvent.class));
+        verifyNoInteractions(inventory);
+    }
+
+    @Test
+    void rejectsInvalidStatusTransitionWithoutMutatingOrder() {
+        User admin = new User("admin@example.com", "hash", "Admin", "0900000000");
+        Order order = new Order("TS-101", user, PaymentMethod.COD,
+                new BigDecimal("200000"), BigDecimal.ZERO, new BigDecimal("30000"));
+        when(users.findById(9L)).thenReturn(Optional.of(admin));
+        when(orders.findByIdForUpdate(101L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> service.updateAdminOrderStatus(9L, 101L,
+                new UpdateOrderStatusRequest("SHIPPING", null)))
+                .hasMessageContaining("Không thể chuyển trạng thái từ PENDING sang SHIPPING");
+        assertThat(order.getStatus()).isEqualTo("PENDING");
+        verify(orders, never()).saveAndFlush(any());
+        verifyNoInteractions(inventory, eventPublisher);
+    }
+
+    private static void setId(Object entity, long id) throws Exception {
+        Field field = entity.getClass().getDeclaredField("id");
+        field.setAccessible(true);
+        field.set(entity, id);
     }
 }
