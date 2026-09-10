@@ -42,6 +42,8 @@ public interface StorefrontProductService {
 
     List<StorefrontProductResponse> searchProducts(String query);
 
+    List<StorefrontProductResponse> getProductsByIds(List<Long> productIds);
+
     List<BrandResponse> getFeaturedBrands();
 
     StorefrontProductDetailResponse getProductDetail(Long id);

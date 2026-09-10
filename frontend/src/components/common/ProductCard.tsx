@@ -1,20 +1,29 @@
 import { useState } from "react";
 import {
+  Alert,
   Box,
   Card,
   CardActionArea,
   CardContent,
   Chip,
+  CircularProgress,
+  IconButton,
   Stack,
+  Snackbar,
   Typography,
 } from "@mui/material";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useWishlist } from "../../hooks/useWishlist";
+import { ROUTES } from "../../constants/routes";
 import type { StorefrontProduct } from "../../services/storefrontService";
 
 interface ProductCardProps {
   product: StorefrontProduct;
+  onFavoriteChange?: (isFavorite: boolean) => void;
 }
 
 function formatPrice(value: number): string {
@@ -24,8 +33,15 @@ function formatPrice(value: number): string {
   }).format(value);
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackSeverity, setFeedbackSeverity] = useState<"success" | "error">("success");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, favoriteIds, loadingIds, toggleFavorite } = useWishlist();
+  const isFavorite = favoriteIds.has(product.id);
+  const isFavoriteLoading = loadingIds.has(product.id);
 
   const hasDiscount = product.discountPercent > 0;
   const isOutOfStock = !product.hasStock;
@@ -34,6 +50,37 @@ export function ProductCard({ product }: ProductCardProps) {
     product.minPrice === product.maxPrice
       ? formatPrice(product.minPrice)
       : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`;
+
+  const handleFavoriteClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!isAuthenticated) {
+      navigate(ROUTES.login, {
+        state: {
+          from: `${location.pathname}${location.search}${location.hash}`,
+        },
+      });
+      return;
+    }
+
+    try {
+      const nextValue = await toggleFavorite(product.id);
+      onFavoriteChange?.(nextValue);
+      setFeedback(
+        nextValue
+          ? "Đã thêm sản phẩm vào danh sách yêu thích."
+          : "Đã xoá sản phẩm khỏi danh sách yêu thích.",
+      );
+      setFeedbackSeverity("success");
+    } catch (error: unknown) {
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Không thể cập nhật danh sách yêu thích.",
+      );
+      setFeedbackSeverity("error");
+    }
+  };
 
   return (
     <Card
@@ -89,6 +136,31 @@ export function ProductCard({ product }: ProductCardProps) {
               }}
             />
           )}
+
+          <IconButton
+            type="button"
+            aria-label={isFavorite ? "Xoá khỏi yêu thích" : "Thêm vào yêu thích"}
+            data-testid={`favorite-button-${product.id}`}
+            onClick={(event) => void handleFavoriteClick(event)}
+            disabled={isFavoriteLoading}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 3,
+              bgcolor: "rgba(255,255,255,0.94)",
+              color: isFavorite ? "error.main" : "text.secondary",
+              "&:hover": { bgcolor: "#fff" },
+            }}
+          >
+            {isFavoriteLoading ? (
+              <CircularProgress size={20} />
+            ) : isFavorite ? (
+              <FavoriteRoundedIcon />
+            ) : (
+              <FavoriteBorderRoundedIcon />
+            )}
+          </IconButton>
 
           {/* Out of stock badge */}
           {isOutOfStock && (
@@ -248,6 +320,15 @@ export function ProductCard({ product }: ProductCardProps) {
           </Box>
         </CardContent>
       </CardActionArea>
+      <Snackbar
+        open={Boolean(feedback)}
+        autoHideDuration={3000}
+        onClose={() => setFeedback(null)}
+      >
+        <Alert severity={feedbackSeverity} onClose={() => setFeedback(null)}>
+          {feedback}
+        </Alert>
+      </Snackbar>
     </Card>
   );
 }
