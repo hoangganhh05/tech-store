@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -62,6 +63,8 @@ public class OrderServiceImpl implements OrderService {
     private final CartItemRepository cartItems; private final OrderRepository orders; private final CartService cartService;
     private final InventoryService inventory; private final ApplicationEventPublisher eventPublisher;
     private final VoucherService voucherService;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.techstore.repository.ProductVariantRepository productVariants;
     @org.springframework.beans.factory.annotation.Autowired
     public OrderServiceImpl(UserRepository users, AddressRepository addresses, CartRepository carts, CartItemRepository cartItems,
                             OrderRepository orders, CartService cartService, InventoryService inventory,
@@ -105,9 +108,9 @@ public class OrderServiceImpl implements OrderService {
             confirmationItems.add(new PlacedOrderItemResponse(i.productName(), label, i.price(), i.quantity(), i.subtotal()));
         });
         orders.saveAndFlush(order);
-        if (redemption != null) voucherService.recordUsage(user, order, redemption);
         inventory.deductInventoryForOrder(userId, new OrderInventoryDeductionRequest(order.getId(), order.getOrderNumber(), deductions, null));
         cartItems.deleteByCartId(cart.id());
+        if (redemption != null) voucherService.recordUsage(user, order, redemption);
         Instant placedAt = order.getPlacedAt() == null ? Instant.now() : order.getPlacedAt();
         String estimatedProcessingTime = "1-2 ngày làm việc";
         List<PlacedOrderItemResponse> immutableItems = List.copyOf(confirmationItems);
@@ -152,7 +155,19 @@ public class OrderServiceImpl implements OrderService {
         if (!isOwner && !isAdmin) {
             throw new BusinessException(ErrorCode.ACCESS_DENIED, "Bạn không có quyền xem đơn hàng này");
         }
-        return com.techstore.dto.response.OrderDetailResponse.from(order);
+        Map<Long, Long> variantToProductId = Map.of();
+        if (productVariants != null && order.getItems() != null && !order.getItems().isEmpty()) {
+            List<Long> variantIds = order.getItems().stream()
+                    .map(OrderItem::getVariantId)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (!variantIds.isEmpty()) {
+                variantToProductId = productVariants.findAllById(variantIds).stream()
+                        .filter(v -> v.getProduct() != null)
+                        .collect(Collectors.toMap(com.techstore.entity.ProductVariant::getId, v -> v.getProduct().getId(), (a, b) -> a));
+            }
+        }
+        return com.techstore.dto.response.OrderDetailResponse.from(order, variantToProductId);
     }
 
     @Override

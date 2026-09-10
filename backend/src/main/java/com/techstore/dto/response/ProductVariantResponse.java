@@ -48,4 +48,11 @@ public record ProductVariantResponse(
                 variant.getUpdatedAt()
         );
     }
+
+    public static ProductVariantResponse from(ProductVariant variant, BigDecimal price, BigDecimal originalPrice) {
+        ProductVariantResponse base = from(variant);
+        return new ProductVariantResponse(base.id(), base.productId(), base.productName(), base.sku(), base.color(),
+                base.storage(), price, originalPrice, base.stockQuantity(), base.status(), base.stockStatus(),
+                base.createdAt(), base.updatedAt());
+    }
 }

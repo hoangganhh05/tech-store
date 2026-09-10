@@ -15,6 +15,7 @@ import { ProfilePage } from "../modules/profile/ProfilePage";
 import { AddressesPage } from "../modules/profile/AddressesPage";
 import { OrderHistoryPage } from "../modules/orders/OrderHistoryPage";
 import { OrderDetailPage } from "../modules/orders/OrderDetailPage";
+import { WishlistPage } from "../modules/wishlist/WishlistPage";
 import { ForbiddenPage } from "../modules/auth/ForbiddenPage";
 import { RequireAuth } from "../modules/auth/RequireAuth";
 import { AdminDashboardPage } from "../modules/admin/AdminDashboardPage";
@@ -26,6 +27,9 @@ import { AdminProductsPage } from "../modules/admin/AdminProductsPage";
 import { AdminInventoryPage } from "../modules/admin/AdminInventoryPage";
 import { AdminOrdersPage } from "../modules/admin/AdminOrdersPage";
 import { AdminOrderDetailPage } from "../modules/admin/AdminOrderDetailPage";
+import { AdminReviewsPage } from "../modules/admin/AdminReviewsPage";
+import { AdminVouchersPage } from "../modules/admin/AdminVouchersPage";
+import { AdminPromotionsPage } from "../modules/admin/AdminPromotionsPage";
 import { NotFoundPage } from "../modules/not-found/NotFoundPage";
 import { ROUTES } from "../constants/routes";
 
@@ -82,6 +86,14 @@ export const appRouter = createBrowserRouter([
           </RequireAuth>
         ),
       },
+      {
+        path: ROUTES.wishlist,
+        element: (
+          <RequireAuth requiredRoles={["CUSTOMER"]}>
+            <WishlistPage />
+          </RequireAuth>
+        ),
+      },
       { path: ROUTES.forbidden, element: <ForbiddenPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
@@ -106,6 +118,9 @@ export const appRouter = createBrowserRouter([
       { path: "inventory", element: <AdminInventoryPage /> },
       { path: "orders", element: <AdminOrdersPage /> },
       { path: "orders/:id", element: <AdminOrderDetailPage /> },
+      { path: "reviews", element: <AdminReviewsPage /> },
+      { path: "vouchers", element: <AdminVouchersPage /> },
+      { path: "promotions", element: <AdminPromotionsPage /> },
     ],
   },
 ]);

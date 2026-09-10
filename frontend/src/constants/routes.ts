@@ -13,6 +13,7 @@ export const ROUTES = {
   addresses: "/account/addresses",
   orders: "/account/orders",
   orderDetail: "/account/orders/:id",
+  wishlist: "/account/wishlist",
   forbidden: "/forbidden",
   admin: "/admin",
   adminLogin: "/admin/login",
@@ -23,4 +24,7 @@ export const ROUTES = {
   adminInventory: "/admin/inventory",
   adminOrders: "/admin/orders",
   adminOrderDetail: "/admin/orders/:id",
+  adminReviews: "/admin/reviews",
+  adminVouchers: "/admin/vouchers",
+  adminPromotions: "/admin/promotions",
 } as const;

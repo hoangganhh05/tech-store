@@ -3,6 +3,7 @@ import { isAxiosError } from 'axios'
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
+import { env } from '../../configs/env'
 import { registerAccount, type RegisterPayload } from '../../services/authService'
 
 type RegisterField = keyof RegisterPayload
@@ -96,7 +97,7 @@ export function RegisterPage() {
       <Card>
         <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
           <Typography component="h1" variant="h2" mb={1}>Tạo tài khoản</Typography>
-          <Typography color="text.secondary" mb={3}>Đăng ký để mua hàng và theo dõi đơn hàng tại TechStore.</Typography>
+          <Typography color="text.secondary" mb={3}>Đăng ký để mua hàng và theo dõi đơn hàng tại {env.brand.name}.</Typography>
           <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate>
             {submitError && <Alert severity="error">{submitError}</Alert>}
             <TextField label="Họ tên" value={values.fullName} onChange={handleChange('fullName')} error={Boolean(fieldErrors.fullName)} helperText={fieldErrors.fullName} required autoComplete="name" />

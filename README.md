@@ -1,6 +1,6 @@
-# TechStore
+# Đăng Tùng Mobile
 
-Website thương mại điện tử bán điện thoại và phụ kiện công nghệ.
+Website kinh doanh phụ kiện điện thoại.
 
 ## Cấu trúc dự án
 

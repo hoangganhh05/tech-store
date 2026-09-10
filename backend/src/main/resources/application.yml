@@ -52,6 +52,18 @@ springdoc:
     tags-sorter: alpha
 
 app:
+  brand:
+    name: ${BRAND_NAME:Đăng Tùng Mobile}
+    industry: ${BRAND_INDUSTRY:Kinh doanh phụ kiện điện thoại.}
+    address: ${BRAND_ADDRESS:Xóm Lê Lợi, Thôn Cập Thượng, Phường Nam Đồng, TP Hải Phòng}
+    contact-phone: ${BRAND_CONTACT_PHONE:0867116863}
+    contact-email: ${BRAND_CONTACT_EMAIL:hoanghd064@gmail.com}
+    # Do not publish these until the store provides the relevant details.
+    opening-hours: ${BRAND_OPENING_HOURS:}
+    zalo-url: ${BRAND_ZALO_URL:}
+    social-url: ${BRAND_SOCIAL_URL:}
+    map-url: ${BRAND_MAP_URL:}
+    warranty-policy-url: ${BRAND_WARRANTY_POLICY_URL:}
   api:
     base-path: /api/v1
   cors:

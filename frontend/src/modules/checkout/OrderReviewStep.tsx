@@ -31,11 +31,11 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   const [applyingVoucher, setApplyingVoucher] = useState(false);
   const [voucherError, setVoucherError] = useState<string | null>(null);
 
-  const loadReview = useCallback(async () => {
+  const loadReview = useCallback(async (voucherCodeOverride: string | undefined = appliedVoucherCode) => {
     setLoading(true);
     setReviewError(null);
     try {
-      const nextReview = await getCheckoutReview(addressId, paymentOption.paymentMethod, appliedVoucherCode);
+      const nextReview = await getCheckoutReview(addressId, paymentOption.paymentMethod, voucherCodeOverride);
       setReview(nextReview);
       onReviewCartChange?.(nextReview.cart);
     } catch {
@@ -51,7 +51,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
   if (loading) return <Stack alignItems="center" py={5} spacing={2}>
     <CircularProgress /><Typography color="text.secondary">Đang kiểm tra đơn hàng...</Typography>
   </Stack>;
-  if (!review) return <Alert severity="error" action={<Button onClick={loadReview}>Thử lại</Button>}>
+  if (!review) return <Alert severity="error" action={<Button onClick={() => void loadReview()}>Thử lại</Button>}>
     {reviewError}
   </Alert>;
 
@@ -83,7 +83,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
     } finally { setPlacing(false); }
   };
   return <Stack spacing={3} data-testid="order-review-content">
-    {reviewError && <Alert severity="error" action={<Button onClick={loadReview}>Thử lại</Button>}>{reviewError}</Alert>}
+    {reviewError && <Alert severity="error" action={<Button onClick={() => void loadReview()}>Thử lại</Button>}>{reviewError}</Alert>}
     {!readyToPlaceOrder && <Alert severity="warning">Giỏ hàng có sản phẩm không còn đủ tồn kho. Vui lòng chỉnh sửa giỏ hàng.</Alert>}
 
     <Box>
@@ -133,7 +133,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
           data-testid="apply-voucher-btn">{applyingVoucher ? <CircularProgress size={18} /> : "Áp dụng"}</Button>
       </Stack>
       {voucherError && <Alert severity="error" sx={{ mb: 2 }} data-testid="voucher-error">{voucherError}</Alert>}
-      {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success">Đã áp dụng mã {appliedVoucher.code}</Alert>}
+      {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success" action={<Button color="inherit" size="small" onClick={() => { setVoucherCode(""); setAppliedVoucher(null); setAppliedVoucherCode(undefined); setVoucherError(null); void loadReview(""); }}>Gỡ mã</Button>}>Đã áp dụng mã {appliedVoucher.code}</Alert>}
       <Divider sx={{ mb: 2 }} />
       <Stack spacing={1}>
         <Stack direction="row" justifyContent="space-between"><Typography>Tạm tính</Typography><Typography>{formatPrice(cart.subtotal)}</Typography></Stack>

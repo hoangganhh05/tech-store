@@ -10,6 +10,10 @@ import {
   type StorefrontProductDetail,
   type StorefrontProduct,
 } from "../services/storefrontService";
+import {
+  getProductReviews,
+  type ProductReviews,
+} from "../services/reviewService";
 
 vi.mock("../services/storefrontService", () => ({
   getStorefrontProductDetail: vi.fn(),
@@ -24,9 +28,37 @@ vi.mock("../services/storefrontService", () => ({
   getVariantStock: vi.fn(),
   getRelatedProducts: vi.fn(),
 }));
+vi.mock("../services/reviewService", () => ({
+  getProductReviews: vi.fn(),
+}));
 
 const mockedGetStorefrontProductDetail = vi.mocked(getStorefrontProductDetail);
 const mockedGetRelatedProducts = vi.mocked(getRelatedProducts);
+const mockedGetProductReviews = vi.mocked(getProductReviews);
+
+const mockProductReviews: ProductReviews = {
+  averageRating: 4.5,
+  totalReviews: 2,
+  reviews: {
+    items: [{
+      id: 1,
+      productId: 1,
+      userId: 20,
+      userFullName: "Nguyễn Văn Review",
+      rating: 5,
+      comment: "Máy dùng rất tốt",
+      status: "APPROVED",
+      createdAt: "2026-09-08T10:00:00Z",
+      updatedAt: "2026-09-08T10:00:00Z",
+    }],
+    page: 0,
+    size: 5,
+    totalElements: 2,
+    totalPages: 1,
+    first: true,
+    last: true,
+  },
+};
 
 const mockProductDetail: StorefrontProductDetail = {
   id: 1,
@@ -140,6 +172,7 @@ describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () =>
   beforeEach(() => {
     vi.clearAllMocks();
     mockedGetRelatedProducts.mockResolvedValue([]);
+    mockedGetProductReviews.mockResolvedValue(mockProductReviews);
   });
 
   it("renders full product information with name, brand, category, price, and stock", async () => {
@@ -165,6 +198,34 @@ describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () =>
     });
 
     expect(mockedGetStorefrontProductDetail).toHaveBeenCalledWith(1);
+  });
+
+  it("renders the approved review average, total count, and review list", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+
+    renderProductDetailPage("/products/1");
+
+    expect(await screen.findByTestId("product-reviews-section")).toBeInTheDocument();
+    expect(screen.getByText("4.5/5")).toBeInTheDocument();
+    expect(screen.getByText("(2 lượt đánh giá)")).toBeInTheDocument();
+    expect(screen.getByText("Nguyễn Văn Review")).toBeInTheDocument();
+    expect(screen.getByText("Máy dùng rất tốt")).toBeInTheDocument();
+    expect(mockedGetProductReviews).toHaveBeenCalledWith(1, 0, 5);
+  });
+
+  it("shows a retryable error when loading product reviews fails", async () => {
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetProductReviews.mockRejectedValueOnce({
+      response: { data: { message: "Không thể tải danh sách nhận xét" } },
+      isAxiosError: true,
+    });
+
+    renderProductDetailPage("/products/1");
+
+    expect(await screen.findByText("Không thể tải danh sách nhận xét")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    await waitFor(() => expect(mockedGetProductReviews).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Máy dùng rất tốt")).toBeInTheDocument();
   });
 
   it("renders product specifications table correctly", async () => {
@@ -822,7 +883,7 @@ describe("US-06.4: ProductDetailPage - Gợi ý sản phẩm liên quan trên tr
     mockedGetRelatedProducts.mockImplementation(
       () =>
         new Promise((resolve) =>
-          setTimeout(() => resolve(mockRelatedList), 200),
+          setTimeout(() => resolve(mockRelatedList), 1000),
         ),
     );
 

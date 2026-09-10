@@ -1,4 +1,4 @@
--- TechStore manual migration
+-- Đăng Tùng Mobile manual migration
 -- Story: US-01.4 — one-time password reset by email
 -- Run once against an existing MySQL 8.0.16+ `techstore` database after
 -- V20260904_01__add_refresh_tokens.sql when that migration is applicable.

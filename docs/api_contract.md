@@ -1,4 +1,4 @@
-# TechStore API contract
+# Đăng Tùng Mobile API contract
 
 All application endpoints use the `/api/v1` base path and return the common
 `ApiResponse` envelope:

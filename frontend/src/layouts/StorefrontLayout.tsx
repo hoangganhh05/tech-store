@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
 import { useState, useEffect } from "react";
@@ -26,6 +27,7 @@ import {
 } from "react-router-dom";
 import { ROUTES } from "../constants/routes";
 import { env } from "../configs/env";
+import { DocumentMetadata } from "../components/common/DocumentMetadata";
 import { useAuthEvents } from "../hooks/useAuthEvents";
 import { useAuth } from "../hooks/useAuth";
 import { useCart } from "../hooks/useCart";
@@ -76,6 +78,7 @@ export function StorefrontLayout() {
 
   return (
     <Box minHeight="100vh" display="flex" flexDirection="column">
+      <DocumentMetadata />
       <a className="skip-link" href="#main-content">
         Bỏ qua điều hướng
       </a>
@@ -85,22 +88,41 @@ export function StorefrontLayout() {
         sx={{ borderBottom: "1px solid #e4e7eb" }}
       >
         <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ gap: 3 }}>
+          <Toolbar
+            disableGutters
+            sx={{
+              gap: { xs: 1, md: 3 },
+              py: { xs: 1, md: 0 },
+              flexWrap: { xs: "wrap", md: "nowrap" },
+            }}
+          >
             <Typography
               component={Link}
               to={ROUTES.home}
               variant="h6"
               color="primary"
               fontWeight={800}
+              sx={{
+                order: { xs: 1, md: 0 },
+                flex: { xs: "1 0 100%", sm: "1 1 140px", md: "0 1 auto" },
+                minWidth: 0,
+                overflowWrap: "anywhere",
+                lineHeight: 1.2,
+              }}
             >
-              {env.appName}
+              {env.brand.name}
             </Typography>
             <Stack
               component="nav"
               direction="row"
               spacing={0.5}
-              flex={1}
+              flex={{ xs: "1 0 100%", md: 1 }}
               aria-label="Điều hướng chính"
+              sx={{
+                order: { xs: 3, md: 0 },
+                overflowX: "auto",
+                minWidth: 0,
+              }}
             >
               {navItems.map((item) => (
                 <Button
@@ -124,7 +146,10 @@ export function StorefrontLayout() {
               onSubmit={handleSearchSubmit}
               role="search"
               aria-label="Tìm kiếm sản phẩm"
-              sx={{ width: { xs: 150, sm: 220, md: 280 } }}
+              sx={{
+                order: { xs: 4, md: 0 },
+                width: { xs: "100%", sm: 220, md: 280 },
+              }}
             >
               <TextField
                 size="small"
@@ -175,7 +200,12 @@ export function StorefrontLayout() {
             </Box>
 
             {isAuthenticated ? (
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ order: { xs: 2, md: 0 }, flexWrap: "wrap" }}
+              >
                 <Typography variant="body2" color="text.secondary" noWrap>
                   Chào, {user?.fullName}
                 </Typography>
@@ -185,6 +215,11 @@ export function StorefrontLayout() {
                 <Button component={Link} to={ROUTES.orders} color="inherit">
                   Đơn hàng
                 </Button>
+                {user?.roles?.includes("CUSTOMER") && (
+                  <Button component={Link} to={ROUTES.wishlist} color="inherit" startIcon={<FavoriteBorderRoundedIcon />}>
+                    Yêu thích
+                  </Button>
+                )}
                 <Button
                   color="inherit"
                   onClick={handleLogout}
@@ -194,20 +229,25 @@ export function StorefrontLayout() {
                 </Button>
               </Stack>
             ) : (
-              <>
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{ order: { xs: 2, md: 0 }, flexWrap: "wrap" }}
+              >
                 <Button component={Link} to={ROUTES.register} color="inherit">
                   Đăng ký
                 </Button>
                 <Button component={Link} to={ROUTES.login} color="inherit">
                   Đăng nhập
                 </Button>
-              </>
+              </Stack>
             )}
             <IconButton
               component={Link}
               to={ROUTES.cart}
               aria-label="Giỏ hàng"
               data-testid="header-cart-btn"
+              sx={{ order: { xs: 2, md: 0 } }}
             >
               <Badge
                 badgeContent={cartCount}
@@ -227,10 +267,57 @@ export function StorefrontLayout() {
       </Box>
       <Box component="footer" bgcolor="#263238" color="white" py={3}>
         <Container maxWidth="lg">
-          <Typography fontWeight={700}>{env.appName}</Typography>
-          <Typography variant="body2" color="#cfd8dc">
-            Điện thoại và phụ kiện công nghệ.
-          </Typography>
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            spacing={2}
+          >
+            <Box minWidth={0}>
+              <Typography fontWeight={700} sx={{ overflowWrap: "anywhere" }}>
+                {env.brand.name}
+              </Typography>
+              <Typography variant="body2" color="#cfd8dc">
+                {env.brand.industry}
+              </Typography>
+            </Box>
+            <Stack spacing={0.5} minWidth={0} maxWidth={{ md: 520 }}>
+              <Typography variant="body2" fontWeight={700}>
+                Liên hệ
+              </Typography>
+              {env.brand.address && (
+                <Typography
+                  component="address"
+                  variant="body2"
+                  color="#cfd8dc"
+                  sx={{ m: 0, overflowWrap: "anywhere" }}
+                >
+                  {env.brand.address}
+                </Typography>
+              )}
+              {env.brand.contact.phone && (
+                <Typography
+                  component="a"
+                  href={env.brand.contact.phoneHref}
+                  variant="body2"
+                  color="#cfd8dc"
+                  sx={{ width: "fit-content", overflowWrap: "anywhere" }}
+                >
+                  {env.brand.contact.phone}
+                </Typography>
+              )}
+              {env.brand.contact.email && (
+                <Typography
+                  component="a"
+                  href={env.brand.contact.emailHref}
+                  variant="body2"
+                  color="#cfd8dc"
+                  sx={{ width: "fit-content", overflowWrap: "anywhere" }}
+                >
+                  {env.brand.contact.email}
+                </Typography>
+              )}
+            </Stack>
+          </Stack>
         </Container>
       </Box>
       <Snackbar

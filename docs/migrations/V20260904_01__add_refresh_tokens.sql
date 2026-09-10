@@ -1,4 +1,4 @@
--- TechStore manual migration
+-- Đăng Tùng Mobile manual migration
 -- Story: US-01.3 — logout and server-side refresh-token revocation
 -- Run once against an existing MySQL 8.0.16+ `techstore` database.
 

@@ -18,6 +18,8 @@ import { isAxiosError } from 'axios'
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
+import { env } from '../../configs/env'
+import { DocumentMetadata } from '../../components/common/DocumentMetadata'
 import { useAuth } from '../../hooks/useAuth'
 import { loginAdminAccount, type LoginPayload } from '../../services/authService'
 
@@ -104,6 +106,7 @@ export function AdminLoginPage() {
         p: 2,
       }}
     >
+      <DocumentMetadata section="Đăng nhập quản trị" />
       <Container maxWidth="xs">
         <Card
           sx={{
@@ -151,7 +154,7 @@ export function AdminLoginPage() {
 
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Typography variant="body2" color="text.secondary" textAlign="center" mb={3}>
-              Cổng đăng nhập bảo mật dành riêng cho Quản trị viên TechStore.
+              Cổng đăng nhập dành riêng cho Quản trị viên {env.brand.name}.
             </Typography>
 
             <Stack component="form" spacing={2.5} onSubmit={handleSubmit} noValidate>

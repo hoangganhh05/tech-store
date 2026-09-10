@@ -1,4 +1,4 @@
-# TechStore implementation backlog
+# Đăng Tùng Mobile implementation backlog
 
 ## EPIC-00 — Project initialization and preparation
 

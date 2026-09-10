@@ -871,10 +871,7 @@ describe("US-07.4: Hệ thống tự tính tổng tiền giỏ hàng (tạm tín
       "30.000 ₫",
     );
     expect(screen.getByTestId("cart-total")).toHaveTextContent("1.030.000 ₫");
-    expect(screen.getByTestId("freeship-progress-notice")).toBeInTheDocument();
-    expect(screen.getByTestId("freeship-progress-notice")).toHaveTextContent(
-      "Mua thêm 4.000.000 ₫ để được Miễn phí vận chuyển!",
-    );
+    expect(screen.queryByTestId("freeship-progress-notice")).not.toBeInTheDocument();
   });
 
   it("calculates and displays free shipping and subtotal when equal or above 5M threshold", async () => {
@@ -905,15 +902,11 @@ describe("US-07.4: Hệ thống tự tính tổng tiền giỏ hàng (tạm tín
     expect(screen.getByTestId("cart-shipping-fee")).toHaveTextContent(
       "Miễn phí",
     );
-    expect(screen.getByText("FREE SHIP")).toBeInTheDocument();
     expect(screen.getByTestId("cart-total")).toHaveTextContent("51.980.000 ₫");
-    expect(screen.getByTestId("freeship-eligible-notice")).toBeInTheDocument();
-    expect(screen.getByTestId("freeship-eligible-notice")).toHaveTextContent(
-      "Đơn hàng đủ điều kiện Miễn phí vận chuyển toàn quốc!",
-    );
+    expect(screen.queryByTestId("freeship-eligible-notice")).not.toBeInTheDocument();
   });
 
-  it("recalculates total and shipping dynamically when quantity increases above free shipping threshold", async () => {
+  it("recalculates total and shipping dynamically when the shipping fee becomes zero", async () => {
     mockedGetCart.mockResolvedValue(mockCartUnderThreshold);
     mockedUpdateCartItemQuantity.mockResolvedValue({
       id: 1,
@@ -975,8 +968,8 @@ describe("US-07.4: Hệ thống tự tính tổng tiền giỏ hàng (tạm tín
       );
       expect(screen.getByTestId("cart-total")).toHaveTextContent("5.000.000 ₫");
       expect(
-        screen.getByTestId("freeship-eligible-notice"),
-      ).toBeInTheDocument();
+        screen.queryByTestId("freeship-eligible-notice"),
+      ).not.toBeInTheDocument();
     });
   });
 
