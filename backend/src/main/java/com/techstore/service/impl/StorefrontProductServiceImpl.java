@@ -451,6 +451,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                         int pct = diff.multiply(BigDecimal.valueOf(100))
                                 .divide(effectivePrice.originalPrice(), 0, RoundingMode.HALF_UP)
                                 .intValue();
+                        if (pct > 0) pct = Math.max(1, pct);
                         if (pct > maxDiscount) {
                             maxDiscount = pct;
                             bestOriginalPrice = effectivePrice.originalPrice();
@@ -567,6 +568,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                     int pct = diff.multiply(BigDecimal.valueOf(100))
                             .divide(effectivePrice.originalPrice(), 0, RoundingMode.HALF_UP)
                             .intValue();
+                    if (pct > 0) pct = Math.max(1, pct);
                     if (pct > maxDiscount) {
                         maxDiscount = pct;
                         bestOriginalPrice = effectivePrice.originalPrice();

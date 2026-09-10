@@ -70,4 +70,20 @@ describe("US-12.3: AdminPromotionsPage", () => {
     expect(await screen.findByRole("combobox", { name: "Chọn danh mục" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Chọn sản phẩm" })).not.toBeInTheDocument();
   });
+
+  it("shows API timestamps in local datetime inputs when editing", async () => {
+    const timezoneSpy = vi.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(-420);
+
+    render(<AdminPromotionsPage />);
+    await screen.findByText("Flash sale tháng 9");
+
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Sửa Flash sale tháng 9" }));
+
+      expect(screen.getByDisplayValue("2026-09-01T07:00")).toBeInTheDocument();
+      expect(screen.getByDisplayValue("2026-10-01T06:59")).toBeInTheDocument();
+    } finally {
+      timezoneSpy.mockRestore();
+    }
+  });
 });
