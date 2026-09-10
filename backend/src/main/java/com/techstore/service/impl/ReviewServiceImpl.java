@@ -134,5 +134,44 @@ public class ReviewServiceImpl implements ReviewService {
 
         return reviewRepository.findByUserIdAndProductId(userId, productId).map(ReviewResponse::from);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ReviewResponse> getAdminReviews(ReviewStatus status, int page, int size) {
+        validatePage(page, size);
+        Sort sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        Page<Review> reviewPage = status == null
+                ? reviewRepository.findAll(PageRequest.of(page, size, sort))
+                : reviewRepository.findByStatus(status, PageRequest.of(page, size, sort));
+        return PageResponse.of(reviewPage.map(ReviewResponse::from));
+    }
+
+    @Override
+    public ReviewResponse updateReviewStatus(Long adminUserId, Long reviewId, ReviewStatus status) {
+        if (adminUserId == null) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "Không xác định được tài khoản quản trị");
+        }
+        if (reviewId == null || reviewId < 1) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Mã đánh giá không hợp lệ");
+        }
+        if (status == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Trạng thái đánh giá không được để trống");
+        }
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND, "Không tìm thấy đánh giá"));
+        review.setStatus(status);
+        return ReviewResponse.from(reviewRepository.save(review));
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số trang phải lớn hơn hoặc bằng 0");
+        }
+        if (size < 1 || size > MAX_REVIEW_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR,
+                    "Kích thước trang phải nằm trong khoảng từ 1 đến " + MAX_REVIEW_PAGE_SIZE);
+        }
+    }
 }
 
