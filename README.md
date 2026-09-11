@@ -29,6 +29,7 @@ Tài liệu chính:
 - [Thiết kế database](docs/DATABASE_DESIGN.md)
 - [Quy ước Git](docs/git-conventions.md)
 - [Continuous Integration](docs/CI.md)
+- [Docker production packaging](docs/US-15.1-docker.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
