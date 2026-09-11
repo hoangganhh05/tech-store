@@ -30,6 +30,7 @@ Tài liệu chính:
 - [Quy ước Git](docs/git-conventions.md)
 - [Continuous Integration](docs/CI.md)
 - [Docker production packaging](docs/US-15.1-docker.md)
+- [Production environment configuration](docs/US-15.2-environment.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
