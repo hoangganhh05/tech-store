@@ -1,0 +1,93 @@
+name: techstore
+
+services:
+  database:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-techstore}
+      MYSQL_USER: ${MYSQL_USER:-techstore}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - app_network
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://database:3306/${MYSQL_DATABASE:-techstore}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
+      DB_USERNAME: ${MYSQL_USER:-techstore}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-20}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE:-5}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT15M}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-P7D}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in .env}
+      PASSWORD_RESET_FRONTEND_URL: ${PASSWORD_RESET_FRONTEND_URL:?Set PASSWORD_RESET_FRONTEND_URL in .env}
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST in .env}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?Set MAIL_USERNAME in .env}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Set MAIL_PASSWORD in .env}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM in .env}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-true}
+      MAIL_CONNECTION_TIMEOUT: ${MAIL_CONNECTION_TIMEOUT:-5000}
+      MAIL_TIMEOUT: ${MAIL_TIMEOUT:-5000}
+      MAIL_WRITE_TIMEOUT: ${MAIL_WRITE_TIMEOUT:-5000}
+      UPLOAD_DIR: /data/uploads/products
+      UPLOAD_BASE_DIR: /data/uploads
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/data/uploads
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    networks:
+      - app_network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app_network
+
+volumes:
+  mysql_data:
+  uploads_data:
+
+networks:
+  app_network:
+    driver: bridge
