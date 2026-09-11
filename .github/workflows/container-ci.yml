@@ -1,0 +1,44 @@
+name: Container packaging
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose-smoke-test:
+    name: Container Compose smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Create isolated container environment
+        run: cp .env.example .env
+
+      - name: Build and start production containers
+        run: docker compose up --build --detach --wait --wait-timeout 240
+
+      - name: Verify public storefront and API readiness
+        run: |
+          curl --fail --retry 5 --retry-connrefused http://localhost:8080/
+          curl --fail --retry 5 --retry-connrefused http://localhost:8080/api/v1/health
+
+      - name: Collect container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Remove test containers and volumes
+        if: always()
+        run: docker compose down --volumes --remove-orphans
