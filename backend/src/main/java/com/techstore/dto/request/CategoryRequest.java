@@ -8,6 +8,7 @@ public record CategoryRequest(
         @Size(max = 100, message = "Tên danh mục tối đa 100 ký tự")
         String name,
 
+        @Size(max = 10000, message = "Mô tả danh mục tối đa 10000 ký tự")
         String description,
 
         Long parentId,

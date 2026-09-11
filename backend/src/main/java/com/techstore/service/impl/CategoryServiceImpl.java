@@ -9,6 +9,7 @@ import com.techstore.enums.ErrorCode;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.security.SafeUrlValidator;
 import com.techstore.service.CategoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
                 trimmedName,
                 request.description() != null ? request.description().trim() : null,
                 parent,
-                request.imageUrl() != null ? request.imageUrl().trim() : null
+                SafeUrlValidator.normalizeImageUrl(request.imageUrl())
         );
 
         Category saved = categoryRepository.save(category);
@@ -97,7 +98,7 @@ public class CategoryServiceImpl implements CategoryService {
                 trimmedName,
                 request.description() != null ? request.description().trim() : null,
                 newParent,
-                request.imageUrl() != null ? request.imageUrl().trim() : null
+                SafeUrlValidator.normalizeImageUrl(request.imageUrl())
         );
 
         Category updated = categoryRepository.save(category);

@@ -213,6 +213,23 @@ describe("US-06.1: ProductDetailPage - Xem trang chi tiết sản phẩm", () =>
     expect(mockedGetProductReviews).toHaveBeenCalledWith(1, 0, 5);
   });
 
+  it("renders review content as text so HTML payloads cannot execute", async () => {
+    const maliciousComment = "<img src=x onerror=alert(1)>";
+    mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
+    mockedGetProductReviews.mockResolvedValue({
+      ...mockProductReviews,
+      reviews: {
+        ...mockProductReviews.reviews,
+        items: [{ ...mockProductReviews.reviews.items[0], comment: maliciousComment }],
+      },
+    });
+
+    renderProductDetailPage("/products/1");
+
+    expect(await screen.findByText(maliciousComment)).toBeInTheDocument();
+    expect(document.querySelector("img[onerror]")).toBeNull();
+  });
+
   it("shows a retryable error when loading product reviews fails", async () => {
     mockedGetStorefrontProductDetail.mockResolvedValue(mockProductDetail);
     mockedGetProductReviews.mockRejectedValueOnce({

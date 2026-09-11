@@ -10,6 +10,7 @@ public record ProductUpdateRequest(
         @Size(max = 255, message = "Tên sản phẩm tối đa 255 ký tự")
         String name,
 
+        @Size(max = 10000, message = "Mô tả sản phẩm tối đa 10000 ký tự")
         String description,
 
         @NotNull(message = "Thương hiệu không được để trống")

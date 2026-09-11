@@ -50,10 +50,16 @@ public class UserManagementServiceImpl implements UserManagementService {
     @Override
     @Transactional
     public UserResponse updateUserStatus(Long currentAdminId, Long targetUserId, UpdateUserStatusRequest request) {
+        if (currentAdminId == null || currentAdminId < 1) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED, "Không xác định được tài khoản quản trị");
+        }
+        if (targetUserId == null || targetUserId < 1 || request == null || request.getStatus() == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Dữ liệu cập nhật trạng thái không hợp lệ");
+        }
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Không tìm thấy người dùng"));
 
-        if (currentAdminId != null && currentAdminId.equals(targetUserId) && request.getStatus() == UserStatus.LOCKED) {
+        if (currentAdminId.equals(targetUserId) && request.getStatus() == UserStatus.LOCKED) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Không thể tự khoá tài khoản của chính mình");
         }
 
