@@ -221,17 +221,16 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         }
 
         List<Product> products;
-        if (categoryId != null) {
+        if (categoryId != null && validBrandIds != null) {
+            products = productRepository.findByCategoryOrParentCategoryIdAndStatusAndBrandIdIn(
+                    categoryId, ProductStatus.ACTIVE, validBrandIds);
+        } else if (categoryId != null) {
             products = productRepository.findByCategoryOrParentCategoryIdAndStatus(categoryId, ProductStatus.ACTIVE);
+        } else if (validBrandIds != null) {
+            products = productRepository.findByStatusAndIsDeletedFalseAndBrandIdInOrderByCreatedAtDesc(
+                    ProductStatus.ACTIVE, validBrandIds);
         } else {
             products = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
-        }
-
-        if (validBrandIds != null) {
-            final List<Long> filterBrandIds = validBrandIds;
-            products = products.stream()
-                    .filter(p -> p.getBrand() != null && filterBrandIds.contains(p.getBrand().getId()))
-                    .toList();
         }
 
         List<StorefrontProductResponse> responses = mapToStorefrontProductResponses(products);
@@ -334,13 +333,25 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             return Collections.emptyList();
         }
         String trimmed = query.trim();
+        if (trimmed.length() > 100) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Từ khoá tìm kiếm không được vượt quá 100 ký tự");
+        }
         String normalizedKeyword = removeAccents(trimmed).toLowerCase();
 
-        List<Product> activeProducts = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE);
-
-        List<Product> matched = activeProducts.stream()
+        List<Product> candidates = productRepository.findActiveSearchCandidates(trimmed, ProductStatus.ACTIVE);
+        List<Product> matched = candidates.stream()
                 .filter(p -> matchesSearch(p, normalizedKeyword))
                 .toList();
+
+        // MySQL collations are commonly accent-insensitive, while H2 (used by
+        // tests) is not. A fallback preserves the existing accent-insensitive
+        // contract when the indexed candidate query has no match.
+        if (matched.isEmpty()) {
+            matched = productRepository.findByStatusAndIsDeletedFalseOrderByCreatedAtDesc(ProductStatus.ACTIVE)
+                    .stream()
+                    .filter(p -> matchesSearch(p, normalizedKeyword))
+                    .toList();
+        }
 
         return mapToStorefrontProductResponses(matched);
     }
@@ -351,8 +362,8 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             return Collections.emptyList();
         }
 
-        Map<Long, Product> productsById = productRepository.findAllById(productIds).stream()
-                .filter(product -> product.getStatus() == ProductStatus.ACTIVE && !product.isDeleted())
+        Map<Long, Product> productsById = productRepository.findByIdInAndStatusAndIsDeletedFalse(
+                        productIds, ProductStatus.ACTIVE).stream()
                 .collect(Collectors.toMap(Product::getId, product -> product));
         List<Product> orderedProducts = productIds.stream()
                 .map(productsById::get)
