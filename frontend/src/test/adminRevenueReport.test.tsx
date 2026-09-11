@@ -91,12 +91,14 @@ describe("US-13.4: AdminRevenueReportPage", () => {
     renderPage();
 
     await screen.findByText("Chi tiết doanh thu theo ngày");
+    const dateInputs = screen.getAllByLabelText(/ngày/i) as HTMLInputElement[];
+    const displayedRange = {
+      fromDate: dateInputs[0].value,
+      toDate: dateInputs[1].value,
+    };
     fireEvent.click(screen.getByRole("button", { name: "Xuất báo cáo doanh thu ra Excel" }));
 
-    await waitFor(() => expect(mockedExportRevenueReport).toHaveBeenCalledWith({
-      fromDate: "2026-09-01",
-      toDate: "2026-09-10",
-    }));
+    await waitFor(() => expect(mockedExportRevenueReport).toHaveBeenCalledWith(displayedRange));
     expect(createObjectUrl).toHaveBeenCalled();
     expect(revokeObjectUrl).toHaveBeenCalledWith("blob:test");
     expect(anchorClick).toHaveBeenCalled();
