@@ -148,6 +148,8 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
               top: 8,
               right: 8,
               zIndex: 3,
+              minWidth: 44,
+              minHeight: 44,
               bgcolor: "rgba(255,255,255,0.94)",
               color: isFavorite ? "error.main" : "text.secondary",
               "&:hover": { bgcolor: "#fff" },

@@ -91,23 +91,23 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
         <Typography variant="h6">Sản phẩm ({cart.totalItems})</Typography>
       </Stack>
       <Divider />
-      {cart.items.map((item) => <Stack key={item.id} direction="row" spacing={2} py={2} data-testid={`review-item-${item.id}`}>
+      {cart.items.map((item) => <Stack key={item.id} direction={{ xs: "column", sm: "row" }} spacing={2} py={2} data-testid={`review-item-${item.id}`} sx={{ minWidth: 0 }}>
         {item.imageUrl ? <Box component="img" src={item.imageUrl} alt={item.productName}
-          sx={{ width: 72, height: 72, objectFit: "cover", borderRadius: 1 }} /> :
-          <ShoppingBagOutlinedIcon sx={{ width: 72, height: 72, color: "text.disabled" }} />}
-        <Box flex={1}>
-          <Typography fontWeight={600}>{item.productName}</Typography>
+          sx={{ width: 72, height: 72, minWidth: 72, objectFit: "cover", borderRadius: 1 }} /> :
+          <ShoppingBagOutlinedIcon sx={{ width: 72, height: 72, minWidth: 72, color: "text.disabled" }} />}
+        <Box flex={1} minWidth={0}>
+          <Typography fontWeight={600} sx={{ overflowWrap: "anywhere" }}>{item.productName}</Typography>
           <Typography variant="body2" color="text.secondary">
             {[item.color, item.storage].filter(Boolean).join(" · ") || `SKU: ${item.sku}`}
           </Typography>
           <Typography variant="body2">{formatPrice(item.price)} × {item.quantity}</Typography>
         </Box>
-        <Typography fontWeight={600}>{formatPrice(item.subtotal)}</Typography>
+        <Typography fontWeight={600} sx={{ whiteSpace: "nowrap", alignSelf: { xs: "flex-end", sm: "auto" } }}>{formatPrice(item.subtotal)}</Typography>
       </Stack>)}
     </Box>
 
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.5, sm: 0 }}>
         <Typography variant="h6">Địa chỉ giao hàng</Typography>
         <Button size="small" startIcon={<EditOutlinedIcon />} onClick={onEditAddress}>Thay đổi</Button>
       </Stack>
@@ -116,7 +116,7 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
     </Box>
 
     <Box>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.5, sm: 0 }}>
         <Typography variant="h6">Phương thức thanh toán</Typography>
         <Button size="small" startIcon={<EditOutlinedIcon />} onClick={onEditPayment}>Thay đổi</Button>
       </Stack>
@@ -128,7 +128,8 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={2}>
         <TextField size="small" label="Mã voucher" value={voucherCode}
           onChange={(event) => { setVoucherCode(event.target.value.toUpperCase()); setVoucherError(null); setOrderError(null); setReviewError(null); setAppliedVoucher(null); setAppliedVoucherCode(undefined); }}
-          inputProps={{ "data-testid": "voucher-code-input" }} disabled={applyingVoucher || placing} />
+          inputProps={{ "data-testid": "voucher-code-input" }} disabled={applyingVoucher || placing}
+          sx={{ width: { xs: "100%", sm: 220 } }} />
         <Button variant="outlined" onClick={applyVoucherCode} disabled={!voucherCode.trim() || applyingVoucher || placing}
           data-testid="apply-voucher-btn">{applyingVoucher ? <CircularProgress size={18} /> : "Áp dụng"}</Button>
       </Stack>
@@ -136,11 +137,11 @@ export function OrderReviewStep({ addressId, paymentOption, onEditAddress, onEdi
       {appliedVoucher && <Alert severity="success" sx={{ mb: 2 }} data-testid="voucher-success" action={<Button color="inherit" size="small" onClick={() => { setVoucherCode(""); setAppliedVoucher(null); setAppliedVoucherCode(undefined); setVoucherError(null); void loadReview(""); }}>Gỡ mã</Button>}>Đã áp dụng mã {appliedVoucher.code}</Alert>}
       <Divider sx={{ mb: 2 }} />
       <Stack spacing={1}>
-        <Stack direction="row" justifyContent="space-between"><Typography>Tạm tính</Typography><Typography>{formatPrice(cart.subtotal)}</Typography></Stack>
-        <Stack direction="row" justifyContent="space-between"><Typography>Phí vận chuyển</Typography><Typography>{cart.shippingFee === 0 ? "Miễn phí" : formatPrice(cart.shippingFee)}</Typography></Stack>
-        <Stack direction="row" justifyContent="space-between"><Typography>Giảm giá</Typography><Typography color={cart.discountAmount > 0 ? "error.main" : "inherit"}>-{formatPrice(cart.discountAmount)}</Typography></Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}><Typography>Tạm tính</Typography><Typography>{formatPrice(cart.subtotal)}</Typography></Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}><Typography>Phí vận chuyển</Typography><Typography>{cart.shippingFee === 0 ? "Miễn phí" : formatPrice(cart.shippingFee)}</Typography></Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}><Typography>Giảm giá</Typography><Typography color={cart.discountAmount > 0 ? "error.main" : "inherit"}>-{formatPrice(cart.discountAmount)}</Typography></Stack>
         <Divider />
-        <Stack direction="row" justifyContent="space-between"><Typography variant="h6">Tổng cộng</Typography><Typography variant="h6" color="primary" fontWeight={700}>{formatPrice(cart.total)}</Typography></Stack>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}><Typography variant="h6">Tổng cộng</Typography><Typography variant="h6" color="primary" fontWeight={700}>{formatPrice(cart.total)}</Typography></Stack>
       </Stack>
     </Box>
 
