@@ -187,8 +187,8 @@ export function CartPage() {
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 8 }}>
             <Card>
-              <TableContainer>
-                <Table data-testid="cart-table">
+              <TableContainer sx={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <Table data-testid="cart-table" sx={{ minWidth: { xs: 680, sm: 760 } }}>
                   <TableHead>
                     <TableRow>
                       <TableCell>Sản phẩm</TableCell>
@@ -224,6 +224,7 @@ export function CartPage() {
                               direction="row"
                               spacing={2}
                               alignItems="center"
+                              sx={{ minWidth: 0 }}
                             >
                               <Avatar
                                 variant="rounded"
@@ -235,7 +236,7 @@ export function CartPage() {
                                   bgcolor: "grey.100",
                                 }}
                               />
-                              <Box>
+                              <Box minWidth={0}>
                                 <Typography
                                   component={Link}
                                   to={`/products/${item.productId}`}
@@ -245,6 +246,7 @@ export function CartPage() {
                                     textDecoration: "none",
                                     color: "inherit",
                                     fontWeight: 600,
+                                    overflowWrap: "anywhere",
                                     "&:hover": { color: "primary.main" },
                                   }}
                                 >
@@ -253,6 +255,8 @@ export function CartPage() {
                                 <Stack
                                   direction="row"
                                   spacing={1}
+                                  flexWrap="wrap"
+                                  useFlexGap
                                   sx={{ mt: 0.5 }}
                                 >
                                   {item.color && (
@@ -437,7 +441,7 @@ export function CartPage() {
                 </Typography>
                 <Divider sx={{ my: 1.5 }} />
                 <Stack spacing={1.5}>
-                  <Stack direction="row" justifyContent="space-between">
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.25, sm: 0 }}>
                     <Typography color="text.secondary">
                       Tổng số lượng:
                     </Typography>
@@ -445,16 +449,17 @@ export function CartPage() {
                       {cart.totalItems} sản phẩm
                     </Typography>
                   </Stack>
-                  <Stack direction="row" justifyContent="space-between">
+                  <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.25, sm: 0 }}>
                     <Typography color="text.secondary">Tạm tính:</Typography>
                     <Typography fontWeight={600} data-testid="cart-subtotal">
                       {formatPrice(cart.subtotal)}
                     </Typography>
                   </Stack>
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    spacing={{ xs: 0.25, sm: 0 }}
                   >
                     <Typography color="text.secondary">
                       Phí vận chuyển dự kiến:
@@ -478,7 +483,7 @@ export function CartPage() {
                   </Stack>
 
                   {cart.discountAmount > 0 && (
-                    <Stack direction="row" justifyContent="space-between">
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={{ xs: 0.25, sm: 0 }}>
                       <Typography color="text.secondary">
                         Giảm giá voucher:
                       </Typography>
@@ -494,9 +499,10 @@ export function CartPage() {
 
                   <Divider sx={{ my: 1 }} />
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="baseline"
+                    alignItems={{ xs: "flex-start", sm: "baseline" }}
+                    spacing={{ xs: 0.5, sm: 0 }}
                   >
                     <Typography variant="subtitle1" fontWeight={700}>
                       Tổng cộng:

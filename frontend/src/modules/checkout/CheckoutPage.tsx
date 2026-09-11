@@ -176,9 +176,10 @@ export function CheckoutPage() {
               <Card data-testid="checkout-step-address">
                 <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    spacing={{ xs: 1, sm: 0 }}
                     mb={2}
                   >
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -193,6 +194,7 @@ export function CheckoutPage() {
                       startIcon={<AddIcon />}
                       onClick={handleOpenAdd}
                       data-testid="add-new-address-btn"
+                      sx={{ alignSelf: { xs: "stretch", sm: "auto" } }}
                     >
                       Thêm địa chỉ mới
                     </Button>
@@ -295,6 +297,8 @@ export function CheckoutPage() {
                                 <Stack
                                   direction="row"
                                   alignItems="center"
+                                  flexWrap="wrap"
+                                  useFlexGap
                                   spacing={1}
                                   mb={0.5}
                                 >
@@ -339,7 +343,7 @@ export function CheckoutPage() {
                   <Box
                     sx={{
                       display: "flex",
-                      justifyContent: "flex-end",
+                      justifyContent: { xs: "stretch", sm: "flex-end" },
                       mt: 3,
                     }}
                   >
@@ -350,6 +354,8 @@ export function CheckoutPage() {
                       disabled={!selectedAddressId || isCartEmpty}
                       onClick={handleContinue}
                       data-testid="continue-to-payment-btn"
+                      fullWidth
+                      sx={{ maxWidth: { sm: "fit-content" } }}
                     >
                       Tiếp tục đến thanh toán
                     </Button>
@@ -440,9 +446,10 @@ export function CheckoutPage() {
 
                 <Stack spacing={1.5} mb={2}>
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    spacing={{ xs: 0.25, sm: 0 }}
                   >
                     <Typography color="text.secondary">
                       Tạm tính ({summaryCart?.totalItems || 0} sản phẩm)
@@ -453,9 +460,10 @@ export function CheckoutPage() {
                   </Stack>
 
                   <Stack
-                    direction="row"
+                    direction={{ xs: "column", sm: "row" }}
                     justifyContent="space-between"
-                    alignItems="center"
+                    alignItems={{ xs: "flex-start", sm: "center" }}
+                    spacing={{ xs: 0.25, sm: 0 }}
                   >
                     <Typography color="text.secondary">
                       Phí vận chuyển
@@ -474,9 +482,10 @@ export function CheckoutPage() {
 
                   {Boolean(summaryCart?.discountAmount && summaryCart.discountAmount > 0) && (
                     <Stack
-                      direction="row"
+                      direction={{ xs: "column", sm: "row" }}
                       justifyContent="space-between"
-                      alignItems="center"
+                      alignItems={{ xs: "flex-start", sm: "center" }}
+                      spacing={{ xs: 0.25, sm: 0 }}
                     >
                       <Typography color="text.secondary">Giảm giá</Typography>
                       <Typography fontWeight={500} color="error.main">
@@ -489,9 +498,10 @@ export function CheckoutPage() {
                 <Divider sx={{ my: 2 }} />
 
                 <Stack
-                  direction="row"
+                  direction={{ xs: "column", sm: "row" }}
                   justifyContent="space-between"
-                  alignItems="baseline"
+                  alignItems={{ xs: "flex-start", sm: "baseline" }}
+                  spacing={{ xs: 0.5, sm: 0 }}
                   mb={3}
                 >
                   <Typography variant="subtitle1" fontWeight={700}>

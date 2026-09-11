@@ -59,12 +59,12 @@ export function PaymentMethodStep({ selected, onContinue, onBack, onSelectionCha
       setError(null)
     }}>
       {methods.map((item) => <FormControlLabel key={item.paymentMethod} value={item.paymentMethod}
-        control={<Radio />} label={item.label} disabled={saving} />)}
+        control={<Radio />} label={item.label} disabled={saving} sx={{ m: 0, minHeight: 48 }} />)}
     </RadioGroup>}
     {option && <Alert severity="info">{option.instructions}</Alert>}
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between">
-      <Button variant="outlined" disabled={saving} onClick={onBack} data-testid="back-to-address-btn">Quay lại chọn địa chỉ</Button>
-      <Button variant="contained" disabled={loading || saving || !option} onClick={submit}>
+      <Button variant="outlined" disabled={saving} onClick={onBack} data-testid="back-to-address-btn" fullWidth sx={{ width: { sm: 'auto' } }}>Quay lại chọn địa chỉ</Button>
+      <Button variant="contained" disabled={loading || saving || !option} onClick={submit} fullWidth sx={{ width: { sm: 'auto' } }}>
         {saving ? 'Đang xác nhận...' : 'Tiếp tục xem lại đơn hàng'}
       </Button>
     </Stack>

@@ -179,9 +179,10 @@ export function HomePage() {
       {/* 2. Featured Categories */}
       <Box>
         <Stack
-          direction="row"
+          direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
-          alignItems="flex-end"
+          alignItems={{ xs: "flex-start", sm: "flex-end" }}
+          spacing={{ xs: 1, sm: 0 }}
           mb={2.5}
         >
           <Box>
@@ -301,9 +302,10 @@ export function HomePage() {
           }}
         >
           <Stack
-            direction="row"
+            direction={{ xs: "column", sm: "row" }}
             justifyContent="space-between"
-            alignItems="center"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            spacing={{ xs: 1, sm: 0 }}
             mb={2.5}
           >
             <Stack direction="row" spacing={1} alignItems="center">
@@ -350,9 +352,10 @@ export function HomePage() {
       {/* 4. Featured Products Section */}
       <Box>
         <Stack
-          direction="row"
+          direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
-          alignItems="flex-end"
+          alignItems={{ xs: "flex-start", sm: "flex-end" }}
+          spacing={{ xs: 1, sm: 0 }}
           mb={2.5}
         >
           <Stack direction="row" spacing={1} alignItems="center">
@@ -417,9 +420,10 @@ export function HomePage() {
       {/* 5. New Arrivals Section */}
       <Box>
         <Stack
-          direction="row"
+          direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
-          alignItems="flex-end"
+          alignItems={{ xs: "flex-start", sm: "flex-end" }}
+          spacing={{ xs: 1, sm: 0 }}
           mb={2.5}
         >
           <Stack direction="row" spacing={1} alignItems="center">
