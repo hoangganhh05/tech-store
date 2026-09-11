@@ -18,9 +18,9 @@ frontend/test-results/
 
 # Environment and secrets
 .env
-backend/.env
-frontend/.env
+.env.*
 !**/.env.example
+!**/.env.*.example
 
 # Operating system
 .DS_Store

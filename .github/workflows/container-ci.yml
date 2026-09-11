@@ -25,7 +25,19 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Create isolated container environment
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          cat >> .env <<'EOF'
+          MYSQL_PASSWORD=ci-database-password
+          MYSQL_ROOT_PASSWORD=ci-root-database-password
+          JWT_SECRET=ci-jwt-secret-that-is-longer-than-thirty-two-characters
+          CORS_ALLOWED_ORIGINS=http://localhost:8080
+          PASSWORD_RESET_FRONTEND_URL=http://localhost:8080
+          MAIL_HOST=smtp.example.test
+          MAIL_USERNAME=ci-smtp-user
+          MAIL_PASSWORD=ci-smtp-password
+          MAIL_FROM=no-reply@example.test
+          EOF
 
       - name: Build and start production containers
         run: docker compose up --build --detach --wait --wait-timeout 240
