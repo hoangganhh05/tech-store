@@ -32,7 +32,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ActiveProfiles("test")
-@SpringBootTest
+@SpringBootTest(properties = {
+        "logging.level.root=WARN",
+        "logging.level.com.techstore=WARN",
+        "logging.level.org.springframework=WARN",
+        "logging.level.org.hibernate.SQL=OFF",
+        "logging.level.org.hibernate.orm.jdbc.bind=OFF"
+})
 @AutoConfigureMockMvc
 class StorefrontPerformanceTest {
 

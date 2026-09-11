@@ -14,6 +14,10 @@ Backend Surefire reports and the Frontend JUnit report are retained as workflow
 artifacts for seven days. Test and build output for both applications is also
 available directly in the job logs.
 
+The backend `verify` phase also generates a JaCoCo report and enforces at least
+70% instruction coverage across the core cart, order, inventory, checkout-review,
+promotion and voucher services.
+
 ## Required checks for `main`
 
 The `main` branch is protected on GitHub. The active rule uses these settings:
