@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.http.HttpStatus;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -26,7 +27,7 @@ public class RoleAuthorizationInterceptor implements HandlerInterceptor {
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod handlerMethod)) {
             return true;
         }
@@ -35,19 +36,24 @@ public class RoleAuthorizationInterceptor implements HandlerInterceptor {
         RequireRole classAnnotation = handlerMethod.getBeanType().getAnnotation(RequireRole.class);
         RequireRole requireRole = methodAnnotation != null ? methodAnnotation : classAnnotation;
 
-        boolean isAdminPath = request.getRequestURI().contains("/admin") && !request.getRequestURI().contains("/auth/");
+        String path = request.getRequestURI();
+        boolean isAdminPath = path.matches(".*\\/admin(?:\\/|$).*") && !path.contains("/auth/");
         Set<RoleCode> requiredRoles = requireRole != null
                 ? EnumSet.copyOf(Arrays.asList(requireRole.value()))
                 : (isAdminPath ? Set.of(RoleCode.ADMIN) : Set.of());
 
         if (!requiredRoles.isEmpty()) {
             AccessTokenAuthenticator authenticator = accessTokenAuthenticatorProvider.getIfAvailable();
-            if (authenticator != null) {
-                String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-                AccessTokenClaims claims = authenticator.requireAnyRole(authorizationHeader, requiredRoles);
-                request.setAttribute(CURRENT_USER_CLAIMS_ATTRIBUTE, claims);
-                request.setAttribute(CURRENT_USER_ID_ATTRIBUTE, claims.userId());
+            if (authenticator == null) {
+                // A missing authenticator must never turn a protected endpoint
+                // into an anonymous endpoint (fail closed).
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                return false;
             }
+            String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+            AccessTokenClaims claims = authenticator.requireAnyRole(authorizationHeader, requiredRoles);
+            request.setAttribute(CURRENT_USER_CLAIMS_ATTRIBUTE, claims);
+            request.setAttribute(CURRENT_USER_ID_ATTRIBUTE, claims.userId());
         }
 
         return true;

@@ -29,6 +29,7 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
             "image/png",
             "image/webp"
     );
+    private static final String STORED_FILE_PATTERN = "[a-f0-9-]+\\.(jpg|jpeg|png|webp)";
 
     private final Path uploadPath;
 
@@ -82,7 +83,15 @@ public class LocalFileStorageServiceImpl implements FileStorageService {
 
         try {
             String filename = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+            if (!filename.matches(STORED_FILE_PATTERN)) {
+                log.warn("Ignoring unsafe file deletion URL {}", fileUrl);
+                return;
+            }
             Path filePath = this.uploadPath.resolve(filename).normalize();
+            if (!filePath.getParent().equals(this.uploadPath)) {
+                log.warn("Ignoring file deletion outside upload directory: {}", fileUrl);
+                return;
+            }
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
             }

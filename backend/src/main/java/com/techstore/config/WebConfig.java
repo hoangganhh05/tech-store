@@ -8,6 +8,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.http.HttpHeaders;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,8 +39,17 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
+                // Authentication is sent via the Authorization header, never an
+                // ambient cookie. Keep the cross-origin surface explicit.
+                .allowedHeaders(
+                        HttpHeaders.AUTHORIZATION,
+                        HttpHeaders.CONTENT_TYPE,
+                        HttpHeaders.ACCEPT,
+                        "X-Session-Id",
+                        "X-Requested-With"
+                )
+                .exposedHeaders(HttpHeaders.CONTENT_DISPOSITION)
+                .allowCredentials(false)
                 .maxAge(3600);
     }
 
