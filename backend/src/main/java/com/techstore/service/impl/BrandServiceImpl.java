@@ -7,6 +7,7 @@ import com.techstore.enums.ErrorCode;
 import com.techstore.exception.BusinessException;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.ProductRepository;
+import com.techstore.security.SafeUrlValidator;
 import com.techstore.service.BrandService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +34,7 @@ public class BrandServiceImpl implements BrandService {
 
         Brand brand = new Brand(
                 request.name(),
-                request.logoUrl(),
+                SafeUrlValidator.normalizeImageUrl(request.logoUrl()),
                 request.description()
         );
 
@@ -70,7 +71,7 @@ public class BrandServiceImpl implements BrandService {
 
         brand.update(
                 request.name(),
-                request.logoUrl(),
+                SafeUrlValidator.normalizeImageUrl(request.logoUrl()),
                 request.description()
         );
 

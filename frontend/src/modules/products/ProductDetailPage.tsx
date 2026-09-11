@@ -642,7 +642,12 @@ export function ProductDetailPage() {
           color="text.primary"
           fontWeight={600}
           noWrap
-          sx={{ maxWidth: 320 }}
+          sx={{
+            minWidth: 0,
+            maxWidth: { xs: "calc(100vw - 48px)", sm: 320 },
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
         >
           {product.name}
         </Typography>
@@ -662,8 +667,8 @@ export function ProductDetailPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              minHeight: 400,
-              maxHeight: 520,
+              minHeight: { xs: 280, sm: 400 },
+              maxHeight: { xs: 360, sm: 520 },
               overflow: "hidden",
             }}
           >
@@ -715,7 +720,7 @@ export function ProductDetailPage() {
                 data-testid="main-product-image"
                 onClick={() => setZoomOpen(true)}
                 sx={{
-                  maxHeight: 460,
+                  maxHeight: { xs: 320, sm: 460 },
                   maxWidth: "100%",
                   objectFit: "contain",
                   cursor: "zoom-in",
@@ -802,7 +807,14 @@ export function ProductDetailPage() {
         {/* Right Column: Product Information */}
         <Grid size={{ xs: 12, md: 6 }}>
           {/* Brand & Category badges */}
-          <Stack direction="row" spacing={1} alignItems="center" mb={1.5}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+            mb={1.5}
+          >
             {product.brandName && (
               <Chip
                 label={product.brandName}
@@ -831,7 +843,7 @@ export function ProductDetailPage() {
               component="h1"
               fontWeight={700}
               color="text.primary"
-              sx={{ flex: 1 }}
+              sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
               data-testid="product-title"
             >
               {product.name}
@@ -856,7 +868,12 @@ export function ProductDetailPage() {
           </Stack>
 
           {/* Rating & Sales */}
-          <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 0.75, sm: 2 }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            mb={2}
+          >
             <Stack direction="row" spacing={0.5} alignItems="center">
               <StarRoundedIcon sx={{ fontSize: 20, color: "#f59e0b" }} />
               <Typography variant="body2" fontWeight={700} color="text.primary">
@@ -866,7 +883,7 @@ export function ProductDetailPage() {
             <Divider
               orientation="vertical"
               flexItem
-              sx={{ height: 16, my: "auto" }}
+              sx={{ display: { xs: "none", sm: "block" }, height: 16, my: "auto" }}
             />
             <Typography variant="body2" color="text.secondary">
               Đã bán <strong>{product.salesCount || 0}</strong>
@@ -874,7 +891,7 @@ export function ProductDetailPage() {
             <Divider
               orientation="vertical"
               flexItem
-              sx={{ height: 16, my: "auto" }}
+              sx={{ display: { xs: "none", sm: "block" }, height: 16, my: "auto" }}
             />
             {/* Stock status */}
             <Stack direction="row" spacing={0.5} alignItems="center">
@@ -1009,6 +1026,7 @@ export function ProductDetailPage() {
                         borderRadius: 2,
                         px: 2,
                         py: 0.75,
+                        minHeight: 44,
                         fontWeight: 600,
                         fontSize: "0.875rem",
                         borderColor: isSelected ? "primary.main" : "#cbd5e1",
@@ -1076,6 +1094,7 @@ export function ProductDetailPage() {
                         borderRadius: 2,
                         px: 2,
                         py: 0.75,
+                        minHeight: 44,
                         fontWeight: 600,
                         fontSize: "0.875rem",
                         borderColor: isSelected ? "primary.main" : "#cbd5e1",
@@ -1142,7 +1161,7 @@ export function ProductDetailPage() {
                   data-testid="decrease-quantity-btn"
                   sx={{
                     borderRadius: 0,
-                    p: 1,
+                    p: 1.25,
                     color: "text.primary",
                     "&:disabled": { color: "text.disabled" },
                   }}
@@ -1170,7 +1189,7 @@ export function ProductDetailPage() {
                   data-testid="increase-quantity-btn"
                   sx={{
                     borderRadius: 0,
-                    p: 1,
+                    p: 1.25,
                     color: "text.primary",
                     "&:disabled": { color: "text.disabled" },
                   }}
@@ -1336,6 +1355,7 @@ export function ProductDetailPage() {
                             width: "35%",
                             borderBottom: "1px solid #e2e8f0",
                             py: 1.25,
+                            overflowWrap: "anywhere",
                           }}
                         >
                           {spec.specKey}
@@ -1345,6 +1365,7 @@ export function ProductDetailPage() {
                             color: "text.secondary",
                             borderBottom: "1px solid #e2e8f0",
                             py: 1.25,
+                            overflowWrap: "anywhere",
                           }}
                         >
                           {spec.specValue}
@@ -1380,7 +1401,12 @@ export function ProductDetailPage() {
               Những đánh giá đã được duyệt từ khách hàng
             </Typography>
           </Box>
-          <Stack direction="row" spacing={1} alignItems="center" data-testid="review-summary">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            data-testid="review-summary"
+          >
             <Rating
               value={reviewData?.averageRating ?? product.rating ?? 0}
               precision={0.1}

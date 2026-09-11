@@ -122,6 +122,10 @@ export function StorefrontLayout() {
                 order: { xs: 3, md: 0 },
                 overflowX: "auto",
                 minWidth: 0,
+                flexWrap: "nowrap",
+                whiteSpace: "nowrap",
+                pb: { xs: 0.5, md: 0 },
+                "::-webkit-scrollbar": { height: 4 },
               }}
             >
               {navItems.map((item) => (
@@ -204,19 +208,50 @@ export function StorefrontLayout() {
                 direction="row"
                 spacing={1}
                 alignItems="center"
-                sx={{ order: { xs: 2, md: 0 }, flexWrap: "wrap" }}
+                sx={{
+                  order: { xs: 2, md: 0 },
+                  flexWrap: "wrap",
+                  justifyContent: { xs: "flex-end", md: "flex-start" },
+                  maxWidth: "100%",
+                  minWidth: 0,
+                }}
               >
-                <Typography variant="body2" color="text.secondary" noWrap>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  noWrap
+                  sx={{
+                    maxWidth: { xs: 120, sm: 220, md: "none" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   Chào, {user?.fullName}
                 </Typography>
-                <Button component={Link} to={ROUTES.profile} color="inherit">
+                <Button
+                  component={Link}
+                  to={ROUTES.profile}
+                  color="inherit"
+                  sx={{ px: { xs: 0.75, sm: 1.5 } }}
+                >
                   Tài khoản
                 </Button>
-                <Button component={Link} to={ROUTES.orders} color="inherit">
+                <Button
+                  component={Link}
+                  to={ROUTES.orders}
+                  color="inherit"
+                  sx={{ px: { xs: 0.75, sm: 1.5 } }}
+                >
                   Đơn hàng
                 </Button>
                 {user?.roles?.includes("CUSTOMER") && (
-                  <Button component={Link} to={ROUTES.wishlist} color="inherit" startIcon={<FavoriteBorderRoundedIcon />}>
+                  <Button
+                    component={Link}
+                    to={ROUTES.wishlist}
+                    color="inherit"
+                    startIcon={<FavoriteBorderRoundedIcon />}
+                    sx={{ px: { xs: 0.75, sm: 1.5 } }}
+                  >
                     Yêu thích
                   </Button>
                 )}
@@ -224,6 +259,7 @@ export function StorefrontLayout() {
                   color="inherit"
                   onClick={handleLogout}
                   disabled={isLoggingOut}
+                  sx={{ px: { xs: 0.75, sm: 1.5 } }}
                 >
                   {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
                 </Button>
