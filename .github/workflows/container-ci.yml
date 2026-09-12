@@ -37,6 +37,12 @@ jobs:
           MAIL_USERNAME=ci-smtp-user
           MAIL_PASSWORD=ci-smtp-password
           MAIL_FROM=no-reply@example.test
+          R2_ENDPOINT=https://ci-account.r2.cloudflarestorage.com
+          R2_REGION=auto
+          R2_BUCKET_NAME=ci-techstore-products
+          R2_ACCESS_KEY_ID=ci-access-key
+          R2_SECRET_ACCESS_KEY=ci-secret-key
+          R2_PUBLIC_BASE_URL=https://ci-public.r2.dev
           EOF
 
       - name: Build and start production containers
