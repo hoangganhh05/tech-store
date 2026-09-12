@@ -3,11 +3,14 @@ import { createTheme } from '@mui/material/styles'
 export const appTheme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#dc2626', light: '#fee2e2', dark: '#991b1b', contrastText: '#ffffff' },
-    secondary: { main: '#0f172a', light: '#334155', contrastText: '#ffffff' },
-    background: { default: '#f8fafc', paper: '#ffffff' },
-    text: { primary: '#0f172a', secondary: '#64748b' },
-    divider: '#e2e8f0',
+    // The storefront uses the same blue/yellow identity as the physical shop.
+    // Keep red reserved for destructive/error states so status meaning stays clear.
+    primary: { main: '#0756a8', light: '#e4f0ff', dark: '#063d79', contrastText: '#ffffff' },
+    secondary: { main: '#062e63', light: '#1d4f91', dark: '#041f43', contrastText: '#ffffff' },
+    warning: { main: '#f2b705', light: '#fff3c4', dark: '#9a6800', contrastText: '#16213a' },
+    background: { default: '#fbfcfe', paper: '#ffffff' },
+    text: { primary: '#102a43', secondary: '#526579' },
+    divider: '#dbe6f2',
   },
   shape: { borderRadius: 12 },
   typography: {
@@ -25,7 +28,7 @@ export const appTheme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          border: '1px solid #e2e8f0',
+          border: '1px solid #dbe6f2',
           boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
           backgroundImage: 'none',
         },
@@ -42,7 +45,7 @@ export const appTheme = createTheme({
       },
     },
     MuiTableHead: {
-      styleOverrides: { root: { backgroundColor: '#f8fafc' } },
+      styleOverrides: { root: { backgroundColor: '#fbfcfe' } },
     },
     MuiTableCell: {
       styleOverrides: { head: { color: '#475569', fontWeight: 700 } },
