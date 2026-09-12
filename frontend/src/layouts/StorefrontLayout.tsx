@@ -75,7 +75,7 @@ export function StorefrontLayout() {
             {searchKeyword && <IconButton size="small" onClick={handleClearSearch} aria-label="Xoá từ khoá tìm kiếm"><ClearRoundedIcon fontSize="small" /></IconButton>}
             <Button type="submit" size="small" variant="contained" data-testid="header-search-button" sx={{ minWidth: 44, px: 1.25 }}>Tìm</Button>
           </InputAdornment>,
-          sx: { bgcolor: "#f8fafc", pr: 0.5, "& fieldset": { borderColor: "#cbd5e1" } },
+          sx: { bgcolor: "background.default", pr: 0.5, "& fieldset": { borderColor: "divider" } },
         } }}
       />
     </Box>
@@ -103,7 +103,7 @@ export function StorefrontLayout() {
           <Toolbar disableGutters sx={{ minHeight: { xs: 68, md: 76 }, gap: { xs: 1, md: 3 } }}>
             {!isDesktop && <IconButton aria-label="Mở menu" onClick={() => setDrawerOpen(true)} edge="start"><MenuRoundedIcon /></IconButton>}
             <Typography component={Link} to={ROUTES.home} color="secondary.main" fontWeight={900} sx={{ fontSize: { xs: "1.15rem", sm: "1.35rem", md: "1.55rem" }, whiteSpace: "nowrap", letterSpacing: "-0.04em" }}>
-              <Box component="span" color="primary.main">Đăng Tùng</Box> Mobile
+              <Box component="span" color="primary.main">Đăng Tùng</Box> <Box component="span" color="warning.dark">Mobile</Box>
             </Typography>
             {isDesktop && <Box flex={1} maxWidth={620}>{searchField}</Box>}
 
@@ -137,7 +137,7 @@ export function StorefrontLayout() {
 
       <Drawer open={drawerOpen} onClose={() => setDrawerOpen(false)} PaperProps={{ sx: { width: "min(86vw, 340px)" } }}>
         <Box p={2} display="flex" alignItems="center" justifyContent="space-between">
-          <Typography fontWeight={900} fontSize="1.2rem"><Box component="span" color="primary.main">Đăng Tùng</Box> Mobile</Typography>
+          <Typography fontWeight={900} fontSize="1.2rem"><Box component="span" color="primary.main">Đăng Tùng</Box> <Box component="span" color="warning.dark">Mobile</Box></Typography>
           <IconButton onClick={() => setDrawerOpen(false)} aria-label="Đóng menu"><CloseRoundedIcon /></IconButton>
         </Box>
         <Divider />
@@ -161,7 +161,7 @@ export function StorefrontLayout() {
       <Box component="footer" bgcolor="secondary.main" color="white" py={{ xs: 4, md: 5 }} mt="auto">
         <Container maxWidth="xl">
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={3}>
-            <Box maxWidth={460}><Typography component="p" variant="h6" fontWeight={900} mb={1}>{env.brand.name}</Typography><Typography variant="body2" color="#cbd5e1" lineHeight={1.7}>{env.brand.industry} Sản phẩm rõ nguồn gốc, tư vấn tận tâm và hỗ trợ nhanh chóng.</Typography></Box>
+            <Box maxWidth={460}><Typography component="p" variant="h6" fontWeight={900} mb={1} color="warning.main">{env.brand.name}</Typography><Typography variant="body2" color="#cbd5e1" lineHeight={1.7}>{env.brand.industry} Sản phẩm rõ nguồn gốc, tư vấn tận tâm và hỗ trợ nhanh chóng.</Typography></Box>
             <Stack spacing={0.75} minWidth={{ md: 300 }}><Typography fontWeight={800}>Liên hệ cửa hàng</Typography>{env.brand.address && <Typography component="address" variant="body2" color="#cbd5e1" sx={{ fontStyle: "normal" }}>{env.brand.address}</Typography>}<Typography component="a" href={env.brand.contact.phoneHref} variant="body2" color="#cbd5e1">{env.brand.contact.phone}</Typography><Typography component="a" href={env.brand.contact.emailHref} variant="body2" color="#cbd5e1">{env.brand.contact.email}</Typography></Stack>
           </Stack>
           <Divider sx={{ my: 3, borderColor: "rgba(255,255,255,.12)" }} /><Typography variant="caption" color="#94a3b8">© {new Date().getFullYear()} {env.brand.name}. Mọi quyền được bảo lưu.</Typography>

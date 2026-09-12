@@ -6,12 +6,12 @@
 
 * { box-sizing: border-box; }
 html { min-width: 320px; scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: clip; background: #f8fafc; }
+body { margin: 0; min-width: 320px; min-height: 100vh; overflow-x: clip; background: #fbfcfe; }
 #root { min-width: 0; overflow-x: clip; }
 a { color: inherit; text-decoration: none; }
 button, input, textarea, select { font: inherit; }
 img { max-width: 100%; }
-::selection { background: #fecaca; color: #7f1d1d; }
+::selection { background: #ffe083; color: #062e63; }
 
 .skip-link {
   position: fixed;
@@ -21,7 +21,7 @@ img { max-width: 100%; }
   padding: 8px 12px;
   background: #ffffff;
   color: #182026;
-  border: 2px solid #c62828;
+  border: 2px solid #0756a8;
   transform: translateY(-150%);
 }
 .skip-link:focus { transform: translateY(0); }

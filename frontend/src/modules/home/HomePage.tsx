@@ -55,17 +55,17 @@ export function HomePage() {
   return (
     <Stack spacing={{ xs: 4, md: 5 }} pb={4}>
       {/* 1. Hero Banner */}
-      <Box sx={{ bgcolor: "secondary.main", color: "white", borderRadius: { xs: 3, md: 4 }, overflow: "hidden", position: "relative", boxShadow: "0 24px 60px rgba(15,23,42,.16)" }}>
+      <Box sx={{ bgcolor: "secondary.main", color: "white", borderRadius: { xs: 3, md: 4 }, overflow: "hidden", position: "relative", boxShadow: "0 24px 60px rgba(6,46,99,.2)" }}>
         <Grid container alignItems="stretch">
           <Grid size={{ xs: 12, md: 7 }}>
             <Stack spacing={2.5} sx={{ p: { xs: 3.5, sm: 5, md: 7 }, minHeight: { md: 430 }, justifyContent: "center" }}>
           <Stack direction="row" spacing={1} alignItems="center">
                 <Box width={34} height={2} bgcolor="primary.main" />
-                <Typography variant="overline" sx={{ color: "#fca5a5", fontWeight: 800, letterSpacing: 1.6 }}>PHỤ KIỆN CHÍNH HÃNG</Typography>
+                <Typography variant="overline" sx={{ color: "warning.main", fontWeight: 800, letterSpacing: 1.6 }}>PHỤ KIỆN CHÍNH HÃNG</Typography>
           </Stack>
               <Typography component="h1" variant="h1" color="white" maxWidth={650}>{env.brand.name}</Typography>
-              <Typography component="p" variant="h2" sx={{ color: "#f87171", fontSize: { xs: "1.55rem", md: "2.2rem" } }}>Phụ kiện phù hợp. Trải nghiệm khác biệt.</Typography>
-              <Typography sx={{ fontSize: { xs: "1rem", md: "1.125rem" }, color: "#cbd5e1", lineHeight: 1.7, maxWidth: 570 }}>Khám phá phụ kiện điện thoại được chọn lọc tại {env.brand.name}, minh bạch giá và hỗ trợ tận tâm.</Typography>
+              <Typography component="p" variant="h2" sx={{ color: "warning.main", fontSize: { xs: "1.55rem", md: "2.2rem" } }}>Phụ kiện phù hợp. Trải nghiệm khác biệt.</Typography>
+              <Typography sx={{ fontSize: { xs: "1rem", md: "1.125rem" }, color: "#d5e5f8", lineHeight: 1.7, maxWidth: 570 }}>Khám phá phụ kiện điện thoại được chọn lọc tại {env.brand.name}, minh bạch giá và hỗ trợ tận tâm.</Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} pt={1}>
             <Button
               component={Link}
@@ -74,14 +74,14 @@ export function HomePage() {
               size="large"
               endIcon={<ArrowForwardRoundedIcon />}
               sx={{
-                    bgcolor: "primary.main",
-                    color: "white",
+                    bgcolor: "warning.main",
+                    color: "warning.contrastText",
                 fontWeight: 700,
                 px: 3.5,
                 py: 1.2,
                 borderRadius: 2,
                 "&:hover": {
-                      bgcolor: "primary.dark",
+                      bgcolor: "warning.dark",
                 },
               }}
             >
@@ -113,11 +113,11 @@ export function HomePage() {
             </Stack>
           </Grid>
           <Grid size={{ xs: 12, md: 5 }} sx={{ display: { xs: "none", md: "block" } }}>
-            <Box sx={{ height: "100%", minHeight: 430, position: "relative", display: "grid", placeItems: "center", background: "radial-gradient(circle at center, rgba(220,38,38,.28), transparent 62%)" }}>
+            <Box sx={{ height: "100%", minHeight: 430, position: "relative", display: "grid", placeItems: "center", background: "radial-gradient(circle at center, rgba(242,183,5,.24), transparent 62%)" }}>
               <Box sx={{ position: "absolute", inset: 28, border: "1px solid rgba(255,255,255,.1)", borderRadius: 4 }} />
-              <Box sx={{ width: 218, height: 330, borderRadius: "34px", border: "8px solid #334155", bgcolor: "#020617", boxShadow: "0 30px 60px rgba(0,0,0,.4)", transform: "rotate(8deg)", display: "grid", placeItems: "center", position: "relative" }}>
-                <Box sx={{ position: "absolute", top: 10, width: 72, height: 18, bgcolor: "#334155", borderRadius: 8 }} />
-                <PhoneIphoneRoundedIcon sx={{ fontSize: 88, color: "#ef4444", opacity: .9 }} />
+              <Box sx={{ width: 218, height: 330, borderRadius: "34px", border: "8px solid #1d4f91", bgcolor: "#041f43", boxShadow: "0 30px 60px rgba(0,0,0,.4)", transform: "rotate(8deg)", display: "grid", placeItems: "center", position: "relative" }}>
+                <Box sx={{ position: "absolute", top: 10, width: 72, height: 18, bgcolor: "#1d4f91", borderRadius: 8 }} />
+                <PhoneIphoneRoundedIcon sx={{ fontSize: 88, color: "warning.main", opacity: .95 }} />
               </Box>
               <Paper sx={{ position: "absolute", left: 24, bottom: 38, p: 2, borderRadius: 2.5, minWidth: 190, boxShadow: "0 18px 40px rgba(0,0,0,.25)" }}>
                 <Typography variant="caption" color="text.secondary">Cam kết từ cửa hàng</Typography>
@@ -289,9 +289,9 @@ export function HomePage() {
           id="on-sale-section"
           sx={{
             p: { xs: 2.5, md: 3.5 },
-            bgcolor: "#fff5f5",
+            bgcolor: "#fff9e8",
             borderRadius: 3.5,
-            border: "1px solid #fed7d7",
+            border: "1px solid #f5d77a",
           }}
         >
           <Stack
@@ -303,7 +303,7 @@ export function HomePage() {
           >
             <Stack direction="row" spacing={1} alignItems="center">
               <LocalFireDepartmentRoundedIcon
-                sx={{ color: "#e53e3e", fontSize: 28 }}
+                sx={{ color: "warning.main", fontSize: 28 }}
               />
               <Box>
                 <Typography
@@ -312,7 +312,7 @@ export function HomePage() {
                   sx={{
                     fontSize: { xs: "1.25rem", md: "1.5rem" },
                     fontWeight: 700,
-                    color: "#c53030",
+                    color: "warning.dark",
                   }}
                 >
                   Săn Sale Giá Sốc
@@ -327,7 +327,7 @@ export function HomePage() {
               to={`${ROUTES.products}?onSale=true`}
               endIcon={<ArrowForwardRoundedIcon />}
               size="small"
-              sx={{ color: "#c53030" }}
+              sx={{ color: "warning.dark" }}
             >
               Xem tất cả
             </Button>
