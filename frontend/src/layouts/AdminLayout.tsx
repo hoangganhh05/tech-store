@@ -8,13 +8,25 @@ import {
   IconButton,
   List,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
   Toolbar,
   Typography,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
+import DiscountOutlinedIcon from "@mui/icons-material/DiscountOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import PeopleOutlineRoundedIcon from "@mui/icons-material/PeopleOutlineRounded";
+import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import WarehouseOutlinedIcon from "@mui/icons-material/WarehouseOutlined";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { ROUTES } from "../constants/routes";
@@ -24,20 +36,20 @@ import { useAuthEvents } from "../hooks/useAuthEvents";
 import { useAuth } from "../hooks/useAuth";
 import { AdminNotificationBell } from "../modules/admin/components/AdminNotificationBell";
 
-const drawerWidth = 240;
+const drawerWidth = 276;
 const adminItems = [
-  { label: "Tổng quan", to: ROUTES.admin },
-  { label: "Người dùng", to: ROUTES.adminUsers },
-  { label: "Danh mục", to: ROUTES.adminCategories },
-  { label: "Thương hiệu sản phẩm", to: ROUTES.adminBrands },
-  { label: "Sản phẩm", to: ROUTES.adminProducts },
-  { label: "Tồn kho", to: ROUTES.adminInventory },
-  { label: "Đơn hàng", to: ROUTES.adminOrders },
-  { label: "Đánh giá", to: ROUTES.adminReviews },
-  { label: "Mã giảm giá", to: ROUTES.adminVouchers },
-  { label: "Khuyến mãi", to: ROUTES.adminPromotions },
-  { label: "Báo cáo doanh thu", to: ROUTES.adminRevenueReport },
-  { label: "Báo cáo sản phẩm", to: ROUTES.adminProductInventoryReport },
+  { label: "Tổng quan", to: ROUTES.admin, icon: <DashboardOutlinedIcon /> },
+  { label: "Người dùng", to: ROUTES.adminUsers, icon: <PeopleOutlineRoundedIcon /> },
+  { label: "Danh mục", to: ROUTES.adminCategories, icon: <CategoryOutlinedIcon /> },
+  { label: "Thương hiệu", to: ROUTES.adminBrands, icon: <StorefrontOutlinedIcon /> },
+  { label: "Sản phẩm", to: ROUTES.adminProducts, icon: <Inventory2OutlinedIcon /> },
+  { label: "Tồn kho", to: ROUTES.adminInventory, icon: <WarehouseOutlinedIcon /> },
+  { label: "Đơn hàng", to: ROUTES.adminOrders, icon: <ReceiptLongOutlinedIcon /> },
+  { label: "Đánh giá", to: ROUTES.adminReviews, icon: <RateReviewOutlinedIcon /> },
+  { label: "Mã giảm giá", to: ROUTES.adminVouchers, icon: <DiscountOutlinedIcon /> },
+  { label: "Khuyến mãi", to: ROUTES.adminPromotions, icon: <LocalOfferOutlinedIcon /> },
+  { label: "Báo cáo doanh thu", to: ROUTES.adminRevenueReport, icon: <AssessmentOutlinedIcon /> },
+  { label: "Báo cáo sản phẩm", to: ROUTES.adminProductInventoryReport, icon: <AssessmentOutlinedIcon /> },
 ];
 
 export function AdminLayout() {
@@ -45,7 +57,7 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
@@ -58,11 +70,12 @@ export function AdminLayout() {
   };
 
   return (
-    <Box minHeight="100vh" bgcolor="background.default">
+    <Box minHeight="100vh" bgcolor="#f8fafc">
       <DocumentMetadata section="Quản trị" />
       <AppBar
         position="fixed"
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        color="inherit"
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, borderBottom: "1px solid", borderColor: "divider" }}
       >
         <Toolbar sx={{ gap: { xs: 0.5, sm: 1 } }}>
           {isMobile && (
@@ -87,22 +100,26 @@ export function AdminLayout() {
               whiteSpace: "nowrap",
             }}
           >
-            {env.brand.name}
+            <Box component="span" color="primary.main">{env.brand.name}</Box>
             <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
               {" "}— Quản trị
             </Box>
           </Typography>
           <AdminNotificationBell />
+          <Box sx={{ display: { xs: "none", sm: "block" }, textAlign: "right", mr: 1 }}>
+            <Typography variant="body2" fontWeight={700} lineHeight={1.2}>{user?.fullName}</Typography>
+            <Typography variant="caption" color="text.secondary">Quản trị viên</Typography>
+          </Box>
           <Button
             component={Link}
             to={ROUTES.home}
-            color="inherit"
+            color="secondary"
             sx={{ display: { xs: "none", md: "inline-flex" } }}
           >
             Về cửa hàng
           </Button>
           <Button
-            color="inherit"
+            color="secondary"
             onClick={handleLogout}
             disabled={isLoggingOut}
             sx={{ display: { xs: "none", md: "inline-flex" } }}
@@ -117,10 +134,19 @@ export function AdminLayout() {
         onClose={() => setMobileDrawerOpen(false)}
         sx={{
           width: drawerWidth,
-          "& .MuiDrawer-paper": { width: drawerWidth, pt: isMobile ? 1 : 8 },
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            pt: isMobile ? 1 : 9,
+            bgcolor: "#0f172a",
+            color: "#cbd5e1",
+            borderRight: 0,
+          },
         }}
       >
-        <List component="nav" aria-label="Điều hướng quản trị">
+        <Box px={2.5} pt={2} pb={1}>
+          <Typography variant="overline" color="#64748b" fontWeight={800} letterSpacing={1.2}>Không gian quản trị</Typography>
+        </Box>
+        <List component="nav" aria-label="Điều hướng quản trị" sx={{ px: 1.5 }}>
           {adminItems.map((item) => (
             <ListItemButton
               key={item.to}
@@ -130,14 +156,22 @@ export function AdminLayout() {
               onClick={() => {
                 if (isMobile) setMobileDrawerOpen(false);
               }}
-              sx={{ "&.active": { bgcolor: "#ffebee", color: "primary.main" } }}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                minHeight: 44,
+                "&:hover": { bgcolor: "rgba(255,255,255,.07)", color: "white" },
+                "&.active": { bgcolor: "primary.main", color: "white" },
+                "&.active .MuiListItemIcon-root": { color: "white" },
+              }}
             >
+              <ListItemIcon sx={{ color: "#94a3b8", minWidth: 40 }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
             </ListItemButton>
           ))}
           {isMobile && (
             <>
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 1, borderColor: "rgba(255,255,255,.12)" }} />
               <ListItemButton
                 component={Link}
                 to={ROUTES.home}
@@ -157,10 +191,10 @@ export function AdminLayout() {
       <Box
         component="main"
         ml={{ xs: 0, md: `${drawerWidth}px` }}
-        pt={{ xs: 10, md: 11 }}
+        pt={{ xs: 10, md: 12 }}
         pb={5}
       >
-        <Container maxWidth="lg">
+        <Container maxWidth="xl">
           <Outlet />
         </Container>
       </Box>

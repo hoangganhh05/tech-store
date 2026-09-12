@@ -6,6 +6,7 @@ import {
   Card,
   CardActionArea,
   Grid,
+  Paper,
   Skeleton,
   Stack,
   Typography,
@@ -16,6 +17,10 @@ import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import NewReleasesRoundedIcon from "@mui/icons-material/NewReleasesRounded";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import HeadsetMicRoundedIcon from "@mui/icons-material/HeadsetMicRounded";
+import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import { Link } from "react-router-dom";
 import { ROUTES } from "../../constants/routes";
 import { env } from "../../configs/env";
@@ -37,9 +42,7 @@ export function HomePage() {
       const result = await getStorefrontHomeData(8);
       setData(result);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Không thể tải dữ liệu trang chủ";
-      setError(msg);
+      setError(err instanceof Error ? err.message : "Không thể tải dữ liệu trang chủ");
     } finally {
       setLoading(false);
     }
@@ -50,65 +53,19 @@ export function HomePage() {
   }, [loadData]);
 
   return (
-    <Stack spacing={{ xs: 4, md: 6 }} pb={4}>
+    <Stack spacing={{ xs: 4, md: 5 }} pb={4}>
       {/* 1. Hero Banner */}
-      <Box
-        sx={{
-          background:
-            "linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)",
-          color: "#ffffff",
-          borderRadius: { xs: 3, md: 4 },
-          p: { xs: 3.5, sm: 5, md: 7 },
-          position: "relative",
-          overflow: "hidden",
-          boxShadow: "0 12px 32px rgba(21, 101, 192, 0.25)",
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            top: -40,
-            right: -40,
-            width: 260,
-            height: 260,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%)",
-            pointerEvents: "none",
-          }}
-        />
-        <Stack spacing={2.5} maxWidth={680} position="relative" zIndex={1}>
+      <Box sx={{ bgcolor: "secondary.main", color: "white", borderRadius: { xs: 3, md: 4 }, overflow: "hidden", position: "relative", boxShadow: "0 24px 60px rgba(15,23,42,.16)" }}>
+        <Grid container alignItems="stretch">
+          <Grid size={{ xs: 12, md: 7 }}>
+            <Stack spacing={2.5} sx={{ p: { xs: 3.5, sm: 5, md: 7 }, minHeight: { md: 430 }, justifyContent: "center" }}>
           <Stack direction="row" spacing={1} alignItems="center">
-            <AutoAwesomeRoundedIcon sx={{ color: "#ffd54f", fontSize: 20 }} />
-            <Typography
-              variant="subtitle2"
-              sx={{ color: "#ffd54f", fontWeight: 700, letterSpacing: 1 }}
-            >
-              {env.brand.name.toLocaleUpperCase("vi-VN")}
-            </Typography>
+                <Box width={34} height={2} bgcolor="primary.main" />
+                <Typography variant="overline" sx={{ color: "#fca5a5", fontWeight: 800, letterSpacing: 1.6 }}>PHỤ KIỆN CHÍNH HÃNG</Typography>
           </Stack>
-          <Typography
-            component="h1"
-            variant="h1"
-            sx={{
-              fontSize: { xs: "1.85rem", sm: "2.4rem", md: "2.85rem" },
-              fontWeight: 800,
-              lineHeight: 1.2,
-              letterSpacing: "-0.02em",
-              color: "#ffffff",
-            }}
-          >
-            {env.brand.name}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: { xs: "0.95rem", md: "1.1rem" },
-              color: "rgba(255, 255, 255, 0.88)",
-              lineHeight: 1.6,
-            }}
-          >
-            {env.brand.industry}
-          </Typography>
+              <Typography component="h1" variant="h1" color="white" maxWidth={650}>{env.brand.name}</Typography>
+              <Typography component="p" variant="h2" sx={{ color: "#f87171", fontSize: { xs: "1.55rem", md: "2.2rem" } }}>Phụ kiện phù hợp. Trải nghiệm khác biệt.</Typography>
+              <Typography sx={{ fontSize: { xs: "1rem", md: "1.125rem" }, color: "#cbd5e1", lineHeight: 1.7, maxWidth: 570 }}>Khám phá phụ kiện điện thoại được chọn lọc tại {env.brand.name}, minh bạch giá và hỗ trợ tận tâm.</Typography>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2} pt={1}>
             <Button
               component={Link}
@@ -117,14 +74,14 @@ export function HomePage() {
               size="large"
               endIcon={<ArrowForwardRoundedIcon />}
               sx={{
-                bgcolor: "#ffffff",
-                color: "#0d47a1",
+                    bgcolor: "primary.main",
+                    color: "white",
                 fontWeight: 700,
                 px: 3.5,
                 py: 1.2,
                 borderRadius: 2,
                 "&:hover": {
-                  bgcolor: "#f5f5f5",
+                      bgcolor: "primary.dark",
                 },
               }}
             >
@@ -137,14 +94,14 @@ export function HomePage() {
                 variant="outlined"
                 size="large"
                 sx={{
-                  borderColor: "rgba(255, 255, 255, 0.6)",
+                    borderColor: "#475569",
                   color: "#ffffff",
                   fontWeight: 600,
                   px: 3,
                   py: 1.2,
                   borderRadius: 2,
                   "&:hover": {
-                    borderColor: "#ffffff",
+                        borderColor: "#94a3b8",
                     bgcolor: "rgba(255, 255, 255, 0.1)",
                   },
                 }}
@@ -153,8 +110,38 @@ export function HomePage() {
               </Button>
             )}
           </Stack>
-        </Stack>
+            </Stack>
+          </Grid>
+          <Grid size={{ xs: 12, md: 5 }} sx={{ display: { xs: "none", md: "block" } }}>
+            <Box sx={{ height: "100%", minHeight: 430, position: "relative", display: "grid", placeItems: "center", background: "radial-gradient(circle at center, rgba(220,38,38,.28), transparent 62%)" }}>
+              <Box sx={{ position: "absolute", inset: 28, border: "1px solid rgba(255,255,255,.1)", borderRadius: 4 }} />
+              <Box sx={{ width: 218, height: 330, borderRadius: "34px", border: "8px solid #334155", bgcolor: "#020617", boxShadow: "0 30px 60px rgba(0,0,0,.4)", transform: "rotate(8deg)", display: "grid", placeItems: "center", position: "relative" }}>
+                <Box sx={{ position: "absolute", top: 10, width: 72, height: 18, bgcolor: "#334155", borderRadius: 8 }} />
+                <PhoneIphoneRoundedIcon sx={{ fontSize: 88, color: "#ef4444", opacity: .9 }} />
+              </Box>
+              <Paper sx={{ position: "absolute", left: 24, bottom: 38, p: 2, borderRadius: 2.5, minWidth: 190, boxShadow: "0 18px 40px rgba(0,0,0,.25)" }}>
+                <Typography variant="caption" color="text.secondary">Cam kết từ cửa hàng</Typography>
+                <Typography fontWeight={800} mt={0.5}>Tư vấn đúng nhu cầu</Typography>
+              </Paper>
+            </Box>
+          </Grid>
+        </Grid>
       </Box>
+
+      <Grid container spacing={2}>
+        {[
+          { icon: <VerifiedRoundedIcon />, title: "Sản phẩm chọn lọc", text: "Thông tin rõ ràng" },
+          { icon: <CheckCircleRoundedIcon />, title: "Mua hàng an tâm", text: "Hỗ trợ sau bán" },
+          { icon: <HeadsetMicRoundedIcon />, title: "Tư vấn tận tình", text: env.brand.contact.phone },
+        ].map((benefit) => (
+          <Grid key={benefit.title} size={{ xs: 12, sm: 4 }}>
+            <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, borderRadius: 2.5 }}>
+              <Box color="primary.main" display="flex">{benefit.icon}</Box>
+              <Box><Typography fontWeight={800} variant="body2">{benefit.title}</Typography><Typography variant="caption" color="text.secondary">{benefit.text}</Typography></Box>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
       {/* Error Alert */}
       {error && (
@@ -272,7 +259,13 @@ export function HomePage() {
               </Grid>
             ))}
           </Grid>
-        ) : null}
+        ) : (
+          <Paper variant="outlined" sx={{ py: 5, px: 2, textAlign: "center", borderStyle: "dashed", bgcolor: "#fff" }}>
+            <CategoryRoundedIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
+            <Typography fontWeight={700}>Danh mục đang được cập nhật</Typography>
+            <Typography variant="body2" color="text.secondary">Quản trị viên có thể thêm danh mục trong trang quản trị.</Typography>
+          </Paper>
+        )}
       </Box>
 
       {/* 3. Flash Sale / On Sale Section */}
