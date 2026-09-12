@@ -79,3 +79,11 @@ app:
   upload:
     dir: ${UPLOAD_DIR:uploads/products}
     base-dir: ${UPLOAD_BASE_DIR:uploads}
+  storage:
+    r2:
+      endpoint: ${R2_ENDPOINT:}
+      region: ${R2_REGION:auto}
+      bucket: ${R2_BUCKET_NAME:}
+      access-key-id: ${R2_ACCESS_KEY_ID:}
+      secret-access-key: ${R2_SECRET_ACCESS_KEY:}
+      public-base-url: ${R2_PUBLIC_BASE_URL:}
