@@ -70,7 +70,7 @@ export function AdminLayout() {
   };
 
   return (
-    <Box minHeight="100vh" bgcolor="#f8fafc">
+    <Box minHeight="100vh" bgcolor="background.default">
       <DocumentMetadata section="Quản trị" />
       <AppBar
         position="fixed"
@@ -137,7 +137,7 @@ export function AdminLayout() {
           "& .MuiDrawer-paper": {
             width: drawerWidth,
             pt: isMobile ? 1 : 9,
-            bgcolor: "#0f172a",
+            bgcolor: "secondary.main",
             color: "#cbd5e1",
             borderRight: 0,
           },
