@@ -277,7 +277,7 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 fontWeight={700}
                 color="text.primary"
               >
-                {product.rating ? product.rating.toFixed(1) : "5.0"}
+                {product.rating ? product.rating.toFixed(1) : "Mới"}
               </Typography>
             </Stack>
             {product.salesCount > 0 && (
