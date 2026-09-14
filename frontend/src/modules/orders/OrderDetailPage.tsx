@@ -24,6 +24,7 @@ import {
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
+import { AccountLayout } from "../../components/account/AccountLayout";
 import { PageIntro } from "../../components/common/PageIntro";
 import { ProductReviewDialog } from "../../components/common/ProductReviewDialog";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
@@ -217,7 +218,8 @@ export function OrderDetailPage() {
   }, [loadOrder]);
 
   return (
-    <Stack spacing={3}>
+    <AccountLayout>
+      <Stack spacing={3}>
       <Stack
         direction={{ xs: "column", sm: "row" }}
         justifyContent="space-between"
@@ -490,6 +492,7 @@ export function OrderDetailPage() {
           }}
         />
       )}
-    </Stack>
+      </Stack>
+    </AccountLayout>
   );
 }

@@ -1,4 +1,5 @@
-import { Alert, Button, Card, CardContent, Container, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { AuthPanel } from './AuthPanel'
 import { isAxiosError } from 'axios'
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -70,8 +71,7 @@ export function LoginPage() {
   }
 
   return (
-    <Container maxWidth="sm">
-      <Card><CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+    <AuthPanel>
         <Typography component="h1" variant="h2" mb={1}>Đăng nhập</Typography>
         <Typography color="text.secondary" mb={3}>Truy cập tài khoản {env.brand.name} của bạn.</Typography>
         {confirmationMessage && <Alert severity="success" sx={{ mb: 2 }}>{confirmationMessage}</Alert>}
@@ -89,7 +89,6 @@ export function LoginPage() {
             Chưa có tài khoản? <MuiLink component={Link} to={ROUTES.register}>Đăng ký ngay</MuiLink>
           </Typography>
         </Stack>
-      </CardContent></Card>
-    </Container>
+    </AuthPanel>
   )
 }

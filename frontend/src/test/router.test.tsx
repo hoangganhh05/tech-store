@@ -14,7 +14,7 @@ vi.mock('../services/storefrontService', () => ({
     featuredProducts: [], newArrivals: [], onSaleProducts: [], featuredCategories: [],
   }),
   getStorefrontProducts: vi.fn().mockResolvedValue([]),
-  getStorefrontCategories: vi.fn().mockResolvedValue([]),
+  getStorefrontCategories: vi.fn(() => new Promise(() => {})),
   getStorefrontBrands: vi.fn().mockResolvedValue([]),
   searchStorefrontProducts: vi.fn().mockResolvedValue([]),
   getFeaturedProducts: vi.fn().mockResolvedValue([]),
@@ -43,7 +43,7 @@ function renderRoute(path: string) {
 describe('application routing', () => {
   it('renders the storefront home route', async () => {
     renderRoute('/')
-    expect(screen.getByRole('heading', { name: 'Đăng Tùng Mobile' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Điện thoại và phụ kiện phù hợp nhu cầu của bạn/i })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Chưa có sản phẩm nổi bật nào.')).toBeInTheDocument())
   })
 

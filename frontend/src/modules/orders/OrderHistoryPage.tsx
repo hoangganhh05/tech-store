@@ -23,6 +23,7 @@ import {
 import { isAxiosError } from 'axios'
 import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { AccountLayout } from '../../components/account/AccountLayout'
 import { PageIntro } from '../../components/common/PageIntro'
 import { getMyOrders, type OrderHistoryItem } from '../../services/orderService'
 
@@ -110,7 +111,8 @@ export function OrderHistoryPage() {
   }
 
   return (
-    <Stack spacing={3}>
+    <AccountLayout>
+      <Stack spacing={3}>
       <PageIntro
         eyebrow="Tài khoản"
         title="Đơn hàng của tôi"
@@ -207,6 +209,7 @@ export function OrderHistoryPage() {
           )}
         </CardContent>
       </Card>
-    </Stack>
+      </Stack>
+    </AccountLayout>
   )
 }

@@ -15,7 +15,7 @@ import {
 import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
-import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
+import { ProductPlaceholder } from "./ProductPlaceholder";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useWishlist } from "../../hooks/useWishlist";
 import { ROUTES } from "../../constants/routes";
@@ -87,16 +87,19 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
       data-testid={`product-card-${product.id}`}
       sx={{
         height: "100%",
+        position: "relative",
         display: "flex",
         flexDirection: "column",
-        borderRadius: 2.5,
-        border: "1px solid #e0e0e0",
-        boxShadow: "none",
-        transition: "all 0.25s ease-in-out",
+        borderRadius: "16px",
+        border: "1px solid #DBE6F2",
+        bgcolor: "#fff",
+        boxShadow: "0 1px 4px rgba(7,86,168,0.05)",
+        transition: "transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease",
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
-          borderColor: "primary.main",
+          transform: "translateY(-2px)",
+          boxShadow: "0 4px 20px rgba(7,86,168,0.12)",
+          borderColor: "#B8CCDF",
+          "& .product-card-image": { transform: "scale(1.05)" },
         },
       }}
     >
@@ -115,8 +118,8 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
         <Box
           position="relative"
           width="100%"
-          pt="85%" /* aspect ratio ~ 1.15 */
-          bgcolor="#f9fafb"
+          pt="100%"
+          bgcolor="#F7F9FC"
           overflow="hidden"
         >
           {/* Discount Badge */}
@@ -132,37 +135,12 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 zIndex: 2,
                 fontWeight: 700,
                 fontSize: "0.75rem",
-                borderRadius: 1.5,
+                borderRadius: "20px",
+                bgcolor: "#FEE2E2",
+                color: "#991B1B",
               }}
             />
           )}
-
-          <IconButton
-            type="button"
-            aria-label={isFavorite ? "Xoá khỏi yêu thích" : "Thêm vào yêu thích"}
-            data-testid={`favorite-button-${product.id}`}
-            onClick={(event) => void handleFavoriteClick(event)}
-            disabled={isFavoriteLoading}
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              zIndex: 3,
-              minWidth: 44,
-              minHeight: 44,
-              bgcolor: "rgba(255,255,255,0.94)",
-              color: isFavorite ? "error.main" : "text.secondary",
-              "&:hover": { bgcolor: "#fff" },
-            }}
-          >
-            {isFavoriteLoading ? (
-              <CircularProgress size={20} />
-            ) : isFavorite ? (
-              <FavoriteRoundedIcon />
-            ) : (
-              <FavoriteBorderRoundedIcon />
-            )}
-          </IconButton>
 
           {/* Out of stock badge */}
           {isOutOfStock && (
@@ -174,11 +152,11 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 bottom: 10,
                 left: 10,
                 zIndex: 2,
-                bgcolor: "rgba(0, 0, 0, 0.65)",
+                bgcolor: "#526579",
                 color: "#fff",
                 fontWeight: 600,
                 fontSize: "0.72rem",
-                borderRadius: 1.5,
+                borderRadius: "20px",
               }}
             />
           )}
@@ -200,6 +178,8 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 component="img"
                 src={product.thumbnailUrl}
                 alt={product.name}
+                loading="lazy"
+                className="product-card-image"
                 onError={() => setImageError(true)}
                 sx={{
                   maxHeight: "100%",
@@ -212,16 +192,7 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 }}
               />
             ) : (
-              <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                width="100%"
-                height="100%"
-                color="text.disabled"
-              >
-                <SmartphoneRoundedIcon sx={{ fontSize: 64, opacity: 0.6 }} />
-              </Box>
+              <ProductPlaceholder compact />
             )}
           </Box>
         </Box>
@@ -229,7 +200,7 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
         {/* Product Information */}
         <CardContent
           sx={{
-            p: 2,
+            p: { xs: 1.5, sm: 1.75 },
             flexGrow: 1,
             display: "flex",
             flexDirection: "column",
@@ -243,15 +214,13 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
               color="text.secondary"
               fontWeight={500}
             >
-              {[product.brandName, product.categoryName]
-                .filter(Boolean)
-                .join(" • ")}
+              {product.brandName || product.categoryName}
             </Typography>
           )}
 
           {/* Product Title */}
           <Typography
-            variant="subtitle1"
+            variant="subtitle2"
             component="h3"
             fontWeight={600}
             sx={{
@@ -269,15 +238,15 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
           </Typography>
 
           {/* Rating & Sales */}
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" gap={0.75} alignItems="center" flexWrap="wrap">
             <Stack direction="row" spacing={0.3} alignItems="center">
-              <StarRoundedIcon sx={{ fontSize: 16, color: "#f59e0b" }} />
+              <StarRoundedIcon sx={{ fontSize: 16, color: "#F2B705" }} />
               <Typography
                 variant="caption"
                 fontWeight={700}
                 color="text.primary"
               >
-                {product.rating ? product.rating.toFixed(1) : "Mới"}
+                {product.rating ? product.rating.toFixed(1) : "Chưa đánh giá"}
               </Typography>
             </Stack>
             {product.salesCount > 0 && (
@@ -304,7 +273,8 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
                 variant="subtitle1"
                 component="span"
                 fontWeight={700}
-                color={isOutOfStock ? "text.secondary" : "error.main"}
+                color={isOutOfStock ? "text.secondary" : "primary.main"}
+                sx={{ fontSize: { xs: "0.875rem", sm: "1rem" }, lineHeight: 1.6 }}
               >
                 {displayPrice}
               </Typography>
@@ -322,6 +292,17 @@ export function ProductCard({ product, onFavoriteChange }: ProductCardProps) {
           </Box>
         </CardContent>
       </CardActionArea>
+      <IconButton
+        type="button"
+        aria-label={isFavorite ? "Xoá khỏi yêu thích" : "Thêm vào yêu thích"}
+        aria-pressed={isFavorite}
+        data-testid={`favorite-button-${product.id}`}
+        onClick={(event) => void handleFavoriteClick(event)}
+        disabled={isFavoriteLoading}
+        sx={{ position: "absolute", top: 6, right: 6, zIndex: 3, width: 44, height: 44, bgcolor: "rgba(255,255,255,0.94)", color: isFavorite ? "error.main" : "text.secondary", boxShadow: "0 1px 4px rgba(6,46,99,0.06)", "&:hover": { bgcolor: "#fff" } }}
+      >
+        {isFavoriteLoading ? <CircularProgress size={18} /> : isFavorite ? <FavoriteRoundedIcon fontSize="small" /> : <FavoriteBorderRoundedIcon fontSize="small" />}
+      </IconButton>
       <Snackbar
         open={Boolean(feedback)}
         autoHideDuration={3000}

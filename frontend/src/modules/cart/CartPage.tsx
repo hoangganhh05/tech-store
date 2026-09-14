@@ -31,6 +31,7 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { Link } from "react-router-dom";
 import { PageIntro } from "../../components/common/PageIntro";
 import { ROUTES } from "../../constants/routes";
@@ -115,7 +116,7 @@ export function CartPage() {
   );
 
   return (
-    <Box sx={{ py: 3 }} data-testid="cart-page">
+    <Box data-testid="cart-page">
       <PageIntro
         title="Giỏ hàng"
         description="Kiểm tra sản phẩm và số lượng trước khi đặt hàng."
@@ -157,9 +158,9 @@ export function CartPage() {
 
       {isEmpty ? (
         <Card data-testid="empty-cart-card">
-          <CardContent sx={{ textAlign: "center", py: 6 }}>
+          <CardContent sx={{ textAlign: "center", py: { xs: 7, sm: 10 } }}>
             <ShoppingCartOutlinedIcon
-              sx={{ fontSize: 64, color: "text.secondary", mb: 2 }}
+              sx={{ fontSize: 72, color: "primary.main", mb: 2, p: 2, boxSizing: 'content-box', bgcolor: '#EAF1FB', borderRadius: '50%' }}
             />
             <Typography
               variant="h6"
@@ -186,16 +187,16 @@ export function CartPage() {
       ) : (
         <Grid container spacing={3}>
           <Grid size={{ xs: 12, md: 8 }}>
-            <Card>
-              <TableContainer sx={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                <Table data-testid="cart-table" sx={{ minWidth: { xs: 680, sm: 760 } }}>
-                  <TableHead>
-                    <TableRow>
+            <Card sx={{ bgcolor: 'transparent', border: 0, boxShadow: 'none', overflow: 'visible' }}>
+              <TableContainer sx={{ overflowX: "visible" }}>
+                <Table data-testid="cart-table" sx={{ display: 'block', '& .MuiTableCell-root': { border: 0, p: { xs: 0, sm: 1 }, minWidth: 0 }, '& .MuiTableBody-root': { display: 'flex', flexDirection: 'column', gap: 1.5 } }}>
+                  <TableHead sx={{ display: { xs: 'none', lg: 'block' }, mb: 1 }}>
+                    <TableRow sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 100px 120px 120px 36px', px: 1.5, '& th': { fontSize: 12, color: 'text.secondary' } }}>
                       <TableCell>Sản phẩm</TableCell>
                       <TableCell align="center">Đơn giá</TableCell>
                       <TableCell align="center">Số lượng</TableCell>
                       <TableCell align="right">Thành tiền</TableCell>
-                      <TableCell align="center" sx={{ width: 60 }}></TableCell>
+                      <TableCell align="center"><Box component="span" sx={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }}>Xoá</Box></TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -213,13 +214,9 @@ export function CartPage() {
                         <TableRow
                           key={item.id}
                           data-testid={`cart-item-${item.id}`}
-                          sx={
-                            hasStockIssue
-                              ? { bgcolor: "action.hover" }
-                              : undefined
-                          }
+                          sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr) auto 32px', lg: 'minmax(0, 1fr) 100px 120px 120px 36px' }, alignItems: 'center', gap: { xs: 1.5, lg: 0 }, p: { xs: 2, lg: 1.5 }, bgcolor: hasStockIssue ? '#FFFBF0' : 'background.paper', border: '1px solid', borderColor: hasStockIssue ? 'warning.light' : 'divider', borderRadius: '16px' }}
                         >
-                          <TableCell>
+                          <TableCell sx={{ gridColumn: { xs: '1 / -1', lg: 'auto' } }}>
                             <Stack
                               direction="row"
                               spacing={2}
@@ -231,9 +228,11 @@ export function CartPage() {
                                 src={item.imageUrl || ""}
                                 alt={item.productName}
                                 sx={{
-                                  width: 64,
-                                  height: 64,
-                                  bgcolor: "grey.100",
+                                  width: { xs: 76, sm: 88 },
+                                  height: { xs: 76, sm: 88 },
+                                  bgcolor: "#F7F9FC",
+                                  borderRadius: '12px',
+                                  '& img': { objectFit: 'contain', p: 1 },
                                 }}
                               />
                               <Box minWidth={0}>
@@ -252,6 +251,7 @@ export function CartPage() {
                                 >
                                   {item.productName}
                                 </Typography>
+                                <Typography variant="body2" color="primary.main" fontWeight={700} sx={{ display: { xs: 'block', lg: 'none' }, mt: 0.5 }}>{formatPrice(item.price)}</Typography>
                                 <Stack
                                   direction="row"
                                   spacing={1}
@@ -332,7 +332,7 @@ export function CartPage() {
                               </Box>
                             </Stack>
                           </TableCell>
-                          <TableCell align="center">
+                          <TableCell align="center" sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
                             <Typography
                               variant="body2"
                               fontWeight={600}
@@ -350,11 +350,11 @@ export function CartPage() {
                               sx={{
                                 border: "1px solid",
                                 borderColor: "divider",
-                                borderRadius: 1,
+                                borderRadius: '10px',
                                 px: 0.5,
                                 py: 0.25,
                                 width: "fit-content",
-                                mx: "auto",
+                                mx: { xs: 0, lg: 'auto' },
                               }}
                             >
                               <IconButton
@@ -434,8 +434,8 @@ export function CartPage() {
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
-            <Card data-testid="cart-summary">
-              <CardContent>
+            <Card data-testid="cart-summary" sx={{ position: { md: 'sticky' }, top: 104 }}>
+              <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" fontWeight={700} gutterBottom>
                   Tóm tắt đơn hàng
                 </Typography>
@@ -534,7 +534,8 @@ export function CartPage() {
                       fullWidth
                       size="large"
                       disabled={isCheckoutDisabled}
-                      sx={{ mt: 3 }}
+                      sx={{ mt: 3, minHeight: 48 }}
+                      endIcon={<ArrowForwardIcon />}
                       data-testid="checkout-btn"
                     >
                       Tiến hành thanh toán
@@ -555,7 +556,7 @@ export function CartPage() {
                 <Button
                   component={Link}
                   to={ROUTES.products}
-                  variant="outlined"
+                  variant="text"
                   fullWidth
                   sx={{ mt: 1.5 }}
                   data-testid="continue-shopping-btn"

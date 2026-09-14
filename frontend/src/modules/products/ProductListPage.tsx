@@ -2,10 +2,13 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Alert,
   Box,
+  Breadcrumbs,
   Button,
   Checkbox,
   Chip,
   Divider,
+  Drawer,
+  IconButton,
   FormControl,
   FormControlLabel,
   Grid,
@@ -20,11 +23,11 @@ import {
   Typography,
 } from "@mui/material";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import FilterListRoundedIcon from "@mui/icons-material/FilterListRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SmartphoneRoundedIcon from "@mui/icons-material/SmartphoneRounded";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PageIntro } from "../../components/common/PageIntro";
 import { ProductCard } from "../../components/common/ProductCard";
 import {
@@ -124,6 +127,7 @@ export function ProductListPage() {
     priceMax != null ? String(priceMax) : "",
   );
   const [priceError, setPriceError] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     setCustomMin(priceMin != null ? String(priceMin) : "");
@@ -415,136 +419,13 @@ export function ProductListPage() {
       : "all";
   }, [categories, selectedCategoryId]);
 
-  return (
-    <>
-      <PageIntro
-        title={
-          searchQuery ? `Kết quả tìm kiếm cho: "${searchQuery}"` : "Sản phẩm"
-        }
-        description={
-          searchQuery
-            ? `Các sản phẩm phù hợp với từ khóa "${searchQuery}".`
-            : "Tìm điện thoại và phụ kiện phù hợp với nhu cầu của bạn."
-        }
-      />
-
-      {/* Active search filter badge */}
-      {searchQuery && (
-        <Stack direction="row" alignItems="center" spacing={1} mb={2.5}>
-          <Typography variant="body2" color="text.secondary">
-            Tìm kiếm:
-          </Typography>
-          <Chip
-            label={`"${searchQuery}"`}
-            onDelete={handleClearSearch}
-            color="primary"
-            variant="filled"
-            size="small"
-            sx={{ fontWeight: 600 }}
-          />
-          <Button
-            size="small"
-            onClick={handleClearSearch}
-            sx={{
-              textTransform: "none",
-              color: "text.secondary",
-              fontSize: "0.8125rem",
-            }}
-          >
-            Xóa tìm kiếm
-          </Button>
-        </Stack>
-      )}
-
-      {/* Category quick chips */}
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
-        spacing={2}
-        mb={3}
-      >
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{
-            overflowX: "auto",
-            pb: { xs: 1, sm: 0 },
-            "::-webkit-scrollbar": { height: 4 },
-          }}
-        >
-          <Chip
-            label="Tất cả"
-            clickable
-            color={
-              !searchQuery && selectedCategoryId === null
-                ? "primary"
-                : "default"
-            }
-            variant={
-              !searchQuery && selectedCategoryId === null
-                ? "filled"
-                : "outlined"
-            }
-            onClick={() => handleCategoryChange(null)}
-            sx={{ fontWeight: 600 }}
-          />
-          {categories.map((cat) => (
-            <Chip
-              key={cat.id}
-              label={cat.name}
-              clickable
-              color={
-                !searchQuery && selectedCategoryId === cat.id
-                  ? "primary"
-                  : "default"
-              }
-              variant={
-                !searchQuery && selectedCategoryId === cat.id
-                  ? "filled"
-                  : "outlined"
-              }
-              onClick={() => handleCategoryChange(cat.id)}
-              sx={{ fontWeight: 600 }}
-            />
-          ))}
-        </Stack>
-
-        {/* Dropdown selector for compact / mobile */}
-        <TextField
-          select
-          label="Danh mục"
-          size="small"
-          value={selectValue}
-          onChange={(e) => {
-            const val = e.target.value;
-            handleCategoryChange(val === "all" ? null : Number(val));
-          }}
-          sx={{ minWidth: 200 }}
-          slotProps={{
-            select: {
-              IconComponent: FilterListRoundedIcon,
-            },
-          }}
-        >
-          <MenuItem value="all">Tất cả danh mục</MenuItem>
-          {categories.map((cat) => (
-            <MenuItem key={cat.id} value={String(cat.id)}>
-              {cat.name}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      <Grid container spacing={3}>
-        {/* Left Filter Sidebar */}
-        <Grid size={{ xs: 12, md: 3.5, lg: 3 }}>
+  const filterPanel = (
           <Paper
             elevation={0}
             sx={{
               p: 2.5,
-              borderRadius: 2.5,
-              border: "1px solid #e2e8f0",
+              borderRadius: "16px",
+              border: "1px solid #DBE6F2",
               bgcolor: "#ffffff",
             }}
           >
@@ -578,6 +459,29 @@ export function ProductListPage() {
                 </Button>
               )}
             </Stack>
+
+            <Box mb={2.5}>
+              <Typography variant="subtitle2" fontWeight={700} mb={1}>Danh mục</Typography>
+              <Stack spacing={0.5}>
+                <Button onClick={() => handleCategoryChange(null)} aria-pressed={selectedCategoryId === null}
+                  sx={{ justifyContent: "flex-start", minHeight: 36, color: selectedCategoryId === null ? "primary.main" : "text.secondary", bgcolor: selectedCategoryId === null ? "#EAF1FB" : "transparent" }}>
+                  Tất cả
+                </Button>
+                {categories.map((category) => (
+                  <Button key={category.id} onClick={() => handleCategoryChange(category.id)} aria-pressed={selectedCategoryId === category.id}
+                    sx={{ justifyContent: "flex-start", minHeight: 36, color: selectedCategoryId === category.id ? "primary.main" : "text.secondary", bgcolor: selectedCategoryId === category.id ? "#EAF1FB" : "transparent" }}>
+                    {category.name}
+                  </Button>
+                ))}
+              </Stack>
+              <TextField select label="Danh mục" size="small" value={selectValue}
+                onChange={(event) => handleCategoryChange(event.target.value === "all" ? null : Number(event.target.value))}
+                sx={{ mt: 2 }} fullWidth>
+                <MenuItem value="all">Tất cả danh mục</MenuItem>
+                {categories.map((category) => <MenuItem key={category.id} value={String(category.id)}>{category.name}</MenuItem>)}
+              </TextField>
+            </Box>
+            <Divider sx={{ mb: 2.5 }} />
 
             {/* Brands Section */}
             <Box mb={2.5}>
@@ -641,7 +545,7 @@ export function ProductListPage() {
                     <Button
                       key={preset.label}
                       size="small"
-                      variant={isSelected ? "contained" : "outlined"}
+                      variant="text"
                       color={isSelected ? "primary" : "inherit"}
                       onClick={() =>
                         handleApplyPresetPrice(preset.min, preset.max)
@@ -651,7 +555,10 @@ export function ProductListPage() {
                         justifyContent: "flex-start",
                         textTransform: "none",
                         fontSize: "0.8125rem",
-                        borderRadius: 2,
+                        borderRadius: "8px",
+                        minHeight: 36,
+                        color: isSelected ? "primary.main" : "text.secondary",
+                        bgcolor: isSelected ? "#EAF1FB" : "transparent",
                         py: 0.75,
                       }}
                     >
@@ -681,6 +588,7 @@ export function ProductListPage() {
                   inputProps={{
                     "data-testid": "custom-price-min",
                     min: 0,
+                    "aria-label": "Giá tối thiểu",
                   }}
                   sx={{ flex: 1 }}
                 />
@@ -696,6 +604,7 @@ export function ProductListPage() {
                   inputProps={{
                     "data-testid": "custom-price-max",
                     min: 0,
+                    "aria-label": "Giá tối đa",
                   }}
                   sx={{ flex: 1 }}
                 />
@@ -724,10 +633,61 @@ export function ProductListPage() {
               </Button>
             </Box>
           </Paper>
-        </Grid>
+  );
+
+  return (
+    <>
+      <Breadcrumbs aria-label="Đường dẫn" sx={{ mb: 2, fontSize: "0.8125rem" }}>
+        <Box component={Link} to="/" sx={{ color: "text.secondary", textDecoration: "none" }}>Trang chủ</Box>
+        <Typography variant="body2" color="text.primary">Sản phẩm</Typography>
+      </Breadcrumbs>
+      <PageIntro
+        title={
+          searchQuery ? `Kết quả tìm kiếm cho: "${searchQuery}"` : "Sản phẩm"
+        }
+        description={
+          searchQuery
+            ? `Các sản phẩm phù hợp với từ khóa "${searchQuery}".`
+            : "Tìm điện thoại và phụ kiện phù hợp với nhu cầu của bạn."
+        }
+      />
+
+      {/* Active search filter badge */}
+      {searchQuery && (
+        <Stack direction="row" alignItems="center" spacing={1} mb={2.5}>
+          <Typography variant="body2" color="text.secondary">
+            Tìm kiếm:
+          </Typography>
+          <Chip
+            label={`"${searchQuery}"`}
+            onDelete={handleClearSearch}
+            color="primary"
+            variant="filled"
+            size="small"
+            sx={{ fontWeight: 600 }}
+          />
+          <Button
+            size="small"
+            onClick={handleClearSearch}
+            sx={{
+              textTransform: "none",
+              color: "text.secondary",
+              fontSize: "0.8125rem",
+            }}
+          >
+            Xóa tìm kiếm
+          </Button>
+        </Stack>
+      )}
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "240px minmax(0, 1fr)" }, gap: 3, alignItems: "start" }}>
+        {/* Left Filter Sidebar */}
+        <Box component="aside" aria-label="Bộ lọc sản phẩm" sx={(theme) => ({ position: "sticky", top: 100, [theme.breakpoints.down("lg")]: { display: "none" } })}>
+{filterPanel}
+        </Box>
 
         {/* Right Content Area: Active Chips, Count, Products Grid, Pagination */}
-        <Grid size={{ xs: 12, md: 8.5, lg: 9 }}>
+        <Box sx={{ minWidth: 0 }}>
           {/* Results header, count bar & sort dropdown */}
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -735,11 +695,9 @@ export function ProductListPage() {
             alignItems={{ xs: "flex-start", sm: "center" }}
             spacing={2}
             py={1.5}
-            px={2}
+            px={0}
             mb={2}
-            bgcolor="#f8fafc"
-            borderRadius={2}
-            border="1px solid #e2e8f0"
+            sx={{ pt: 0 }}
           >
             <Box>
               <Typography
@@ -762,6 +720,10 @@ export function ProductListPage() {
               </Typography>
             </Box>
 
+            <Stack direction="row" spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
+              <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setFilterOpen(true)} data-testid="open-product-filters" sx={{ display: { lg: "none" }, bgcolor: "#fff", whiteSpace: "nowrap" }}>
+                Lọc{hasActiveFilters ? ` (${selectedBrandIds.length + Number(selectedCategoryId !== null) + Number(priceMin !== null || priceMax !== null)})` : ""}
+              </Button>
             {/* Dropdown chọn tiêu chí sắp xếp */}
             <FormControl
               size="small"
@@ -804,6 +766,7 @@ export function ProductListPage() {
                 </MenuItem>
               </Select>
             </FormControl>
+            </Stack>
           </Stack>
 
           {/* Active Filter Badges */}
@@ -897,9 +860,9 @@ export function ProductListPage() {
 
           {/* Loading state: Skeleton Grid */}
           {loading ? (
-            <Grid container spacing={2}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }}>
               {Array.from({ length: 6 }).map((_, idx) => (
-                <Grid key={idx} size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid key={idx} size={{ xs: 6, sm: 4, lg: 3 }}>
                   <Skeleton
                     variant="rounded"
                     height={340}
@@ -911,9 +874,9 @@ export function ProductListPage() {
           ) : products.length > 0 ? (
             <>
               {/* Products Grid */}
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                 {products.map((product) => (
-                  <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid key={product.id} size={{ xs: 6, sm: 4, lg: 3 }}>
                     <ProductCard product={product} />
                   </Grid>
                 ))}
@@ -947,9 +910,9 @@ export function ProductListPage() {
               py={8}
               px={3}
               textAlign="center"
-              bgcolor="#f9fafb"
-              borderRadius={3}
-              border="1px dashed #cbd5e1"
+              bgcolor="#ffffff"
+              borderRadius="16px"
+              border="1px solid #DBE6F2"
             >
               <SearchOffRoundedIcon
                 sx={{ fontSize: 64, color: "text.disabled", mb: 1.5 }}
@@ -1018,9 +981,9 @@ export function ProductListPage() {
               py={8}
               px={3}
               textAlign="center"
-              bgcolor="#f9fafb"
-              borderRadius={3}
-              border="1px dashed #cbd5e1"
+              bgcolor="#ffffff"
+              borderRadius="16px"
+              border="1px solid #DBE6F2"
             >
               <TuneRoundedIcon
                 sx={{ fontSize: 64, color: "text.disabled", mb: 1.5 }}
@@ -1050,9 +1013,9 @@ export function ProductListPage() {
             <Box
               py={8}
               textAlign="center"
-              bgcolor="#f9fafb"
-              borderRadius={3}
-              border="1px dashed #cbd5e1"
+              bgcolor="#ffffff"
+              borderRadius="16px"
+              border="1px solid #DBE6F2"
             >
               <SmartphoneRoundedIcon
                 sx={{ fontSize: 64, color: "text.disabled", mb: 1 }}
@@ -1080,8 +1043,19 @@ export function ProductListPage() {
               )}
             </Box>
           )}
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
+      <Drawer anchor="right" open={filterOpen} onClose={() => setFilterOpen(false)}
+        slotProps={{ paper: { sx: { width: 320, maxWidth: "92vw" }, "aria-label": "Bộ lọc sản phẩm", role: "dialog", "aria-modal": true } }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, py: 1.5, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography fontWeight={700}>Lọc sản phẩm</Typography>
+          <IconButton aria-label="Đóng bộ lọc" onClick={() => setFilterOpen(false)}><CloseRoundedIcon /></IconButton>
+        </Stack>
+        <Box sx={{ flex: 1, overflowY: "auto", "& > .MuiPaper-root": { border: 0, borderRadius: 0 } }}>{filterPanel}</Box>
+        <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", pb: "max(16px, env(safe-area-inset-bottom))" }}>
+          <Button fullWidth variant="contained" onClick={() => setFilterOpen(false)}>Xem {totalElements} sản phẩm</Button>
+        </Box>
+      </Drawer>
     </>
   );
 }

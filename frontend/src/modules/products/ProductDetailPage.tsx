@@ -448,7 +448,7 @@ export function ProductDetailPage() {
     return product?.totalStock || 0;
   }, [product, selectedVariant]);
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (proceedToCart = false) => {
     if (!selectedVariant) {
       setToastMessage("Vui lòng chọn biến thể sản phẩm");
       setToastSeverity("error");
@@ -465,6 +465,10 @@ export function ProductDetailPage() {
     setIsAddingToCart(true);
     try {
       await addToCart(selectedVariant.id, quantity);
+      if (proceedToCart) {
+        navigate(ROUTES.cart);
+        return;
+      }
       setToastMessage("Đã thêm sản phẩm vào giỏ hàng thành công!");
       setToastSeverity("success");
       setToastOpen(true);
@@ -615,7 +619,7 @@ export function ProductDetailPage() {
     product?.images && product.images.length > 0 ? product.images : [];
 
   return (
-    <Box sx={{ py: 3 }} data-testid="product-detail-container">
+    <Box sx={{ pt: 1, pb: { xs: 12, sm: 3 } }} data-testid="product-detail-container">
       {/* Breadcrumbs Navigation */}
       <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3, fontSize: "0.875rem" }}>
         <Link
@@ -653,22 +657,22 @@ export function ProductDetailPage() {
         </Typography>
       </Breadcrumbs>
 
-      <Grid container spacing={4}>
+      <Grid container spacing={{ xs: 3, md: 4 }} alignItems="start">
         {/* Left Column: Image Gallery */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Paper
             elevation={0}
             sx={{
               position: "relative",
-              borderRadius: 3,
-              border: "1px solid #e2e8f0",
+              borderRadius: "16px",
+              border: "1px solid #DBE6F2",
               bgcolor: "#ffffff",
-              p: 2,
+              p: { xs: 3, sm: 4 },
+              aspectRatio: "1 / 1",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              minHeight: { xs: 280, sm: 400 },
-              maxHeight: { xs: 360, sm: 520 },
+              width: "100%",
               overflow: "hidden",
             }}
           >
@@ -720,7 +724,9 @@ export function ProductDetailPage() {
                 data-testid="main-product-image"
                 onClick={() => setZoomOpen(true)}
                 sx={{
-                  maxHeight: { xs: 320, sm: 460 },
+                  height: "100%",
+                  width: "100%",
+                  maxHeight: "100%",
                   maxWidth: "100%",
                   objectFit: "contain",
                   cursor: "zoom-in",
@@ -762,6 +768,10 @@ export function ProductDetailPage() {
                 const isSelected = selectedImage === img.imageUrl;
                 return (
                   <Paper
+                    component="button"
+                    type="button"
+                    aria-label={`Xem ảnh ${idx + 1} của ${product.name}`}
+                    aria-pressed={isSelected}
                     key={img.id || idx}
                     elevation={0}
                     onClick={() => setSelectedImage(img.imageUrl)}
@@ -772,7 +782,7 @@ export function ProductDetailPage() {
                       minWidth: 76,
                       borderRadius: 2,
                       border: isSelected
-                        ? "2px solid #2563eb"
+                        ? "2px solid #0756A8"
                         : "1px solid #e2e8f0",
                       p: 0.5,
                       cursor: "pointer",
@@ -782,7 +792,7 @@ export function ProductDetailPage() {
                       overflow: "hidden",
                       transition: "all 0.2s ease",
                       "&:hover": {
-                        borderColor: isSelected ? "#2563eb" : "#94a3b8",
+                        borderColor: isSelected ? "#0756A8" : "#B8CCDF",
                         transform: "translateY(-2px)",
                       },
                     }}
@@ -805,7 +815,7 @@ export function ProductDetailPage() {
         </Grid>
 
         {/* Right Column: Product Information */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 6 }} sx={{ bgcolor: "#fff", border: "1px solid #DBE6F2", borderRadius: "16px", p: { xs: 2.5, sm: 3 } }}>
           {/* Brand & Category badges */}
           <Stack
             direction="row"
@@ -843,7 +853,7 @@ export function ProductDetailPage() {
               component="h1"
               fontWeight={700}
               color="text.primary"
-              sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
+              sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere", fontSize: { xs: "1.375rem", md: "1.75rem" }, lineHeight: 1.4 }}
               data-testid="product-title"
             >
               {product.name}
@@ -869,13 +879,14 @@ export function ProductDetailPage() {
 
           {/* Rating & Sales */}
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={{ xs: 0.75, sm: 2 }}
-            alignItems={{ xs: "flex-start", sm: "center" }}
+            direction="row"
+            gap={1.5}
+            flexWrap="wrap"
+            alignItems="center"
             mb={2}
           >
             <Stack direction="row" spacing={0.5} alignItems="center">
-              <StarRoundedIcon sx={{ fontSize: 20, color: "#f59e0b" }} />
+              <StarRoundedIcon sx={{ fontSize: 20, color: "#F2B705" }} />
               <Typography variant="body2" fontWeight={700} color="text.primary">
                 {(reviewData?.averageRating ?? product.rating ?? 0).toFixed(1)}
               </Typography>
@@ -957,11 +968,11 @@ export function ProductDetailPage() {
           <Paper
             elevation={0}
             sx={{
-              p: 2.5,
-              borderRadius: 2.5,
-              bgcolor: "#f8fafc",
-              border: "1px solid #e2e8f0",
-              mb: 3,
+              p: 2,
+              borderRadius: "12px",
+              bgcolor: "#F7F9FC",
+              border: "1px solid #DBE6F2",
+              mb: 2.5,
             }}
           >
             <Stack
@@ -974,6 +985,7 @@ export function ProductDetailPage() {
                 variant="h4"
                 fontWeight={800}
                 color="primary.main"
+                sx={{ fontSize: { xs: "1.625rem", sm: "1.875rem" } }}
                 data-testid="product-price"
               >
                 {displayPrice}
@@ -989,6 +1001,11 @@ export function ProductDetailPage() {
                 </Typography>
               )}
             </Stack>
+            {hasDiscount && displayOriginalPrice && selectedVariant && (
+              <Typography variant="body2" color="success.main" fontWeight={500} sx={{ mt: 0.75 }}>
+                Tiết kiệm {formatPrice(displayOriginalPrice - selectedVariant.price)}
+              </Typography>
+            )}
           </Paper>
 
           {/* Variant Option Selector: Color Swatches */}
@@ -1017,13 +1034,15 @@ export function ProductDetailPage() {
                   return (
                     <Button
                       key={color}
-                      variant={isSelected ? "contained" : "outlined"}
+                      variant="outlined"
                       disabled={disabled}
                       onClick={() => handleColorSelect(color)}
+                      aria-pressed={isSelected}
                       data-testid={`color-option-${color}`}
                       sx={{
                         textTransform: "none",
-                        borderRadius: 2,
+                        borderRadius: "10px",
+                        borderWidth: 2,
                         px: 2,
                         py: 0.75,
                         minHeight: 44,
@@ -1031,23 +1050,21 @@ export function ProductDetailPage() {
                         fontSize: "0.875rem",
                         borderColor: isSelected ? "primary.main" : "#cbd5e1",
                         bgcolor: isSelected
-                          ? "primary.main"
+                          ? "#EAF1FB"
                           : disabled
                             ? "#f1f5f9"
                             : "#ffffff",
                         color: isSelected
-                          ? "#ffffff"
+                          ? "primary.main"
                           : disabled
                             ? "text.disabled"
                             : "text.primary",
-                        boxShadow: isSelected
-                          ? "0 2px 6px rgba(37, 99, 235, 0.3)"
-                          : "none",
+                        boxShadow: "none",
                         "&:hover": {
                           borderColor: isSelected
                             ? "primary.dark"
                             : "primary.main",
-                          bgcolor: isSelected ? "primary.dark" : "#f8fafc",
+                          bgcolor: isSelected ? "#D6E6F7" : "#F7F9FC",
                         },
                       }}
                     >
@@ -1085,13 +1102,15 @@ export function ProductDetailPage() {
                   return (
                     <Button
                       key={storage}
-                      variant={isSelected ? "contained" : "outlined"}
+                      variant="outlined"
                       disabled={disabled}
                       onClick={() => handleStorageSelect(storage)}
+                      aria-pressed={isSelected}
                       data-testid={`storage-option-${storage}`}
                       sx={{
                         textTransform: "none",
-                        borderRadius: 2,
+                        borderRadius: "10px",
+                        borderWidth: 2,
                         px: 2,
                         py: 0.75,
                         minHeight: 44,
@@ -1099,23 +1118,21 @@ export function ProductDetailPage() {
                         fontSize: "0.875rem",
                         borderColor: isSelected ? "primary.main" : "#cbd5e1",
                         bgcolor: isSelected
-                          ? "primary.main"
+                          ? "#EAF1FB"
                           : disabled
                             ? "#f1f5f9"
                             : "#ffffff",
                         color: isSelected
-                          ? "#ffffff"
+                          ? "primary.main"
                           : disabled
                             ? "text.disabled"
                             : "text.primary",
-                        boxShadow: isSelected
-                          ? "0 2px 6px rgba(37, 99, 235, 0.3)"
-                          : "none",
+                        boxShadow: "none",
                         "&:hover": {
                           borderColor: isSelected
                             ? "primary.dark"
                             : "primary.main",
-                          bgcolor: isSelected ? "primary.dark" : "#f8fafc",
+                          bgcolor: isSelected ? "#D6E6F7" : "#F7F9FC",
                         },
                       }}
                     >
@@ -1158,6 +1175,7 @@ export function ProductDetailPage() {
                   size="small"
                   onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                   disabled={quantity <= 1 || currentStock <= 0}
+                  aria-label="Giảm số lượng"
                   data-testid="decrease-quantity-btn"
                   sx={{
                     borderRadius: 0,
@@ -1186,6 +1204,7 @@ export function ProductDetailPage() {
                     setQuantity((prev) => Math.min(currentStock, prev + 1))
                   }
                   disabled={quantity >= currentStock || currentStock <= 0}
+                  aria-label="Tăng số lượng"
                   data-testid="increase-quantity-btn"
                   sx={{
                     borderRadius: 0,
@@ -1234,10 +1253,10 @@ export function ProductDetailPage() {
 
           {/* Action Buttons: Thêm vào giỏ & Mua ngay */}
           <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={2}
-            mb={3.5}
+            direction="row"
+            spacing={1.5}
             data-testid="purchase-actions"
+            sx={{ position: { xs: "fixed", sm: "static" }, bottom: 0, left: 0, right: 0, zIndex: 1100, bgcolor: "#fff", p: { xs: 1.5, sm: 0 }, pb: { xs: "max(12px, env(safe-area-inset-bottom))", sm: 0 }, borderTop: { xs: "1px solid #DBE6F2", sm: 0 }, boxShadow: { xs: "0 -4px 20px rgba(6,46,99,0.06)", sm: "none" } }}
           >
             <Button
               variant="contained"
@@ -1250,19 +1269,19 @@ export function ProductDetailPage() {
                   <ShoppingCartOutlinedIcon />
                 )
               }
-              disabled={currentStock <= 0 || isAddingToCart}
-              onClick={handleAddToCart}
+              disabled={currentStock <= 0 || !selectedVariant || isAddingToCart}
+              onClick={() => void handleAddToCart()}
               data-testid="add-to-cart-btn"
               sx={{
                 flex: 1,
                 py: 1.5,
-                borderRadius: 2.5,
+                borderRadius: "10px",
                 fontWeight: 700,
-                fontSize: "1rem",
+                fontSize: { xs: "0.8125rem", md: "0.875rem" },
                 textTransform: "none",
                 boxShadow:
                   currentStock > 0
-                    ? "0 4px 12px rgba(37, 99, 235, 0.25)"
+                    ? "0 2px 6px rgba(7, 86, 168, 0.15)"
                     : "none",
               }}
             >
@@ -1270,25 +1289,26 @@ export function ProductDetailPage() {
             </Button>
             <Button
               variant="contained"
-              color="error"
               size="large"
               startIcon={<FlashOnRoundedIcon />}
-              disabled={currentStock <= 0}
+              onClick={() => void handleAddToCart(true)}
+              disabled={currentStock <= 0 || !selectedVariant || isAddingToCart}
               data-testid="buy-now-btn"
               sx={{
                 flex: 1,
                 py: 1.5,
-                borderRadius: 2.5,
+                borderRadius: "10px",
                 fontWeight: 700,
-                fontSize: "1rem",
+                fontSize: { xs: "0.8125rem", md: "0.875rem" },
                 textTransform: "none",
-                bgcolor: currentStock > 0 ? "#dc2626" : undefined,
+                bgcolor: currentStock > 0 ? "#F2B705" : undefined,
+                color: "#062E63",
                 "&:hover": {
-                  bgcolor: currentStock > 0 ? "#b91c1c" : undefined,
+                  bgcolor: currentStock > 0 ? "#E5AC00" : undefined,
                 },
                 boxShadow:
                   currentStock > 0
-                    ? "0 4px 12px rgba(220, 38, 38, 0.25)"
+                    ? "0 2px 6px rgba(242, 183, 5, 0.15)"
                     : "none",
               }}
             >
@@ -1296,11 +1316,21 @@ export function ProductDetailPage() {
             </Button>
           </Stack>
 
+        </Grid>
+      </Grid>
+
+      <Paper elevation={0} sx={{ mt: 4, border: "1px solid #DBE6F2", borderRadius: "16px", overflow: "hidden" }}>
+        <Stack component="nav" aria-label="Thông tin sản phẩm" direction="row" sx={{ borderBottom: "1px solid #DBE6F2", px: { xs: 1, sm: 2 }, overflowX: "auto" }}>
+          {product.description && <Button component="a" href="#product-description" sx={{ py: 2, whiteSpace: "nowrap", borderRadius: 0 }}>Mô tả sản phẩm</Button>}
+          {Boolean(product.specifications?.length) && <Button component="a" href="#product-specifications" sx={{ py: 2, whiteSpace: "nowrap", borderRadius: 0 }}>Thông số kỹ thuật</Button>}
+          <Button component="a" href="#product-reviews" sx={{ py: 2, whiteSpace: "nowrap", borderRadius: 0 }}>Đánh giá ({reviewData?.totalReviews ?? 0})</Button>
+        </Stack>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: product.description && product.specifications?.length ? "1fr 1fr" : "1fr" }, gap: { xs: 3, md: 5 }, p: { xs: 2.5, sm: 3 } }}>
           {/* Short Description */}
           {product.description && (
-            <Box mb={3}>
+            <Box id="product-description" sx={{ scrollMarginTop: 120 }}>
               <Typography
-                variant="subtitle2"
+                variant="h6"
                 fontWeight={700}
                 color="text.primary"
                 mb={1}
@@ -1318,11 +1348,9 @@ export function ProductDetailPage() {
             </Box>
           )}
 
-          <Divider sx={{ my: 3 }} />
-
           {/* Specifications Table (Summary) */}
           {product.specifications && product.specifications.length > 0 && (
-            <Box mb={3}>
+            <Box id="product-specifications" sx={{ scrollMarginTop: 120 }}>
               <Typography
                 variant="h6"
                 fontWeight={700}
@@ -1377,13 +1405,14 @@ export function ProductDetailPage() {
               </Paper>
             </Box>
           )}
-        </Grid>
-      </Grid>
+        </Box>
+      </Paper>
 
       {/* Reviews Section */}
       <Paper
         elevation={0}
-        sx={{ mt: 3, p: { xs: 2, md: 3 }, borderRadius: 2.5, border: "1px solid #e2e8f0" }}
+        id="product-reviews"
+        sx={{ mt: 3, p: { xs: 2.5, md: 3 }, borderRadius: "16px", border: "1px solid #DBE6F2", scrollMarginTop: 120 }}
         data-testid="product-reviews-section"
       >
         <Stack
@@ -1394,11 +1423,11 @@ export function ProductDetailPage() {
           mb={2}
         >
           <Box>
-            <Typography variant="h5" fontWeight={700} color="text.primary">
+            <Typography variant="h6" fontWeight={700} color="text.primary">
               Đánh giá & nhận xét
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Những đánh giá đã được duyệt từ khách hàng
+              Trải nghiệm từ khách hàng đã mua sản phẩm
             </Typography>
           </Box>
           <Stack
@@ -1488,9 +1517,9 @@ export function ProductDetailPage() {
           </Typography>
 
           {relatedLoading ? (
-            <Grid container spacing={3} data-testid="related-products-skeleton">
+            <Grid container spacing={{ xs: 1.5, sm: 2 }} data-testid="related-products-skeleton">
               {Array.from({ length: 4 }).map((_, idx) => (
-                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={idx}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }} key={idx}>
                   <Skeleton
                     variant="rounded"
                     height={320}
@@ -1500,9 +1529,9 @@ export function ProductDetailPage() {
               ))}
             </Grid>
           ) : (
-            <Grid container spacing={3} data-testid="related-products-grid">
+            <Grid container spacing={{ xs: 1.5, sm: 2 }} data-testid="related-products-grid">
               {relatedProducts.map((relProduct) => (
-                <Grid size={{ xs: 12, sm: 6, md: 3 }} key={relProduct.id}>
+                <Grid size={{ xs: 6, sm: 4, md: 3 }} key={relProduct.id}>
                   <ProductCard product={relProduct} />
                 </Grid>
               ))}
@@ -1529,6 +1558,7 @@ export function ProductDetailPage() {
       >
         <IconButton
           onClick={() => setZoomOpen(false)}
+          aria-label="Đóng ảnh phóng to"
           data-testid="close-zoom-btn"
           sx={{
             position: "absolute",
@@ -1563,6 +1593,7 @@ export function ProductDetailPage() {
         autoHideDuration={3500}
         onClose={() => setToastOpen(false)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ bottom: { xs: 88, sm: 24 } }}
       >
         <Alert
           onClose={() => setToastOpen(false)}

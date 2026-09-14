@@ -130,9 +130,13 @@ describe("US-05.1: HomePage Storefront Component", () => {
     renderHomePage();
 
     expect(
-      screen.getByRole("heading", { name: "Đăng Tùng Mobile" }),
+      screen.getByRole("heading", {
+        name: /Điện thoại và phụ kiện phù hợp nhu cầu của bạn/i,
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Khám phá sản phẩm/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Khám phá sản phẩm" }),
+    ).toBeInTheDocument();
   });
 
   it("renders all storefront sections successfully with real data", async () => {

@@ -1,4 +1,5 @@
-import { Alert, Button, Card, CardContent, Container, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { AuthPanel } from './AuthPanel'
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ROUTES } from '../../constants/routes'
@@ -47,9 +48,7 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <Container maxWidth="sm">
-      <Card>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+    <AuthPanel>
           <Typography component="h1" variant="h2" mb={1}>Quên mật khẩu</Typography>
           <Typography color="text.secondary" mb={3}>
             Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu.
@@ -75,8 +74,6 @@ export function ForgotPasswordPage() {
               Đã nhớ mật khẩu? <MuiLink component={Link} to={ROUTES.login}>Đăng nhập</MuiLink>
             </Typography>
           </Stack>
-        </CardContent>
-      </Card>
-    </Container>
+    </AuthPanel>
   )
 }
