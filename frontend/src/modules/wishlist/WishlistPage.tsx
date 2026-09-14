@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Grid, Stack, Typography } from "@mui/material";
 import { isAxiosError } from "axios";
+import { AccountLayout } from "../../components/account/AccountLayout";
 import { PageIntro } from "../../components/common/PageIntro";
 import { ProductCard } from "../../components/common/ProductCard";
 import { getWishlist, type WishlistPage as WishlistPageData } from "../../services/wishlistService";
@@ -44,7 +45,8 @@ export function WishlistPage() {
   };
 
   return (
-    <Stack spacing={3} data-testid="wishlist-page">
+    <AccountLayout>
+      <Stack spacing={3} data-testid="wishlist-page">
       <PageIntro
         eyebrow="Tài khoản"
         title="Sản phẩm yêu thích"
@@ -110,6 +112,7 @@ export function WishlistPage() {
       )}
 
       {message && <Alert severity="success" onClose={() => setMessage(null)}>{message}</Alert>}
-    </Stack>
+      </Stack>
+    </AccountLayout>
   );
 }

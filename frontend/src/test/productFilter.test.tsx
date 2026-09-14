@@ -126,8 +126,8 @@ describe("US-05.4: ProductListPage - Lọc sản phẩm theo thương hiệu, kh
     await waitFor(() => {
       expect(screen.getByText("Bộ lọc")).toBeInTheDocument();
       expect(screen.getByText("Thương hiệu")).toBeInTheDocument();
-      expect(screen.getByText("Apple")).toBeInTheDocument();
-      expect(screen.getByText("Samsung")).toBeInTheDocument();
+      expect(screen.getByLabelText("Apple")).toBeInTheDocument();
+      expect(screen.getByLabelText("Samsung")).toBeInTheDocument();
       expect(screen.getByText("Dưới 5 triệu")).toBeInTheDocument();
       expect(screen.getByText("5 - 15 triệu")).toBeInTheDocument();
     });

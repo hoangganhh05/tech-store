@@ -1,4 +1,5 @@
-import { Alert, Button, Card, CardContent, Container, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { Alert, Button, Link as MuiLink, Stack, TextField, Typography } from '@mui/material'
+import { AuthPanel } from './AuthPanel'
 import { isAxiosError } from 'axios'
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
@@ -64,24 +65,18 @@ export function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <Container maxWidth="sm">
-        <Card>
-          <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+      <AuthPanel>
             <Typography component="h1" variant="h2" mb={2}>Đặt lại mật khẩu</Typography>
             <Alert severity="error" sx={{ mb: 3 }}>{invalidLinkMessage}</Alert>
             <Button component={Link} to={ROUTES.forgotPassword} variant="contained">
               Yêu cầu liên kết mới
             </Button>
-          </CardContent>
-        </Card>
-      </Container>
+      </AuthPanel>
     )
   }
 
   return (
-    <Container maxWidth="sm">
-      <Card>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+    <AuthPanel>
           <Typography component="h1" variant="h2" mb={1}>Đặt lại mật khẩu</Typography>
           <Typography color="text.secondary" mb={3}>Chọn mật khẩu mới có ít nhất 8 ký tự.</Typography>
           <Stack component="form" spacing={2} onSubmit={handleSubmit} noValidate>
@@ -115,8 +110,6 @@ export function ResetPasswordPage() {
               <MuiLink component={Link} to={ROUTES.login}>Quay lại đăng nhập</MuiLink>
             </Typography>
           </Stack>
-        </CardContent>
-      </Card>
-    </Container>
+    </AuthPanel>
   )
 }

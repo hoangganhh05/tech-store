@@ -1,483 +1,193 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from 'react'
 import {
   Alert,
   Box,
   Button,
   Card,
   CardActionArea,
+  Container,
   Grid,
   Paper,
   Skeleton,
   Stack,
   Typography,
-} from "@mui/material";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import LocalFireDepartmentRoundedIcon from "@mui/icons-material/LocalFireDepartmentRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import NewReleasesRoundedIcon from "@mui/icons-material/NewReleasesRounded";
-import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import HeadsetMicRoundedIcon from "@mui/icons-material/HeadsetMicRounded";
-import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
-import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
-import { Link } from "react-router-dom";
-import { ROUTES } from "../../constants/routes";
-import { env } from "../../configs/env";
-import { ProductCard } from "../../components/common/ProductCard";
-import {
-  getStorefrontHomeData,
-  type StorefrontHomeData,
-} from "../../services/storefrontService";
+} from '@mui/material'
+import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded'
+import BatteryChargingFullRoundedIcon from '@mui/icons-material/BatteryChargingFullRounded'
+import CableRoundedIcon from '@mui/icons-material/CableRounded'
+import CategoryRoundedIcon from '@mui/icons-material/CategoryRounded'
+import HeadphonesRoundedIcon from '@mui/icons-material/HeadphonesRounded'
+import LocalOfferRoundedIcon from '@mui/icons-material/LocalOfferRounded'
+import NewReleasesRoundedIcon from '@mui/icons-material/NewReleasesRounded'
+import PhoneIphoneRoundedIcon from '@mui/icons-material/PhoneIphoneRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined'
+import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined'
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded'
+import { Link } from 'react-router-dom'
+import { ProductCard } from '../../components/common/ProductCard'
+import { env } from '../../configs/env'
+import { ROUTES } from '../../constants/routes'
+import { getStorefrontHomeData, type StorefrontHomeData, type StorefrontProduct } from '../../services/storefrontService'
+
+type ProductSectionProps = {
+  title: string
+  description: string
+  icon: React.ReactNode
+  products: StorefrontProduct[]
+  loading: boolean
+  emptyText: string
+  id?: string
+  accent?: 'default' | 'sale'
+}
+
+type QuickCategory = {
+  label: string
+  icon: React.ReactNode
+  categoryId?: number
+  imageUrl?: string | null
+}
+
+const fallbackCategories: QuickCategory[] = [
+  { label: 'iPhone', icon: <PhoneIphoneRoundedIcon /> },
+  { label: 'Samsung', icon: <PhoneIphoneRoundedIcon /> },
+  { label: 'Xiaomi', icon: <PhoneIphoneRoundedIcon /> },
+  { label: 'Điện thoại khác', icon: <PhoneIphoneRoundedIcon /> },
+  { label: 'Tai nghe', icon: <HeadphonesRoundedIcon /> },
+  { label: 'Củ sạc & Cáp', icon: <CableRoundedIcon /> },
+  { label: 'Ốp lưng & Bảo vệ', icon: <CategoryRoundedIcon /> },
+  { label: 'Pin dự phòng', icon: <BatteryChargingFullRoundedIcon /> },
+]
+
+function formatPrice(value: number) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
+}
+
+function ProductSection({ title, description, icon, products, loading, emptyText, id, accent = 'default' }: ProductSectionProps) {
+  const sale = accent === 'sale'
+  return (
+    <Box component="section" id={id} sx={sale ? { p: { xs: 2, sm: 3, md: 4 }, borderRadius: { xs: 3, md: 4 }, bgcolor: '#fff8e8', border: '1px solid #f6df9a' } : undefined}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5} mb={2.5}>
+        <Stack direction="row" alignItems="center" spacing={1.25}>
+          <Box sx={{ width: 40, height: 40, display: 'grid', placeItems: 'center', borderRadius: '12px', bgcolor: sale ? '#ffeebc' : 'primary.light', color: sale ? 'warning.dark' : 'primary.main' }}>{icon}</Box>
+          <Box>
+            <Typography component="h2" variant="h2">{title}</Typography>
+            <Typography variant="body2" color="text.secondary">{description}</Typography>
+          </Box>
+        </Stack>
+        <Button component={Link} to={ROUTES.products} size="small" endIcon={<ArrowForwardRoundedIcon />}>Xem tất cả</Button>
+      </Stack>
+      {loading ? <Grid container spacing={{ xs: 1.5, sm: 2 }}>{Array.from({ length: 4 }).map((_, index) => <Grid key={index} size={{ xs: 6, sm: 4, md: 3 }}><Skeleton variant="rounded" height={330} sx={{ borderRadius: 3 }} /></Grid>)}</Grid>
+        : products.length > 0 ? <Grid container spacing={{ xs: 1.5, sm: 2 }}>{products.slice(0, 8).map((product) => <Grid key={product.id} size={{ xs: 6, sm: 4, md: 3 }}><ProductCard product={product} /></Grid>)}</Grid>
+          : <Paper variant="outlined" sx={{ py: 5, textAlign: 'center', borderStyle: 'dashed', bgcolor: 'rgba(255,255,255,.68)' }}><Typography variant="body2" color="text.secondary">{emptyText}</Typography></Paper>}
+    </Box>
+  )
+}
+
+function PhoneMock() {
+  return (
+    <Box aria-label="Minh hoạ điện thoại" sx={{ position: 'relative', width: 184, height: 302, borderRadius: '34px', border: '9px solid #f2b705', bgcolor: '#0b2142', boxShadow: '0 24px 40px rgba(0,0,0,.3)', transform: 'rotate(8deg)', display: 'grid', placeItems: 'center' }}>
+      <Box sx={{ position: 'absolute', top: 10, width: 68, height: 16, borderRadius: 8, bgcolor: '#f2b705' }} />
+      <PhoneIphoneRoundedIcon sx={{ color: '#f2b705', fontSize: 90, opacity: .8 }} />
+      <Box sx={{ position: 'absolute', top: 26, left: 23, display: 'grid', gridTemplateColumns: 'repeat(2, 9px)', gap: .5 }}>
+        {[0, 1, 2].map((item) => <Box key={item} sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#b7c9e0', gridColumn: item === 2 ? '1 / span 2' : undefined, justifySelf: item === 2 ? 'center' : undefined }} />)}
+      </Box>
+    </Box>
+  )
+}
 
 export function HomePage() {
-  const [data, setData] = useState<StorefrontHomeData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<StorefrontHomeData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const result = await getStorefrontHomeData(8);
-      setData(result);
+      setLoading(true)
+      setError(null)
+      setData(await getStorefrontHomeData(8))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Không thể tải dữ liệu trang chủ");
+      setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu trang chủ')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    void loadData()
+  }, [loadData])
+
+  const featuredProducts = data?.featuredProducts ?? []
+  const newArrivals = data?.newArrivals ?? []
+  const onSaleProducts = data?.onSaleProducts ?? []
+  const featuredCategories = data?.featuredCategories ?? []
+  const heroProduct = featuredProducts.find((product) => product.thumbnailUrl) ?? newArrivals.find((product) => product.thumbnailUrl) ?? null
+  const categories: QuickCategory[] = featuredCategories.length
+    ? featuredCategories.slice(0, 8).map((category) => ({ label: category.name, categoryId: category.id, imageUrl: category.imageUrl, icon: <CategoryRoundedIcon /> }))
+    : fallbackCategories
 
   return (
-    <Stack spacing={{ xs: 4, md: 5 }} pb={4}>
-      {/* 1. Hero Banner */}
-      <Box sx={{ bgcolor: "secondary.main", color: "white", borderRadius: { xs: 3, md: 4 }, overflow: "hidden", position: "relative", boxShadow: "0 24px 60px rgba(6,46,99,.2)" }}>
-        <Grid container alignItems="stretch">
-          <Grid size={{ xs: 12, md: 7 }}>
-            <Stack spacing={2.5} sx={{ p: { xs: 3.5, sm: 5, md: 7 }, minHeight: { md: 430 }, justifyContent: "center" }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-                <Box width={34} height={2} bgcolor="primary.main" />
-                <Typography variant="overline" sx={{ color: "warning.main", fontWeight: 800, letterSpacing: 1.6 }}>PHỤ KIỆN CHÍNH HÃNG</Typography>
-          </Stack>
-              <Typography component="h1" variant="h1" color="white" maxWidth={650}>{env.brand.name}</Typography>
-              <Typography component="p" variant="h2" sx={{ color: "warning.main", fontSize: { xs: "1.55rem", md: "2.2rem" } }}>Phụ kiện phù hợp. Trải nghiệm khác biệt.</Typography>
-              <Typography sx={{ fontSize: { xs: "1rem", md: "1.125rem" }, color: "#d5e5f8", lineHeight: 1.7, maxWidth: 570 }}>Khám phá phụ kiện điện thoại được chọn lọc tại {env.brand.name}, minh bạch giá và hỗ trợ tận tâm.</Typography>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} pt={1}>
-            <Button
-              component={Link}
-              to={ROUTES.products}
-              variant="contained"
-              size="large"
-              endIcon={<ArrowForwardRoundedIcon />}
-              sx={{
-                    bgcolor: "warning.main",
-                    color: "warning.contrastText",
-                fontWeight: 700,
-                px: 3.5,
-                py: 1.2,
-                borderRadius: 2,
-                "&:hover": {
-                      bgcolor: "warning.dark",
-                },
-              }}
-            >
-              Khám phá sản phẩm
-            </Button>
-            {data?.onSaleProducts && data.onSaleProducts.length > 0 && (
-              <Button
-                component="a"
-                href="#on-sale-section"
-                variant="outlined"
-                size="large"
-                sx={{
-                    borderColor: "#475569",
-                  color: "#ffffff",
-                  fontWeight: 600,
-                  px: 3,
-                  py: 1.2,
-                  borderRadius: 2,
-                  "&:hover": {
-                        borderColor: "#94a3b8",
-                    bgcolor: "rgba(255, 255, 255, 0.1)",
-                  },
-                }}
-              >
-                Săn sale giá sốc 🔥
-              </Button>
-            )}
-          </Stack>
-            </Stack>
-          </Grid>
-          <Grid size={{ xs: 12, md: 5 }} sx={{ display: { xs: "none", md: "block" } }}>
-            <Box sx={{ height: "100%", minHeight: 430, position: "relative", display: "grid", placeItems: "center", background: "radial-gradient(circle at center, rgba(242,183,5,.24), transparent 62%)" }}>
-              <Box sx={{ position: "absolute", inset: 28, border: "1px solid rgba(255,255,255,.1)", borderRadius: 4 }} />
-              <Box sx={{ width: 218, height: 330, borderRadius: "34px", border: "8px solid #1d4f91", bgcolor: "#041f43", boxShadow: "0 30px 60px rgba(0,0,0,.4)", transform: "rotate(8deg)", display: "grid", placeItems: "center", position: "relative" }}>
-                <Box sx={{ position: "absolute", top: 10, width: 72, height: 18, bgcolor: "#1d4f91", borderRadius: 8 }} />
-                <PhoneIphoneRoundedIcon sx={{ fontSize: 88, color: "warning.main", opacity: .95 }} />
-              </Box>
-              <Paper sx={{ position: "absolute", left: 24, bottom: 38, p: 2, borderRadius: 2.5, minWidth: 190, boxShadow: "0 18px 40px rgba(0,0,0,.25)" }}>
-                <Typography variant="caption" color="text.secondary">Cam kết từ cửa hàng</Typography>
-                <Typography fontWeight={800} mt={0.5}>Tư vấn đúng nhu cầu</Typography>
-              </Paper>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-
-      <Grid container spacing={2}>
-        {[
-          { icon: <VerifiedRoundedIcon />, title: "Sản phẩm chọn lọc", text: "Thông tin rõ ràng" },
-          { icon: <CheckCircleRoundedIcon />, title: "Mua hàng an tâm", text: "Hỗ trợ sau bán" },
-          { icon: <HeadsetMicRoundedIcon />, title: "Tư vấn tận tình", text: env.brand.contact.phone },
-        ].map((benefit) => (
-          <Grid key={benefit.title} size={{ xs: 12, sm: 4 }}>
-            <Paper variant="outlined" sx={{ p: 2, display: "flex", alignItems: "center", gap: 1.5, borderRadius: 2.5 }}>
-              <Box color="primary.main" display="flex">{benefit.icon}</Box>
-              <Box><Typography fontWeight={800} variant="body2">{benefit.title}</Typography><Typography variant="caption" color="text.secondary">{benefit.text}</Typography></Box>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert
-          severity="error"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              startIcon={<RefreshRoundedIcon />}
-              onClick={loadData}
-            >
-              Thử lại
-            </Button>
-          }
-          sx={{ borderRadius: 2 }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {/* 2. Featured Categories */}
-      <Box>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "flex-end" }}
-          spacing={{ xs: 1, sm: 0 }}
-          mb={2.5}
-        >
-          <Box>
-            <Typography
-              component="h2"
-              variant="h2"
-              sx={{ fontSize: { xs: "1.3rem", md: "1.6rem" }, fontWeight: 700 }}
-            >
-              Danh mục nổi bật
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Lựa chọn nhanh dòng sản phẩm bạn quan tâm
-            </Typography>
-          </Box>
-          <Button
-            component={Link}
-            to={ROUTES.products}
-            endIcon={<ArrowForwardRoundedIcon />}
-            size="small"
-          >
-            Tất cả
-          </Button>
-        </Stack>
-
-        {loading ? (
-          <Grid container spacing={2}>
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <Grid key={idx} size={{ xs: 6, sm: 4, md: 2 }}>
-                <Skeleton
-                  variant="rounded"
-                  height={100}
-                  sx={{ borderRadius: 2 }}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        ) : data?.featuredCategories && data.featuredCategories.length > 0 ? (
-          <Grid container spacing={2}>
-            {data.featuredCategories.map((cat) => (
-              <Grid key={cat.id} size={{ xs: 6, sm: 4, md: 2 }}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 2.5,
-                    textAlign: "center",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      borderColor: "primary.main",
-                      transform: "translateY(-3px)",
-                      boxShadow: "0 6px 16px rgba(0,0,0,0.06)",
-                    },
-                  }}
-                >
-                  <CardActionArea
-                    component={Link}
-                    to={`${ROUTES.products}?categoryId=${cat.id}`}
-                    sx={{ p: 2 }}
-                  >
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      height={56}
-                      width={56}
-                      mx="auto"
-                      mb={1}
-                      borderRadius="50%"
-                      bgcolor="#e3f2fd"
-                      color="primary.main"
-                    >
-                      {cat.imageUrl ? (
-                        <Box
-                          component="img"
-                          src={cat.imageUrl}
-                          alt={cat.name}
-                          sx={{ width: 36, height: 36, objectFit: "contain" }}
-                        />
-                      ) : (
-                        <CategoryRoundedIcon sx={{ fontSize: 30 }} />
-                      )}
-                    </Box>
-                    <Typography variant="body2" fontWeight={600} noWrap>
-                      {cat.name}
-                    </Typography>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Paper variant="outlined" sx={{ py: 5, px: 2, textAlign: "center", borderStyle: "dashed", bgcolor: "#fff" }}>
-            <CategoryRoundedIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography fontWeight={700}>Danh mục đang được cập nhật</Typography>
-            <Typography variant="body2" color="text.secondary">Quản trị viên có thể thêm danh mục trong trang quản trị.</Typography>
-          </Paper>
-        )}
-      </Box>
-
-      {/* 3. Flash Sale / On Sale Section */}
-      {loading ? (
-        <Box>
-          <Skeleton variant="text" width={220} height={36} sx={{ mb: 2 }} />
-          <Grid container spacing={2}>
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <Grid key={idx} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Skeleton
-                  variant="rounded"
-                  height={320}
-                  sx={{ borderRadius: 2.5 }}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      ) : data?.onSaleProducts && data.onSaleProducts.length > 0 ? (
-        <Box
-          id="on-sale-section"
-          sx={{
-            p: { xs: 2.5, md: 3.5 },
-            bgcolor: "#fff9e8",
-            borderRadius: 3.5,
-            border: "1px solid #f5d77a",
-          }}
-        >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            spacing={{ xs: 1, sm: 0 }}
-            mb={2.5}
-          >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <LocalFireDepartmentRoundedIcon
-                sx={{ color: "warning.main", fontSize: 28 }}
-              />
-              <Box>
-                <Typography
-                  component="h2"
-                  variant="h2"
-                  sx={{
-                    fontSize: { xs: "1.25rem", md: "1.5rem" },
-                    fontWeight: 700,
-                    color: "warning.dark",
-                  }}
-                >
-                  Săn Sale Giá Sốc
+    <Box pb={{ xs: 5, md: 7 }}>
+      <Box component="section" sx={{ position: 'relative', overflow: 'hidden', color: 'white', bgcolor: 'secondary.main', background: 'linear-gradient(118deg, #062e63 0%, #0756a8 58%, #1479d4 100%)' }}>
+        <Box sx={{ position: 'absolute', inset: 0, opacity: .2, backgroundImage: 'radial-gradient(circle at 84% 10%, #f2b705 0, transparent 23%), radial-gradient(circle at 5% 90%, white 0, transparent 28%)' }} />
+        <Container maxWidth="xl" sx={{ position: 'relative' }}>
+          <Grid container alignItems="center" minHeight={{ xs: 420, md: 480 }}>
+            <Grid size={{ xs: 12, md: 7 }}>
+              <Stack spacing={2.4} py={{ xs: 6, sm: 7, md: 8 }} maxWidth={650}>
+                <Typography variant="caption" sx={{ width: 'fit-content', px: 1.35, py: .65, borderRadius: '999px', fontWeight: 800, color: 'warning.main', bgcolor: 'rgba(255,255,255,.11)', letterSpacing: '.02em' }}>
+                  {heroProduct ? `${heroProduct.name} · Vừa về hàng` : 'ĐĂNG TÙNG MOBILE · CHÍNH HÃNG'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Ưu đãi giảm giá có hạn dành riêng hôm nay
-                </Typography>
+                <Box>
+                  <Typography component="h1" sx={{ fontSize: { xs: '2.25rem', md: '3.5rem' }, lineHeight: 1.12, fontWeight: 800, letterSpacing: '-.04em', maxWidth: 640 }}>
+                    Công nghệ đỉnh cao<br /><Box component="span" color="warning.main">Giá tốt nhất thị trường</Box>
+                  </Typography>
+                  <Typography mt={2} maxWidth={550} sx={{ color: '#d7e7fa', fontSize: { xs: 15, md: 17 }, lineHeight: 1.7 }}>
+                    Điện thoại, tai nghe và phụ kiện chính hãng. Bảo hành đầy đủ, giao hàng toàn quốc.
+                  </Typography>
+                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                  <Button component={Link} to={ROUTES.products} variant="contained" size="large" endIcon={<ArrowForwardRoundedIcon />} sx={{ bgcolor: 'warning.main', color: 'warning.contrastText', '&:hover': { bgcolor: 'warning.dark' } }}>Khám phá sản phẩm</Button>
+                  <Button component={Link} to={ROUTES.products} size="large" variant="contained" sx={{ bgcolor: 'white', color: 'secondary.main', '&:hover': { bgcolor: '#edf4fb' } }}>Xem sản phẩm nổi bật</Button>
+                </Stack>
+              </Stack>
+            </Grid>
+            <Grid size={{ xs: 12, md: 5 }} sx={{ display: { xs: 'none', md: 'block' }, alignSelf: 'stretch' }}>
+              <Box height="100%" minHeight={480} position="relative" sx={{ display: 'grid', placeItems: 'center' }}>
+                <Box sx={{ width: 350, height: 350, position: 'absolute', borderRadius: '50%', bgcolor: 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)' }} />
+                {heroProduct?.thumbnailUrl ? <Box component="img" src={heroProduct.thumbnailUrl} alt={heroProduct.name} sx={{ zIndex: 1, width: 310, height: 350, objectFit: 'contain', filter: 'drop-shadow(0 24px 24px rgba(0,0,0,.25))' }} /> : <PhoneMock />}
+                {heroProduct && <Paper elevation={0} sx={{ position: 'absolute', left: 0, bottom: 66, zIndex: 2, py: 1.25, px: 1.75, borderRadius: 3, minWidth: 185, bgcolor: 'rgba(255,255,255,.78)', backdropFilter: 'blur(12px)', boxShadow: '0 16px 40px rgba(0,0,0,.2)' }}><Typography variant="caption" color="text.secondary" noWrap>Từ</Typography><Typography variant="h6" color="warning.dark" noWrap>{formatPrice(heroProduct.minPrice)}</Typography></Paper>}
               </Box>
-            </Stack>
-            <Button
-              component={Link}
-              to={`${ROUTES.products}?onSale=true`}
-              endIcon={<ArrowForwardRoundedIcon />}
-              size="small"
-              sx={{ color: "warning.dark" }}
-            >
-              Xem tất cả
-            </Button>
-          </Stack>
-          <Grid container spacing={2}>
-            {data.onSaleProducts.map((product) => (
-              <Grid key={product.id} size={{ xs: 12, sm: 6, md: 3 }}>
-                <ProductCard product={product} />
-              </Grid>
-            ))}
+            </Grid>
           </Grid>
-        </Box>
-      ) : null}
-
-      {/* 4. Featured Products Section */}
-      <Box>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "flex-end" }}
-          spacing={{ xs: 1, sm: 0 }}
-          mb={2.5}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <AutoAwesomeRoundedIcon
-              sx={{ color: "primary.main", fontSize: 24 }}
-            />
-            <Box>
-              <Typography
-                component="h2"
-                variant="h2"
-                sx={{
-                  fontSize: { xs: "1.3rem", md: "1.6rem" },
-                  fontWeight: 700,
-                }}
-              >
-                Sản phẩm nổi bật
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Được khách hàng quan tâm và lựa chọn hàng đầu
-              </Typography>
-            </Box>
-          </Stack>
-          <Button
-            component={Link}
-            to={ROUTES.products}
-            endIcon={<ArrowForwardRoundedIcon />}
-            size="small"
-          >
-            Xem thêm
-          </Button>
-        </Stack>
-
-        {loading ? (
-          <Grid container spacing={2}>
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <Grid key={idx} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Skeleton
-                  variant="rounded"
-                  height={320}
-                  sx={{ borderRadius: 2.5 }}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        ) : data?.featuredProducts && data.featuredProducts.length > 0 ? (
-          <Grid container spacing={2}>
-            {data.featuredProducts.map((product) => (
-              <Grid key={product.id} size={{ xs: 12, sm: 6, md: 3 }}>
-                <ProductCard product={product} />
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box py={6} textAlign="center">
-            <Typography color="text.secondary">
-              Chưa có sản phẩm nổi bật nào.
-            </Typography>
-          </Box>
-        )}
+        </Container>
       </Box>
 
-      {/* 5. New Arrivals Section */}
-      <Box>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "flex-end" }}
-          spacing={{ xs: 1, sm: 0 }}
-          mb={2.5}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <NewReleasesRoundedIcon
-              sx={{ color: "secondary.main", fontSize: 24 }}
-            />
-            <Box>
-              <Typography
-                component="h2"
-                variant="h2"
-                sx={{
-                  fontSize: { xs: "1.3rem", md: "1.6rem" },
-                  fontWeight: 700,
-                }}
-              >
-                Sản phẩm mới về
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Cập nhật thiết bị công nghệ mới nhất vừa ra mắt
-              </Typography>
-            </Box>
-          </Stack>
-          <Button
-            component={Link}
-            to={ROUTES.products}
-            endIcon={<ArrowForwardRoundedIcon />}
-            size="small"
-          >
-            Xem thêm
-          </Button>
-        </Stack>
+      <Container maxWidth="xl">
+        <Stack spacing={{ xs: 5, md: 7 }} pt={{ xs: 3, md: 4 }}>
+          <Grid container spacing={{ xs: 1, sm: 1.5 }}>
+            {[
+              { icon: <ShieldOutlinedIcon />, title: 'Bảo hành rõ ràng', text: 'Thông tin minh bạch theo sản phẩm' },
+              { icon: <ShoppingBagOutlinedIcon />, title: 'Giao hàng toàn quốc', text: 'Theo dõi đơn hàng thuận tiện' },
+              { icon: <ReplayRoundedIcon />, title: 'Đổi trả dễ dàng', text: 'Hỗ trợ khi sản phẩm có vấn đề' },
+              { icon: <SupportAgentRoundedIcon />, title: 'Tư vấn tận tâm', text: `Liên hệ ${env.brand.contact.phone}` },
+            ].map((item) => <Grid key={item.title} size={{ xs: 12, sm: 6, md: 3 }}><Paper variant="outlined" sx={{ height: '100%', display: 'flex', alignItems: 'center', gap: 1.25, p: { xs: 1.5, sm: 2 }, bgcolor: 'white' }}><Box sx={{ width: 42, height: 42, flexShrink: 0, display: 'grid', placeItems: 'center', color: 'primary.main', borderRadius: '50%', bgcolor: 'primary.light' }}>{item.icon}</Box><Box><Typography variant="body2" fontWeight={700}>{item.title}</Typography><Typography variant="caption" color="text.secondary">{item.text}</Typography></Box></Paper></Grid>)}
+          </Grid>
 
-        {loading ? (
-          <Grid container spacing={2}>
-            {Array.from({ length: 4 }).map((_, idx) => (
-              <Grid key={idx} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Skeleton
-                  variant="rounded"
-                  height={320}
-                  sx={{ borderRadius: 2.5 }}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        ) : data?.newArrivals && data.newArrivals.length > 0 ? (
-          <Grid container spacing={2}>
-            {data.newArrivals.map((product) => (
-              <Grid key={product.id} size={{ xs: 12, sm: 6, md: 3 }}>
-                <ProductCard product={product} />
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box py={6} textAlign="center">
-            <Typography color="text.secondary">
-              Chưa có sản phẩm mới nào.
-            </Typography>
+          {error && <Alert severity="error" action={<Button color="inherit" size="small" startIcon={<RefreshRoundedIcon />} onClick={() => void loadData()}>Thử lại</Button>}>{error}</Alert>}
+
+          <Box component="section">
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5} mb={2.5}><Box><Typography component="h2" variant="h2">Danh mục nổi bật</Typography><Typography variant="body2" color="text.secondary">Chọn nhanh dòng sản phẩm bạn quan tâm</Typography></Box><Button component={Link} to={ROUTES.products} size="small" endIcon={<ArrowForwardRoundedIcon />}>Tất cả sản phẩm</Button></Stack>
+            {loading ? <Grid container spacing={1.5}>{Array.from({ length: 8 }).map((_, index) => <Grid key={index} size={{ xs: 6, sm: 3, md: 1.5 }}><Skeleton variant="rounded" height={104} sx={{ borderRadius: 3 }} /></Grid>)}</Grid>
+              : <Grid container spacing={1.5}>{categories.map((category) => <Grid key={category.label} size={{ xs: 6, sm: 3, md: 1.5 }}><Card sx={{ height: '100%' }}><CardActionArea component={Link} to={category.categoryId ? `${ROUTES.products}?categoryId=${category.categoryId}` : ROUTES.products} sx={{ height: '100%', p: 1.5, textAlign: 'center' }}><Box sx={{ height: 44, display: 'grid', placeItems: 'center', mb: .75, color: 'primary.main' }}>{category.imageUrl ? <Box component="img" src={category.imageUrl} alt="" sx={{ width: 40, height: 40, objectFit: 'contain' }} /> : category.icon}</Box><Typography variant="caption" fontWeight={600} color="text.primary" lineHeight={1.35}>{category.label}</Typography></CardActionArea></Card></Grid>)}</Grid>}
           </Box>
-        )}
-      </Box>
 
-    </Stack>
-  );
+          {onSaleProducts.length ? <ProductSection id="on-sale-section" accent="sale" title="Săn Sale Giá Sốc" description="Ưu đãi đang áp dụng cho các sản phẩm được chọn" icon={<LocalOfferRoundedIcon />} products={onSaleProducts} loading={loading} emptyText="" /> : null}
+          <ProductSection title="Sản phẩm nổi bật" description="Được khách hàng quan tâm và lựa chọn hàng đầu" icon={<AutoAwesomeRoundedIcon />} products={featuredProducts} loading={loading} emptyText="Chưa có sản phẩm nổi bật nào." />
+          <ProductSection title="Sản phẩm mới về" description="Cập nhật sản phẩm mới từ cửa hàng" icon={<NewReleasesRoundedIcon />} products={newArrivals} loading={loading} emptyText="Chưa có sản phẩm mới nào." />
+        </Stack>
+      </Container>
+    </Box>
+  )
 }

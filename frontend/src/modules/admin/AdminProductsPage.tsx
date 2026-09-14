@@ -14,6 +14,7 @@ import {
   FormHelperText,
   InputAdornment,
   InputLabel,
+  IconButton,
   Menu,
   MenuItem,
   Paper,
@@ -39,9 +40,10 @@ import TuneIcon from "@mui/icons-material/Tune";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { PageIntro } from "../../components/common/PageIntro";
 import {
   createAdminProduct,
   deleteAdminProduct,
@@ -60,6 +62,8 @@ import {
 import { AdminProductVariantsDialog } from "./AdminProductVariantsDialog";
 import { AdminProductImagesDialog } from "./AdminProductImagesDialog";
 import { AdminProductSpecificationsDialog } from "./AdminProductSpecificationsDialog";
+import { AdminPageIntro } from "./components/AdminPageIntro";
+import { AdminProductPanel } from "./components/AdminProductPanel";
 
 export function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -110,6 +114,15 @@ export function AdminProductsPage() {
     useState<Product | null>(null);
   const [isSpecificationsDialogOpen, setIsSpecificationsDialogOpen] = useState(false);
 
+  // The workspace keeps the three API-backed setup dialogs in one discoverable flow.
+  const [selectedProductForWorkspace, setSelectedProductForWorkspace] =
+    useState<Product | null>(null);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [returnToWorkspaceAfterEditor, setReturnToWorkspaceAfterEditor] =
+    useState(false);
+  const [returnToWorkspaceAfterProductForm, setReturnToWorkspaceAfterProductForm] =
+    useState(false);
+
   // Delete Product Dialog state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
@@ -144,19 +157,26 @@ export function AdminProductsPage() {
   }, [fetchData]);
 
   const handleOpenAddDialog = () => {
+    setReturnToWorkspaceAfterProductForm(false);
     setEditingProduct(null);
     setFormData({
       name: "",
       description: "",
-      brandId: brands.length > 0 ? brands[0].id : 0,
-      categoryId: categories.length > 0 ? categories[0].id : 0,
+      // A brand and category affect reporting, storefront placement and filters.
+      // Never silently assign the first value in either list.
+      brandId: 0,
+      categoryId: 0,
       status: "DRAFT",
     });
     setFormErrors({});
     setIsDialogOpen(true);
   };
 
-  const handleOpenEditDialog = (product: Product) => {
+  const handleOpenEditDialog = (
+    product: Product,
+    options: { returnToWorkspace?: boolean } = {},
+  ) => {
+    setReturnToWorkspaceAfterProductForm(Boolean(options.returnToWorkspace));
     setEditingProduct(product);
     setFormData({
       name: product.name,
@@ -171,9 +191,26 @@ export function AdminProductsPage() {
 
   const handleCloseDialog = () => {
     if (isSubmitting) return;
+    const shouldReturnToWorkspace = returnToWorkspaceAfterProductForm;
     setIsDialogOpen(false);
     setEditingProduct(null);
     setFormErrors({});
+    setReturnToWorkspaceAfterProductForm(false);
+    if (shouldReturnToWorkspace) {
+      setIsWorkspaceOpen(true);
+    }
+  };
+
+  const handleOpenProductWorkspace = (product: Product) => {
+    setSelectedProductForWorkspace(product);
+    setReturnToWorkspaceAfterEditor(false);
+    setIsWorkspaceOpen(true);
+  };
+
+  const handleCloseProductWorkspace = () => {
+    setIsWorkspaceOpen(false);
+    setSelectedProductForWorkspace(null);
+    setReturnToWorkspaceAfterEditor(false);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -201,6 +238,7 @@ export function AdminProductsPage() {
     setFormErrors({});
 
     try {
+      let completedProduct: Product;
       if (editingProduct) {
         const updated = await updateAdminProduct(editingProduct.id, {
           name: trimmedName,
@@ -209,6 +247,7 @@ export function AdminProductsPage() {
           categoryId: Number(formData.categoryId),
           status: formData.status,
         });
+        completedProduct = updated;
 
         setFeedbackMessage({
           type: "success",
@@ -222,6 +261,7 @@ export function AdminProductsPage() {
           categoryId: Number(formData.categoryId),
           status: formData.status,
         });
+        completedProduct = created;
 
         setFeedbackMessage({
           type: "success",
@@ -231,7 +271,9 @@ export function AdminProductsPage() {
 
       setIsDialogOpen(false);
       setEditingProduct(null);
+      setReturnToWorkspaceAfterProductForm(false);
       await fetchData();
+      handleOpenProductWorkspace(completedProduct);
     } catch (error: unknown) {
       const message = isAxiosError<{ message?: string }>(error)
         ? error.response?.data?.message
@@ -314,6 +356,10 @@ export function AdminProductsPage() {
   const handleCloseVariantsDialog = () => {
     setIsVariantsDialogOpen(false);
     setSelectedProductForVariants(null);
+    if (returnToWorkspaceAfterEditor) {
+      setIsWorkspaceOpen(true);
+      setReturnToWorkspaceAfterEditor(false);
+    }
   };
 
   const handleOpenImagesDialog = (product: Product) => {
@@ -324,6 +370,10 @@ export function AdminProductsPage() {
   const handleCloseImagesDialog = () => {
     setIsImagesDialogOpen(false);
     setSelectedProductForImages(null);
+    if (returnToWorkspaceAfterEditor) {
+      setIsWorkspaceOpen(true);
+      setReturnToWorkspaceAfterEditor(false);
+    }
   };
 
   const handleOpenSpecificationsDialog = (product: Product) => {
@@ -334,6 +384,38 @@ export function AdminProductsPage() {
   const handleCloseSpecificationsDialog = () => {
     setIsSpecificationsDialogOpen(false);
     setSelectedProductForSpecifications(null);
+    if (returnToWorkspaceAfterEditor) {
+      setIsWorkspaceOpen(true);
+      setReturnToWorkspaceAfterEditor(false);
+    }
+  };
+
+  const handleOpenWorkspaceEditor = (
+    editor: "variants" | "images" | "specifications",
+  ) => {
+    const product = selectedProductForWorkspace;
+    if (!product) return;
+
+    setIsWorkspaceOpen(false);
+    setReturnToWorkspaceAfterEditor(true);
+
+    if (editor === "variants") {
+      handleOpenVariantsDialog(product);
+      return;
+    }
+    if (editor === "images") {
+      handleOpenImagesDialog(product);
+      return;
+    }
+    handleOpenSpecificationsDialog(product);
+  };
+
+  const handleEditFromWorkspace = () => {
+    if (!selectedProductForWorkspace) return;
+    setIsWorkspaceOpen(false);
+    handleOpenEditDialog(selectedProductForWorkspace, {
+      returnToWorkspace: true,
+    });
   };
 
   const handleOpenDeleteDialog = (product: Product) => {
@@ -390,10 +472,10 @@ export function AdminProductsPage() {
 
   return (
     <Stack spacing={3}>
-      <PageIntro
+      <AdminPageIntro
         eyebrow="Quản trị"
         title="Quản lý sản phẩm"
-        description="Thêm mới sản phẩm với thông tin cơ bản, quản lý biến thể, trạng thái hiển thị và phân loại theo thương hiệu, danh mục."
+        description="Tạo thông tin cơ bản trước, rồi hoàn thiện biến thể, hình ảnh và thông số trong cùng một quy trình rõ ràng."
         action={
           <Stack direction="row" spacing={1.5}>
             <Button
@@ -569,55 +651,67 @@ export function AdminProductsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          justifyContent="center"
-                        >
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            color="primary"
-                            startIcon={<EditOutlinedIcon fontSize="small" />}
-                            onClick={() => handleOpenEditDialog(p)}
-                          >
-                            Sửa
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<TuneIcon fontSize="small" />}
-                            onClick={() => handleOpenVariantsDialog(p)}
-                          >
-                            Biến thể
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            color="info"
-                            startIcon={<CollectionsIcon fontSize="small" />}
-                            onClick={() => handleOpenImagesDialog(p)}
-                          >
-                            Hình ảnh
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            color="secondary"
-                            startIcon={<ListAltIcon fontSize="small" />}
-                            onClick={() => handleOpenSpecificationsDialog(p)}
-                          >
-                            Thông số
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            color="error"
-                            startIcon={<DeleteOutlineIcon fontSize="small" />}
-                            onClick={() => handleOpenDeleteDialog(p)}
-                          >
-                            Xoá
-                          </Button>
+                        <Stack direction="row" spacing={0.25} justifyContent="center" alignItems="center">
+                          <Tooltip title="Hoàn thiện sản phẩm" arrow>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => handleOpenProductWorkspace(p)}
+                              sx={{ minWidth: 0, px: 1.25, whiteSpace: "nowrap" }}
+                            >
+                              Hoàn thiện
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Chỉnh sửa thông tin cơ bản" arrow>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              aria-label={`Sửa ${p.name}`}
+                              onClick={() => handleOpenEditDialog(p)}
+                            >
+                              <EditOutlinedIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Quản lý biến thể" arrow>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              aria-label={`Biến thể ${p.name}`}
+                              onClick={() => handleOpenVariantsDialog(p)}
+                            >
+                              <TuneIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Quản lý hình ảnh" arrow>
+                            <IconButton
+                              size="small"
+                              color="info"
+                              aria-label={`Hình ảnh ${p.name}`}
+                              onClick={() => handleOpenImagesDialog(p)}
+                            >
+                              <CollectionsIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Quản lý thông số" arrow>
+                            <IconButton
+                              size="small"
+                              color="secondary"
+                              aria-label={`Thông số ${p.name}`}
+                              onClick={() => handleOpenSpecificationsDialog(p)}
+                            >
+                              <ListAltIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Xoá sản phẩm" arrow>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              aria-label={`Xoá ${p.name}`}
+                              onClick={() => handleOpenDeleteDialog(p)}
+                            >
+                              <DeleteOutlineIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </Stack>
                       </TableCell>
                       <TableCell align="right">
@@ -721,10 +815,17 @@ export function AdminProductsPage() {
         fullWidth
       >
         <form onSubmit={handleSubmit} noValidate>
-          <DialogTitle>
-            {editingProduct
-              ? "Chỉnh sửa thông tin sản phẩm"
-              : "Tạo sản phẩm mới"}
+          <DialogTitle sx={{ pb: 1 }}>
+            <Typography component="span" variant="h6" fontWeight={800} display="block">
+              {editingProduct
+                ? "Chỉnh sửa thông tin sản phẩm"
+                : "Tạo sản phẩm mới"}
+            </Typography>
+            <Typography component="span" variant="body2" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              {editingProduct
+                ? "Lưu thay đổi xong, bạn có thể tiếp tục hoàn thiện biến thể, ảnh và thông số ở một nơi."
+                : "Chỉ cần điền thông tin cơ bản. Các bước biến thể, ảnh và thông số sẽ xuất hiện sau khi tạo."}
+            </Typography>
           </DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2.5} sx={{ pt: 1 }}>
@@ -764,6 +865,9 @@ export function AdminProductsPage() {
                   }
                   inputProps={{ "data-testid": "brand-select" }}
                 >
+                  <MenuItem value="" disabled>
+                    Chọn thương hiệu
+                  </MenuItem>
                   {brands.map((b) => (
                     <MenuItem key={b.id} value={b.id}>
                       {b.name}
@@ -794,6 +898,9 @@ export function AdminProductsPage() {
                   }
                   inputProps={{ "data-testid": "category-select" }}
                 >
+                  <MenuItem value="" disabled>
+                    Chọn danh mục
+                  </MenuItem>
                   {categories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
                       {c.parentName ? `${c.parentName} ➔ ${c.name}` : c.name}
@@ -869,6 +976,207 @@ export function AdminProductsPage() {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* A guided workspace replaces the old hunt through five separate row actions. */}
+      <AdminProductPanel
+        open={isWorkspaceOpen}
+        onClose={handleCloseProductWorkspace}
+        maxWidth="md"
+        fullWidth
+        aria-labelledby="product-workspace-title"
+      >
+        <DialogTitle id="product-workspace-title" sx={{ pb: 1.25 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.25}>
+            <Box>
+              <Typography variant="overline" color="primary.main" fontWeight={800}>
+                QUY TRÌNH HOÀN THIỆN
+              </Typography>
+              <Typography variant="h6" fontWeight={800}>
+                {selectedProductForWorkspace?.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
+                Hoàn thành lần lượt các phần bên dưới. Bạn có thể đóng và quay lại bất cứ lúc nào.
+              </Typography>
+            </Box>
+            {selectedProductForWorkspace && (
+              <Chip
+                label={
+                  selectedProductForWorkspace.status === "ACTIVE"
+                    ? "Đang bán"
+                    : selectedProductForWorkspace.status === "INACTIVE"
+                      ? "Ngừng bán"
+                      : "Nháp"
+                }
+                color={
+                  selectedProductForWorkspace.status === "ACTIVE"
+                    ? "success"
+                    : selectedProductForWorkspace.status === "INACTIVE"
+                      ? "default"
+                      : "warning"
+                }
+                size="small"
+                sx={{ alignSelf: { xs: "flex-start", sm: "center" }, fontWeight: 700 }}
+              />
+            )}
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers sx={{ bgcolor: "background.default", py: 2.5 }}>
+          <Alert severity="info" sx={{ mb: 2.5 }}>
+            Muốn đưa sản phẩm lên bán? Hãy tạo ít nhất một biến thể hợp lệ trước, sau đó đổi trạng thái thành <strong>Đang bán</strong>.
+          </Alert>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" },
+              gap: 1.5,
+            }}
+          >
+            <Card
+              variant="outlined"
+              sx={{ borderColor: "success.light", bgcolor: "rgba(46, 125, 50, 0.04)" }}
+            >
+              <CardContent>
+                <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                  <TaskAltOutlinedIcon color="success" />
+                  <Box minWidth={0} flex={1}>
+                    <Typography fontWeight={800}>1. Thông tin cơ bản</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Tên, thương hiệu, danh mục, mô tả và trạng thái đã được lưu.
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Button
+                  size="small"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  endIcon={<ArrowForwardIcon fontSize="small" />}
+                  onClick={handleEditFromWorkspace}
+                >
+                  Chỉnh sửa thông tin
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: "50%",
+                      bgcolor: "primary.main",
+                      color: "primary.contrastText",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}
+                  >
+                    2
+                  </Box>
+                  <Box minWidth={0} flex={1}>
+                    <Typography fontWeight={800}>Biến thể và tồn kho</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Thêm SKU, giá, màu/dung lượng và số lượng tồn. Đây là bước bắt buộc để bán.
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Button
+                  variant="contained"
+                  size="small"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  endIcon={<ArrowForwardIcon fontSize="small" />}
+                  onClick={() => handleOpenWorkspaceEditor("variants")}
+                >
+                  Thêm biến thể
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: "50%",
+                      bgcolor: "primary.main",
+                      color: "primary.contrastText",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}
+                  >
+                    3
+                  </Box>
+                  <Box minWidth={0} flex={1}>
+                    <Typography fontWeight={800}>Hình ảnh sản phẩm</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Tải ảnh đại diện và ảnh chi tiết để khách hàng nhận biết sản phẩm nhanh hơn.
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Button
+                  size="small"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  endIcon={<ArrowForwardIcon fontSize="small" />}
+                  onClick={() => handleOpenWorkspaceEditor("images")}
+                >
+                  Thêm hình ảnh
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card variant="outlined">
+              <CardContent>
+                <Stack direction="row" spacing={1.25} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      display: "grid",
+                      placeItems: "center",
+                      borderRadius: "50%",
+                      bgcolor: "primary.main",
+                      color: "primary.contrastText",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}
+                  >
+                    4
+                  </Box>
+                  <Box minWidth={0} flex={1}>
+                    <Typography fontWeight={800}>Thông số kỹ thuật</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      Bổ sung màn hình, chipset, kết nối hoặc các thông số đúng với từng loại sản phẩm.
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Button
+                  size="small"
+                  fullWidth
+                  sx={{ mt: 2 }}
+                  endIcon={<ArrowForwardIcon fontSize="small" />}
+                  onClick={() => handleOpenWorkspaceEditor("specifications")}
+                >
+                  Bổ sung thông số
+                </Button>
+              </CardContent>
+            </Card>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleCloseProductWorkspace}>Hoàn tất sau</Button>
+        </DialogActions>
+      </AdminProductPanel>
 
       {/* Dialog xác nhận xoá sản phẩm */}
       <Dialog

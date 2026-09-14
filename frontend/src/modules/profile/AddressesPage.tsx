@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { isAxiosError } from "axios";
 import { useCallback, useEffect, useState } from "react";
+import { AccountLayout } from "../../components/account/AccountLayout";
 import {
   deleteMyAddress,
   getMyAddresses,
@@ -142,26 +143,31 @@ export function AddressesPage() {
 
   if (isLoading) {
     return (
-      <Stack alignItems="center" py={8} spacing={2}>
-        <CircularProgress />
-        <Typography>Đang tải danh sách địa chỉ...</Typography>
-      </Stack>
+      <AccountLayout>
+        <Stack alignItems="center" py={8} spacing={2}>
+          <CircularProgress />
+          <Typography>Đang tải danh sách địa chỉ...</Typography>
+        </Stack>
+      </AccountLayout>
     );
   }
 
   if (loadError) {
     return (
-      <Stack alignItems="center" py={8} spacing={2}>
-        <Alert severity="error">{loadError}</Alert>
-        <Button variant="outlined" onClick={reload}>
-          Thử lại
-        </Button>
-      </Stack>
+      <AccountLayout>
+        <Stack alignItems="center" py={8} spacing={2}>
+          <Alert severity="error">{loadError}</Alert>
+          <Button variant="outlined" onClick={reload}>
+            Thử lại
+          </Button>
+        </Stack>
+      </AccountLayout>
     );
   }
 
   return (
-    <>
+    <AccountLayout>
+      <>
       <Stack spacing={3} sx={{ maxWidth: 720, mx: "auto" }}>
         {/* Header */}
         <Stack
@@ -346,6 +352,7 @@ export function AddressesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+      </>
+    </AccountLayout>
   );
 }

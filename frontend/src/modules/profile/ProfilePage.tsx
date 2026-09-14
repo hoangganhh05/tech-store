@@ -12,6 +12,7 @@ import {
 import { isAxiosError } from "axios";
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { AccountLayout } from "../../components/account/AccountLayout";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../constants/routes";
 import {
@@ -153,132 +154,138 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <Stack alignItems="center" py={8} spacing={2}>
-        <CircularProgress />
-        <Typography>Đang tải thông tin cá nhân...</Typography>
-      </Stack>
+      <AccountLayout>
+        <Stack alignItems="center" py={8} spacing={2}>
+          <CircularProgress />
+          <Typography>Đang tải thông tin cá nhân...</Typography>
+        </Stack>
+      </AccountLayout>
     );
   }
 
   if (loadError) {
     return (
-      <Stack alignItems="center" py={8} spacing={2}>
-        <Alert severity="error">{loadError}</Alert>
-        <Button variant="outlined" onClick={retryLoad}>
-          Thử lại
-        </Button>
-      </Stack>
+      <AccountLayout>
+        <Stack alignItems="center" py={8} spacing={2}>
+          <Alert severity="error">{loadError}</Alert>
+          <Button variant="outlined" onClick={retryLoad}>
+            Thử lại
+          </Button>
+        </Stack>
+      </AccountLayout>
     );
   }
 
   return (
-    <Stack spacing={3}>
-      <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-          <Typography component="h1" variant="h2" mb={1}>
-            Thông tin cá nhân
-          </Typography>
-          <Typography color="text.secondary" mb={3}>
-            Xem và cập nhật thông tin tài khoản của bạn.
-          </Typography>
-          <Stack
-            component="form"
-            spacing={2}
-            onSubmit={handleSubmit}
-            noValidate
-          >
-            {successMessage && (
-              <Alert severity="success">{successMessage}</Alert>
-            )}
-            {submitError && <Alert severity="error">{submitError}</Alert>}
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              disabled
-              helperText="Email không thể thay đổi trực tiếp."
-            />
-            <TextField
-              label="Họ tên"
-              value={values.fullName}
-              onChange={handleChange("fullName")}
-              error={Boolean(fieldErrors.fullName)}
-              helperText={fieldErrors.fullName}
-              required
-              autoComplete="name"
-            />
-            <TextField
-              label="Số điện thoại"
-              value={values.phone}
-              onChange={handleChange("phone")}
-              error={Boolean(fieldErrors.phone)}
-              helperText={fieldErrors.phone}
-              required
-              autoComplete="tel"
-            />
-            <TextField
-              label="Ngày sinh"
-              type="date"
-              value={values.dateOfBirth ?? ""}
-              onChange={handleChange("dateOfBirth")}
-              error={Boolean(fieldErrors.dateOfBirth)}
-              helperText={fieldErrors.dateOfBirth || "Không bắt buộc."}
-              slotProps={{ inputLabel: { shrink: true } }}
-            />
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting}
+    <AccountLayout>
+      <Stack spacing={3}>
+        <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+            <Typography component="h1" variant="h2" mb={1}>
+              Thông tin cá nhân
+            </Typography>
+            <Typography color="text.secondary" mb={3}>
+              Xem và cập nhật thông tin tài khoản của bạn.
+            </Typography>
+            <Stack
+              component="form"
+              spacing={2}
+              onSubmit={handleSubmit}
+              noValidate
             >
-              {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-      <ChangePasswordForm />
-      <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Box>
-              <Typography variant="h6" component="h2">
-                Đơn hàng của tôi
-              </Typography>
-              <Typography color="text.secondary" variant="body2">
-                Xem lịch sử và trạng thái các đơn hàng đã đặt.
-              </Typography>
-            </Box>
-            <Button component={Link} to={ROUTES.orders} variant="outlined">
-              Xem đơn hàng
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-      <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-          >
-            <Box>
-              <Typography variant="h6" component="h2">
-                Địa chỉ giao hàng
-              </Typography>
-              <Typography color="text.secondary" variant="body2">
-                Quản lý danh sách địa chỉ giao hàng của bạn.
-              </Typography>
-            </Box>
-            <Button component={Link} to={ROUTES.addresses} variant="outlined">
-              Quản lý địa chỉ
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-    </Stack>
+              {successMessage && (
+                <Alert severity="success">{successMessage}</Alert>
+              )}
+              {submitError && <Alert severity="error">{submitError}</Alert>}
+              <TextField
+                label="Email"
+                type="email"
+                value={email}
+                disabled
+                helperText="Email không thể thay đổi trực tiếp."
+              />
+              <TextField
+                label="Họ tên"
+                value={values.fullName}
+                onChange={handleChange("fullName")}
+                error={Boolean(fieldErrors.fullName)}
+                helperText={fieldErrors.fullName}
+                required
+                autoComplete="name"
+              />
+              <TextField
+                label="Số điện thoại"
+                value={values.phone}
+                onChange={handleChange("phone")}
+                error={Boolean(fieldErrors.phone)}
+                helperText={fieldErrors.phone}
+                required
+                autoComplete="tel"
+              />
+              <TextField
+                label="Ngày sinh"
+                type="date"
+                value={values.dateOfBirth ?? ""}
+                onChange={handleChange("dateOfBirth")}
+                error={Boolean(fieldErrors.dateOfBirth)}
+                helperText={fieldErrors.dateOfBirth || "Không bắt buộc."}
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+        <ChangePasswordForm />
+        <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Box>
+                <Typography variant="h6" component="h2">
+                  Đơn hàng của tôi
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  Xem lịch sử và trạng thái các đơn hàng đã đặt.
+                </Typography>
+              </Box>
+              <Button component={Link} to={ROUTES.orders} variant="outlined">
+                Xem đơn hàng
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+        <Card sx={{ maxWidth: 680, width: "100%", mx: "auto" }}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Box>
+                <Typography variant="h6" component="h2">
+                  Địa chỉ giao hàng
+                </Typography>
+                <Typography color="text.secondary" variant="body2">
+                  Quản lý danh sách địa chỉ giao hàng của bạn.
+                </Typography>
+              </Box>
+              <Button component={Link} to={ROUTES.addresses} variant="outlined">
+                Quản lý địa chỉ
+              </Button>
+            </Stack>
+          </CardContent>
+        </Card>
+      </Stack>
+    </AccountLayout>
   );
 }
