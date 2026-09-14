@@ -22,3 +22,8 @@ logging:
 app:
   jwt:
     secret: techstore-test-jwt-secret-for-automated-tests-only-2026
+  upload:
+    # Keep integration-test artifacts under target/ so tests never pollute the
+    # developer's real product-image folder.
+    dir: target/test-uploads/products
+    base-dir: target/test-uploads

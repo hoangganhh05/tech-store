@@ -7,9 +7,9 @@ export function ProductPlaceholder({ compact = false }: { compact?: boolean }) {
       aria-label="Hình minh họa sản phẩm"
       display="grid"
       minHeight={compact ? 100 : 180}
-      bgcolor="#eef1f4"
-      color="#607d8b"
-      sx={{ placeItems: 'center' }}
+      bgcolor="#F7F9FC"
+      color="#A0B4C8"
+      sx={{ placeItems: 'center', width: '100%', borderRadius: '12px' }}
     >
       <SmartphoneRoundedIcon sx={{ fontSize: compact ? 48 : 76 }} />
     </Box>

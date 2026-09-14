@@ -34,6 +34,22 @@ vi.mock("../services/storefrontService", () => ({
   getRelatedProducts: vi.fn(),
 }));
 
+vi.mock("../services/reviewService", () => ({
+  getProductReviews: vi.fn().mockResolvedValue({
+    averageRating: 0,
+    totalReviews: 0,
+    reviews: {
+      items: [],
+      page: 0,
+      size: 5,
+      totalElements: 0,
+      totalPages: 0,
+      first: true,
+      last: true,
+    },
+  }),
+}));
+
 const mockedGetCart = vi.mocked(cartService.getCart);
 const mockedAddToCart = vi.mocked(cartService.addToCart);
 const mockedUpdateCartItemQuantity = vi.mocked(
@@ -47,6 +63,10 @@ const mockedGetProductDetail = vi.mocked(
 const mockedGetRelatedProducts = vi.mocked(
   storefrontService.getRelatedProducts,
 );
+
+beforeEach(() => {
+  vi.mocked(storefrontService.getStorefrontCategories).mockResolvedValue([]);
+});
 
 const mockAuthValue = {
   user: null,

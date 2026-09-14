@@ -116,6 +116,18 @@ function renderAdminProductsPage() {
   );
 }
 
+async function chooseRequiredProductClassification() {
+  fireEvent.mouseDown(
+    screen.getByRole("combobox", { name: /thương hiệu/i }),
+  );
+  fireEvent.click(await screen.findByRole("option", { name: "Apple" }));
+
+  fireEvent.mouseDown(
+    screen.getByRole("combobox", { name: /danh mục/i }),
+  );
+  fireEvent.click(await screen.findByRole("option", { name: "Điện thoại" }));
+}
+
 describe("AdminProductsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,6 +212,7 @@ describe("AdminProductsPage", () => {
 
     const nameInput = screen.getByLabelText(/tên sản phẩm \*/i);
     fireEvent.change(nameInput, { target: { value: "iPhone 16 Plus" } });
+    await chooseRequiredProductClassification();
 
     const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm$/i });
     fireEvent.click(submitBtn);
@@ -213,6 +226,13 @@ describe("AdminProductsPage", () => {
           status: "DRAFT",
         }),
       );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("QUY TRÌNH HOÀN THIỆN")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /thêm biến thể/i }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -289,6 +309,26 @@ describe("AdminProductsPage", () => {
     expect(mockedCreateAdminProduct).not.toHaveBeenCalled();
   });
 
+  it("requires the admin to select both brand and category for a new product", async () => {
+    renderAdminProductsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("iPhone 16 Pro Max")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /thêm sản phẩm$/i }));
+    fireEvent.change(screen.getByLabelText(/tên sản phẩm \*/i), {
+      target: { value: "Sản phẩm chưa phân loại" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tạo sản phẩm$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Vui lòng chọn thương hiệu.")).toBeInTheDocument();
+      expect(screen.getByText("Vui lòng chọn danh mục.")).toBeInTheDocument();
+    });
+    expect(mockedCreateAdminProduct).not.toHaveBeenCalled();
+  });
+
   it("displays error alert when creating product fails", async () => {
     mockedCreateAdminProduct.mockRejectedValue({
       isAxiosError: true,
@@ -310,6 +350,7 @@ describe("AdminProductsPage", () => {
 
     const nameInput = screen.getByLabelText(/tên sản phẩm \*/i);
     fireEvent.change(nameInput, { target: { value: "iPhone 16 Pro Max" } });
+    await chooseRequiredProductClassification();
 
     const submitBtn = screen.getByRole("button", { name: /tạo sản phẩm$/i });
     fireEvent.click(submitBtn);

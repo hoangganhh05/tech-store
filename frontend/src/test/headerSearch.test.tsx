@@ -2,9 +2,16 @@
 import { MemoryRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "@mui/material";
 import { appTheme } from "../configs/theme";
+import { vi } from "vitest";
 import { StorefrontLayout } from "../layouts/StorefrontLayout";
 import { AuthProvider } from "../modules/auth/AuthContext";
 import { env } from "../configs/env";
+
+vi.mock("../services/storefrontService", () => ({
+  // Navigation categories are outside this test's scope; leave the request pending
+  // so there is no asynchronous layout state update after a synchronous assertion.
+  getStorefrontCategories: vi.fn(() => new Promise(() => {})),
+}));
 
 function DummyProductsPage() {
   const [params] = useSearchParams();
@@ -68,7 +75,7 @@ describe("US-05.3: Storefront Header Search", () => {
 
     const searchInput = screen.getByTestId("header-search-input");
     expect(searchInput).toBeInTheDocument();
-    expect(searchInput).toHaveAttribute("placeholder", "Tìm sản phẩm...");
+    expect(searchInput).toHaveAttribute("placeholder", "Tìm iPhone, Samsung, tai nghe...");
     expect(screen.getByTestId("header-search-button")).toBeInTheDocument();
   });
 

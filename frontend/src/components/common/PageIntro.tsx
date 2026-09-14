@@ -10,11 +10,11 @@ type PageIntroProps = {
 
 export function PageIntro({ eyebrow, title, description, action }: PageIntroProps) {
   return (
-    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={3}>
+    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={{ xs: 2.5, md: 3.5 }}>
       <Box maxWidth={700}>
-        {eyebrow && <Typography color="primary" fontWeight={700} variant="overline">{eyebrow}</Typography>}
-        <Typography component="h1" variant="h1" mb={1}>{title}</Typography>
-        <Typography color="text.secondary">{description}</Typography>
+        {eyebrow && <Typography color="primary" fontWeight={600} variant="caption" display="block" mb={0.75}>{eyebrow}</Typography>}
+        <Typography component="h1" variant="h1" mb={0.75}>{title}</Typography>
+        <Typography variant="body2" color="text.secondary">{description}</Typography>
       </Box>
       {action}
     </Box>
