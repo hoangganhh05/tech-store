@@ -53,6 +53,12 @@ import type { Category } from '../services/categoryService'
 
 type NavItem = { label: string; to: string }
 
+const fallbackNavItems: NavItem[] = [
+  { label: 'Điện thoại', to: ROUTES.products },
+  { label: 'Tai nghe', to: ROUTES.products },
+  { label: 'Phụ kiện', to: ROUTES.products },
+]
+
 export function StorefrontLayout() {
   useAuthEvents()
   const navigate = useNavigate()
@@ -90,9 +96,9 @@ export function StorefrontLayout() {
 
   const navItems: NavItem[] = [
     { label: 'Trang chủ', to: ROUTES.home },
-    { label: 'Sản phẩm', to: ROUTES.products },
-    ...categories.map((category) => ({ label: category.name, to: `${ROUTES.products}?categoryId=${category.id}` })),
-    { label: 'Sản phẩm mới', to: `${ROUTES.products}?sortBy=createdAt&sortDir=desc` },
+    ...(categories.length
+      ? categories.map((category) => ({ label: category.name, to: `${ROUTES.products}?categoryId=${category.id}` }))
+      : fallbackNavItems),
     { label: 'Khuyến mãi', to: '/#on-sale-section' },
   ]
 
@@ -139,7 +145,7 @@ export function StorefrontLayout() {
         fullWidth
         size="small"
         value={searchKeyword}
-        placeholder="Tìm sản phẩm..."
+        placeholder="Tìm iPhone, Samsung, tai nghe..."
         onChange={(event) => setSearchKeyword(event.target.value)}
         slotProps={{
           htmlInput: {
@@ -150,7 +156,7 @@ export function StorefrontLayout() {
             startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ color: '#8b9fb4', fontSize: 21 }} /></InputAdornment>,
             endAdornment: <InputAdornment position="end">
               {searchKeyword && <IconButton size="small" onClick={handleClearSearch} aria-label="Xoá từ khoá tìm kiếm"><ClearRoundedIcon fontSize="small" /></IconButton>}
-              <Button type="submit" size="small" data-testid="header-search-button" sx={{ minWidth: 44, px: 1 }}>Tìm</Button>
+              <IconButton type="submit" size="small" data-testid="header-search-button" aria-label="Tìm kiếm" sx={{ width: 36, height: 36, color: 'primary.main' }}><SearchRoundedIcon fontSize="small" /></IconButton>
             </InputAdornment>,
             sx: { height: 44, pr: .5, bgcolor: 'background.default', fontSize: 14 },
           },
@@ -167,17 +173,23 @@ export function StorefrontLayout() {
       {isDesktop && <Box bgcolor="secondary.main" color="#d8e5f4">
         <Container maxWidth="xl">
           <Stack direction="row" justifyContent="space-between" alignItems="center" gap={2} minHeight={32}>
-            <Typography variant="caption" display="flex" alignItems="center" gap={.75}><LocationOnOutlinedIcon sx={{ fontSize: 14 }} />{env.brand.address}</Typography>
-            <Typography variant="caption" whiteSpace="nowrap">Tư vấn mua hàng: {env.brand.contact.phone}</Typography>
+            <Stack direction="row" alignItems="center" spacing={2} divider={<Typography variant="caption" color="rgba(255,255,255,.35)">•</Typography>}>
+              <Typography variant="caption" display="flex" alignItems="center" gap={.75}><LocationOnOutlinedIcon sx={{ fontSize: 14 }} />{env.brand.address}</Typography>
+              <Typography variant="caption" whiteSpace="nowrap">{env.brand.contact.phone}</Typography>
+            </Stack>
+            <Typography variant="caption" whiteSpace="nowrap">Giao hàng toàn quốc · Bảo hành chính hãng</Typography>
           </Stack>
         </Container>
       </Box>}
 
       <AppBar position="sticky" color="inherit" sx={{ bgcolor: 'rgba(255,255,255,.97)', borderBottom: '1px solid', borderColor: 'divider', backdropFilter: 'blur(12px)', boxShadow: '0 2px 12px rgba(7,86,168,.04)' }}>
         <Container maxWidth="xl">
-          <Toolbar disableGutters sx={{ minHeight: { xs: 66, md: 76 }, gap: { xs: 1, md: 4 } }}>
+          <Toolbar disableGutters sx={{ minHeight: { xs: 66, md: 76 }, gap: { xs: 1, md: 2 } }}>
             <Box component={Link} to={ROUTES.home} aria-label={env.brand.name} sx={{ flexShrink: 0 }}><BrandMark /></Box>
-            {isDesktop && <Box flex={1} maxWidth={560} mx="auto">{searchField}</Box>}
+            {isDesktop && <Stack component="nav" direction="row" alignItems="center" gap={.15} aria-label="Điều hướng chính" sx={{ flexShrink: 0 }}>
+              {navItems.map((item) => <Button key={item.to} component={Link} to={item.to} aria-current={isCurrent(item) ? 'page' : undefined} size="small" sx={{ minWidth: 0, px: 1, fontSize: 12.5, whiteSpace: 'nowrap', color: isCurrent(item) ? 'primary.main' : 'text.secondary', bgcolor: isCurrent(item) ? 'primary.light' : 'transparent' }}>{item.label}</Button>)}
+            </Stack>}
+            {isDesktop && <Box flex={1} minWidth={170} maxWidth={360} ml="auto">{searchField}</Box>}
             <Stack direction="row" alignItems="center" spacing={{ xs: 0, md: .5 }} ml="auto">
               {isDesktop && !isAdmin && <Tooltip title="Yêu thích"><IconButton component={Link} to={ROUTES.wishlist} aria-label="Danh sách yêu thích" sx={{ minWidth: 44, minHeight: 44 }}><FavoriteBorderRoundedIcon /></IconButton></Tooltip>}
               {!isAdmin && <Tooltip title="Giỏ hàng"><IconButton component={Link} to={ROUTES.cart} aria-label="Giỏ hàng" data-testid="header-cart-btn" sx={{ minWidth: 44, minHeight: 44 }}><Badge badgeContent={cartCount} color="primary" data-testid="header-cart-badge"><ShoppingCartOutlinedIcon /></Badge></IconButton></Tooltip>}
@@ -193,15 +205,6 @@ export function StorefrontLayout() {
           {!isDesktop && <Box pb={1.5}>{searchField}</Box>}
         </Container>
 
-        {isDesktop && <Box borderTop="1px solid" borderColor="#edf2f7">
-          <Container maxWidth="xl">
-            <Stack component="nav" direction="row" gap={.5} alignItems="center" minHeight={46} aria-label="Điều hướng chính">
-              {navItems.map((item) => <Button key={item.to} component={Link} to={item.to} aria-current={isCurrent(item) ? 'page' : undefined} size="small" sx={{ px: 1.5, fontSize: 13, whiteSpace: 'nowrap', color: isCurrent(item) ? 'primary.main' : 'text.secondary', bgcolor: isCurrent(item) ? 'primary.light' : 'transparent' }}>{item.label}</Button>)}
-              <Box flex={1} />
-              {isAdmin && <Button component={Link} to={ROUTES.admin} size="small" startIcon={<AdminPanelSettingsRoundedIcon />} sx={{ whiteSpace: 'nowrap' }}>Trang quản trị</Button>}
-            </Stack>
-          </Container>
-        </Box>}
       </AppBar>
 
       <Menu id="account-menu" anchorEl={accountAnchor} open={Boolean(accountAnchor)} onClose={() => setAccountAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }} slotProps={{ paper: { sx: { minWidth: 244, mt: 1, border: '1px solid', borderColor: 'divider' } } }}>

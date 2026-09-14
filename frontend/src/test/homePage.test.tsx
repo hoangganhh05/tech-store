@@ -131,7 +131,7 @@ describe("US-05.1: HomePage Storefront Component", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /Điện thoại và phụ kiện phù hợp nhu cầu của bạn/i,
+        name: /Công nghệ đỉnh cao Giá tốt nhất thị trường/i,
       }),
     ).toBeInTheDocument();
     expect(

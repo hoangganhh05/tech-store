@@ -75,7 +75,7 @@ describe("US-05.3: Storefront Header Search", () => {
 
     const searchInput = screen.getByTestId("header-search-input");
     expect(searchInput).toBeInTheDocument();
-    expect(searchInput).toHaveAttribute("placeholder", "Tìm sản phẩm...");
+    expect(searchInput).toHaveAttribute("placeholder", "Tìm iPhone, Samsung, tai nghe...");
     expect(screen.getByTestId("header-search-button")).toBeInTheDocument();
   });
 
