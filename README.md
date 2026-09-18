@@ -33,6 +33,7 @@ Tài liệu chính:
 - [Production environment configuration](docs/US-15.2-environment.md)
 - [Production deployment and redeploy](docs/US-15.3-deployment.md)
 - [Hướng dẫn sử dụng hệ thống quản trị](docs/US-15.4-admin-user-manual.md)
+- [Tài liệu kỹ thuật bàn giao](docs/US-15.5-technical-handover.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
