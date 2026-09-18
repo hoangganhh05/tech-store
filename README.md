@@ -32,6 +32,7 @@ Tài liệu chính:
 - [Docker production packaging](docs/US-15.1-docker.md)
 - [Production environment configuration](docs/US-15.2-environment.md)
 - [Production deployment and redeploy](docs/US-15.3-deployment.md)
+- [Hướng dẫn sử dụng hệ thống quản trị](docs/US-15.4-admin-user-manual.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
