@@ -34,6 +34,7 @@ Tài liệu chính:
 - [Production deployment and redeploy](docs/US-15.3-deployment.md)
 - [Hướng dẫn sử dụng hệ thống quản trị](docs/US-15.4-admin-user-manual.md)
 - [Tài liệu kỹ thuật bàn giao](docs/US-15.5-technical-handover.md)
+- [Dữ liệu mẫu/demo](docs/US-15.6-demo-seed-data.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
