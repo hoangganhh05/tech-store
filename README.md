@@ -35,6 +35,7 @@ Tài liệu chính:
 - [Hướng dẫn sử dụng hệ thống quản trị](docs/US-15.4-admin-user-manual.md)
 - [Tài liệu kỹ thuật bàn giao](docs/US-15.5-technical-handover.md)
 - [Dữ liệu mẫu/demo](docs/US-15.6-demo-seed-data.md)
+- [Biên bản nghiệm thu và bàn giao](docs/US-15.7-final-acceptance.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
