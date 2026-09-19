@@ -1,6 +1,6 @@
 -- US-15.6 demo seed data for Đăng Tùng Mobile.
 --
--- Prerequisite: start the Backend once so Flyway has applied V1...V25, or use
+-- Prerequisite: start the Backend once so Flyway has applied V1...V27, or use
 -- an existing database at the current application schema version.
 --
 -- This script is deliberately idempotent. It only creates or replaces records

@@ -64,7 +64,7 @@ class InventoryServiceImplTest {
 
         var savedInventory = captureInventory();
         assertThat(savedInventory.getQuantityOnHand()).isEqualTo(15);
-        verify(variant).setStockQuantity(15);
+        verify(variant).setStockQuantity(13);
         var tx = captureTransaction();
         assertThat(tx.getTransactionType()).isEqualTo(InventoryTransactionType.IMPORT);
         assertThat(tx.getQuantityChange()).isEqualTo(5);
@@ -89,7 +89,7 @@ class InventoryServiceImplTest {
 
         var savedInventory = captureInventory();
         assertThat(savedInventory.getQuantityOnHand()).isEqualTo(5);
-        verify(variant).setStockQuantity(5);
+        verify(variant).setStockQuantity(3);
         verify(entityManager).refresh(inventory);
         verify(inventories).findByVariantIdWithLock(10L);
         var tx = captureTransaction();
@@ -105,7 +105,7 @@ class InventoryServiceImplTest {
 
         var savedInventory = captureInventory();
         assertThat(savedInventory.getQuantityOnHand()).isEqualTo(14);
-        verify(variant).setStockQuantity(14);
+        verify(variant).setStockQuantity(12);
         var tx = captureTransaction();
         assertThat(tx.getTransactionType()).isEqualTo(InventoryTransactionType.CANCEL_RETURN);
         assertThat(tx.getQuantityChange()).isEqualTo(4);

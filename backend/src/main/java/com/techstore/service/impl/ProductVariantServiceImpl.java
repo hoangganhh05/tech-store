@@ -72,11 +72,11 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         );
 
         ProductVariant saved = productVariantRepository.save(variant);
-        int initialStock = request.stockQuantity() != null ? Math.max(0, request.stockQuantity()) : 0;
+        int initialStock = request.stockQuantity() != null ? request.stockQuantity() : 0;
         Inventory inventory = new Inventory(saved, initialStock, 0, 5);
         inventoryRepository.save(inventory);
 
-        return ProductVariantResponse.from(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -85,7 +85,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         findProductOrThrow(productId);
         return productVariantRepository.findByProductIdAndIsDeletedFalseOrderByCreatedAtAsc(productId)
                 .stream()
-                .map(ProductVariantResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -94,7 +94,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
     public ProductVariantResponse getVariantById(Long productId, Long variantId) {
         findProductOrThrow(productId);
         ProductVariant variant = findVariantOrThrow(productId, variantId);
-        return ProductVariantResponse.from(variant);
+        return toResponse(variant);
     }
 
     @Override
@@ -103,6 +103,7 @@ public class ProductVariantServiceImpl implements ProductVariantService {
         findProductOrThrow(productId);
         ProductVariant variant = findVariantOrThrow(productId, variantId);
         validatePriceAndOriginalPrice(request.price(), request.originalPrice());
+        rejectDirectStockUpdate(variant, request.stockQuantity());
 
         String trimmedSku = request.sku().trim().toUpperCase();
         if (productVariantRepository.existsBySkuIgnoreCaseAndIdNot(trimmedSku, variantId)) {
@@ -121,11 +122,11 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 storage,
                 request.price(),
                 request.originalPrice(),
-                request.stockQuantity(),
+                null,
                 request.status()
         );
 
-        return ProductVariantResponse.from(variant);
+        return toResponse(variant);
     }
 
     @Override
@@ -182,5 +183,24 @@ public class ProductVariantServiceImpl implements ProductVariantService {
                 );
             }
         }
+    }
+
+    private void rejectDirectStockUpdate(ProductVariant variant, Integer requestedStock) {
+        if (requestedStock != null && requestedStock < 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Số lượng tồn kho phải lớn hơn hoặc bằng 0");
+        }
+        if (requestedStock != null && !Objects.equals(requestedStock, variant.getStockQuantity())) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "Không thể sửa tồn kho tại biến thể. Vui lòng điều chỉnh trong Quản lý tồn kho"
+            );
+        }
+    }
+
+    private ProductVariantResponse toResponse(ProductVariant variant) {
+        int availableStock = inventoryRepository.findByVariantId(variant.getId())
+                .map(Inventory::getAvailableQuantity)
+                .orElse(variant.getStockQuantity() != null ? Math.max(0, variant.getStockQuantity()) : 0);
+        return ProductVariantResponse.from(variant, availableStock);
     }
 }

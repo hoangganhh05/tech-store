@@ -14,10 +14,13 @@ import org.springframework.data.jpa.repository.QueryHints;
 
 import java.util.Optional;
 import java.util.List;
+import java.util.Collection;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     Optional<Inventory> findByVariantId(Long variantId);
+
+    List<Inventory> findByVariantIdIn(Collection<Long> variantIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints({@QueryHint(name = "jakarta.persistence.lock.timeout", value = "5000")})

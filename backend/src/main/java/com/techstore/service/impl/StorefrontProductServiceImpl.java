@@ -11,6 +11,7 @@ import com.techstore.dto.response.StorefrontProductDetailResponse;
 import com.techstore.dto.response.StorefrontProductResponse;
 import com.techstore.dto.response.VariantStockResponse;
 import com.techstore.entity.Category;
+import com.techstore.entity.Inventory;
 import com.techstore.entity.Product;
 import com.techstore.entity.ProductImage;
 import com.techstore.entity.ProductSpecification;
@@ -23,6 +24,7 @@ import com.techstore.exception.BusinessException;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
+import com.techstore.repository.InventoryRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
 import com.techstore.repository.ProductSpecificationRepository;
@@ -56,6 +58,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
     private final ProductSpecificationRepository productSpecificationRepository;
     private final CategoryRepository categoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final InventoryRepository inventoryRepository;
     private final BrandRepository brandRepository;
     private final PromotionService promotionService;
 
@@ -66,6 +69,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
             ProductSpecificationRepository productSpecificationRepository,
             CategoryRepository categoryRepository,
             InventoryTransactionRepository inventoryTransactionRepository,
+            InventoryRepository inventoryRepository,
             BrandRepository brandRepository,
             PromotionService promotionService
     ) {
@@ -75,6 +79,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         this.productSpecificationRepository = productSpecificationRepository;
         this.categoryRepository = categoryRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
+        this.inventoryRepository = inventoryRepository;
         this.brandRepository = brandRepository;
         this.promotionService = promotionService;
     }
@@ -402,6 +407,22 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
         return Math.max(1, Math.min(limit, 50));
     }
 
+    private int legacyStock(ProductVariant variant) {
+        return variant.getStockQuantity() != null ? Math.max(0, variant.getStockQuantity()) : 0;
+    }
+
+    private Map<Long, Integer> availableStockByVariantId(List<ProductVariant> variants) {
+        if (variants.isEmpty()) {
+            return Map.of();
+        }
+        return inventoryRepository.findByVariantIdIn(variants.stream().map(ProductVariant::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(
+                        inventory -> inventory.getVariant().getId(),
+                        Inventory::getAvailableQuantity
+                ));
+    }
+
     private List<StorefrontProductResponse> mapToStorefrontProductResponses(List<Product> products) {
         if (products.isEmpty()) {
             return Collections.emptyList();
@@ -411,6 +432,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
 
         List<ProductVariant> variants = productVariantRepository.findByProductIdInAndIsDeletedFalseOrderByCreatedAtAsc(productIds);
         Map<Long, EffectivePrice> effectivePrices = promotionService.getEffectivePrices(variants);
+        Map<Long, Integer> availableStockByVariantId = availableStockByVariantId(variants);
         Map<Long, List<ProductVariant>> variantsByProductId = variants.stream()
                 .collect(Collectors.groupingBy(v -> v.getProduct().getId()));
 
@@ -449,7 +471,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                         .orElse(BigDecimal.ZERO);
 
                 totalStock = pVariants.stream()
-                        .mapToInt(v -> v.getStockQuantity() != null ? Math.max(0, v.getStockQuantity()) : 0)
+                        .mapToInt(v -> availableStockByVariantId.getOrDefault(v.getId(), legacyStock(v)))
                         .sum();
 
                 int maxDiscount = 0;
@@ -531,11 +553,17 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
                 .toList();
         Map<Long, EffectivePrice> effectivePrices = promotionService.getEffectivePrices(activeVariants);
+        Map<Long, Integer> availableStockByVariantId = availableStockByVariantId(activeVariants);
         List<ProductVariantResponse> variantResponses = variants.stream()
                 .filter(v -> v.getStatus() == VariantStatus.ACTIVE)
                 .map(variant -> {
                     EffectivePrice effectivePrice = getEffectivePrice(variant, effectivePrices);
-                    return ProductVariantResponse.from(variant, effectivePrice.price(), effectivePrice.originalPrice());
+                    return ProductVariantResponse.from(
+                            variant,
+                            effectivePrice.price(),
+                            effectivePrice.originalPrice(),
+                            availableStockByVariantId.getOrDefault(variant.getId(), legacyStock(variant))
+                    );
                 })
                 .toList();
 
@@ -566,7 +594,7 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                     .orElse(BigDecimal.ZERO);
 
             totalStock = activeVariants.stream()
-                    .mapToInt(v -> v.getStockQuantity() != null ? Math.max(0, v.getStockQuantity()) : 0)
+                    .mapToInt(v -> availableStockByVariantId.getOrDefault(v.getId(), legacyStock(v)))
                     .sum();
 
             int maxDiscount = 0;
@@ -673,7 +701,9 @@ public class StorefrontProductServiceImpl implements StorefrontProductService {
                 variant.getId(),
                 product.getId(),
                 variant.getSku(),
-                variant.getStockQuantity()
+                inventoryRepository.findByVariantId(variant.getId())
+                        .map(Inventory::getAvailableQuantity)
+                        .orElse(legacyStock(variant))
         );
     }
 
