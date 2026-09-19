@@ -334,7 +334,7 @@ class AdminProductVariantIntegrationTest {
                 "256GB",
                 new BigDecimal("22500000.00"),
                 new BigDecimal("25000000.00"),
-                20,
+                5,
                 VariantStatus.INACTIVE
         );
 
@@ -348,6 +348,42 @@ class AdminProductVariantIntegrationTest {
                 .andExpect(jsonPath("$.data.storage").value("256GB"))
                 .andExpect(jsonPath("$.data.price").value(22500000.00))
                 .andExpect(jsonPath("$.data.status").value("INACTIVE"));
+    }
+
+    @Test
+    @DisplayName("Chặn cập nhật tồn kho qua API biến thể và giữ nguyên số liệu kho")
+    void updateVariant_withDifferentStock_throwsBadRequest() throws Exception {
+        ProductVariant saved = productVariantRepository.save(new ProductVariant(
+                testProduct, "SKU-STOCK-LOCKED", "Đen", "128GB", new BigDecimal("20000000"), null, 5, VariantStatus.ACTIVE
+        ));
+
+        ProductVariantRequest updateRequest = new ProductVariantRequest(
+                "SKU-STOCK-LOCKED", "Đen", "128GB", new BigDecimal("20000000"), null, 20, VariantStatus.ACTIVE
+        );
+
+        mockMvc.perform(put("/api/v1/admin/products/" + testProduct.getId() + "/variants/" + saved.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        assertThat(productVariantRepository.findById(saved.getId()).orElseThrow().getStockQuantity()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("Chặn tạo biến thể có tồn kho âm")
+    void createVariant_withNegativeStock_throwsBadRequest() throws Exception {
+        ProductVariantRequest request = new ProductVariantRequest(
+                "SKU-NEGATIVE-STOCK", "Đen", "128GB", new BigDecimal("20000000"), null, -1, VariantStatus.ACTIVE
+        );
+
+        mockMvc.perform(post("/api/v1/admin/products/" + testProduct.getId() + "/variants")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 
     @Test

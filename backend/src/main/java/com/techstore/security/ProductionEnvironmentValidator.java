@@ -17,17 +17,22 @@ import java.util.Arrays;
 public class ProductionEnvironmentValidator {
 
     private static final String DEVELOPMENT_JWT_SECRET_MARKER = "techstore-development-jwt-secret";
+    private static final String LEGACY_BOOTSTRAP_EMAIL = "admin@techstore.local";
+    private static final String LEGACY_BOOTSTRAP_PASSWORD = "Admin@123456";
 
     private final JwtProperties jwtProperties;
+    private final InitialAdminProperties initialAdminProperties;
     private final String allowedOrigins;
     private final String passwordResetFrontendUrl;
 
     public ProductionEnvironmentValidator(
             JwtProperties jwtProperties,
+            InitialAdminProperties initialAdminProperties,
             @Value("${app.cors.allowed-origins}") String allowedOrigins,
             @Value("${app.password-reset.frontend-base-url}") String passwordResetFrontendUrl
     ) {
         this.jwtProperties = jwtProperties;
+        this.initialAdminProperties = initialAdminProperties;
         this.allowedOrigins = allowedOrigins;
         this.passwordResetFrontendUrl = passwordResetFrontendUrl;
     }
@@ -39,10 +44,37 @@ public class ProductionEnvironmentValidator {
             throw new IllegalStateException("JWT_SECRET for prod must not reuse the development secret");
         }
 
+        validateInitialAdmin();
+
         Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .forEach(this::validateTrustedUrl);
         validateTrustedUrl(passwordResetFrontendUrl);
+    }
+
+    private void validateInitialAdmin() {
+        String email = initialAdminProperties.getEmail() == null ? "" : initialAdminProperties.getEmail().trim();
+        String password = initialAdminProperties.getPassword();
+        String fullName = initialAdminProperties.getFullName() == null ? "" : initialAdminProperties.getFullName().trim();
+
+        if (email.isBlank() || password == null || password.isBlank()) {
+            throw new IllegalStateException("INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD are required for prod");
+        }
+        if (LEGACY_BOOTSTRAP_EMAIL.equalsIgnoreCase(email) || LEGACY_BOOTSTRAP_PASSWORD.equals(password)) {
+            throw new IllegalStateException("Production must not use the legacy default administrator credentials");
+        }
+        if (!email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") || email.length() > 255) {
+            throw new IllegalStateException("INITIAL_ADMIN_EMAIL is invalid");
+        }
+        if (password.length() < 12 || password.length() > 72) {
+            throw new IllegalStateException("INITIAL_ADMIN_PASSWORD must contain 12 to 72 characters");
+        }
+        if (fullName.isBlank() || fullName.length() > 150) {
+            throw new IllegalStateException("INITIAL_ADMIN_FULL_NAME is invalid");
+        }
+        if (initialAdminProperties.getPhone() != null && initialAdminProperties.getPhone().trim().length() > 20) {
+            throw new IllegalStateException("INITIAL_ADMIN_PHONE is invalid");
+        }
     }
 
     private void validateTrustedUrl(String value) {

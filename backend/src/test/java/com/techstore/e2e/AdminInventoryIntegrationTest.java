@@ -354,7 +354,7 @@ class AdminInventoryIntegrationTest {
 
         // Verify database state for variant and inventory transaction
         ProductVariant updatedVariant = productVariantRepository.findById(iphone128.getId()).orElseThrow();
-        org.junit.jupiter.api.Assertions.assertEquals(35, updatedVariant.getStockQuantity());
+        org.junit.jupiter.api.Assertions.assertEquals(33, updatedVariant.getStockQuantity());
 
         Inventory inv = inventoryRepository.findByVariantId(iphone128.getId()).orElseThrow();
         var transactions = inventoryTransactionRepository.findByInventoryIdOrderByCreatedAtDesc(inv.getId());
@@ -645,7 +645,7 @@ class AdminInventoryIntegrationTest {
         assertThat(updatedInv.getAvailableQuantity()).isEqualTo(15);
 
         ProductVariant updatedVariant = productVariantRepository.findById(iphone128.getId()).orElseThrow();
-        assertThat(updatedVariant.getStockQuantity()).isEqualTo(17);
+        assertThat(updatedVariant.getStockQuantity()).isEqualTo(15);
 
         var txs = inventoryTransactionRepository.findAll();
         var saleTx = txs.stream()

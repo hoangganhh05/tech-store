@@ -19,7 +19,7 @@ done
 
 [ -f .env ] || fail 'Missing .env. Copy .env.example and fill all required production values.'
 
-required=(APP_DOMAIN ACME_EMAIL JWT_SECRET MYSQL_PASSWORD MYSQL_ROOT_PASSWORD CORS_ALLOWED_ORIGINS PASSWORD_RESET_FRONTEND_URL MAIL_HOST MAIL_USERNAME MAIL_PASSWORD MAIL_FROM)
+required=(APP_DOMAIN ACME_EMAIL JWT_SECRET INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD MYSQL_PASSWORD MYSQL_ROOT_PASSWORD CORS_ALLOWED_ORIGINS PASSWORD_RESET_FRONTEND_URL MAIL_HOST MAIL_USERNAME MAIL_PASSWORD MAIL_FROM)
 for key in "${required[@]}"; do
   value=$(grep -E "^${key}=" .env | tail -n 1 | cut -d '=' -f2- || true)
   [ -n "$value" ] || fail "${key} is empty in .env."

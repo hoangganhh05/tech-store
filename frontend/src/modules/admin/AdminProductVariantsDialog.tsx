@@ -212,6 +212,7 @@ export function AdminProductVariantsDialog({
 
     const stockNum = Number(formData.stockQuantity);
     if (
+      !editingVariant &&
       formData.stockQuantity.trim() !== "" &&
       (isNaN(stockNum) || stockNum < 0)
     ) {
@@ -232,9 +233,11 @@ export function AdminProductVariantsDialog({
       storage: formData.storage.trim() || undefined,
       price: priceNum,
       originalPrice: originalPriceNum,
-      stockQuantity: isNaN(stockNum) ? 0 : stockNum,
       status: formData.status,
     };
+    if (!editingVariant) {
+      payload.stockQuantity = isNaN(stockNum) ? 0 : stockNum;
+    }
 
     try {
       if (editingVariant) {
@@ -594,17 +597,29 @@ export function AdminProductVariantsDialog({
 
               <Stack direction="row" spacing={2}>
                 <TextField
-                  label="Số lượng tồn kho"
+                  label={
+                    editingVariant ? "Tồn kho khả dụng" : "Số lượng tồn kho ban đầu"
+                  }
                   type="number"
                   fullWidth
                   placeholder="VD: 50"
                   value={formData.stockQuantity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, stockQuantity: e.target.value })
+                  onChange={
+                    editingVariant
+                      ? undefined
+                      : (e) =>
+                          setFormData({
+                            ...formData,
+                            stockQuantity: e.target.value,
+                          })
                   }
-                  error={Boolean(formErrors.stockQuantity)}
-                  helperText={formErrors.stockQuantity}
-                  disabled={isSubmitting}
+                  error={!editingVariant && Boolean(formErrors.stockQuantity)}
+                  helperText={
+                    editingVariant
+                      ? "Điều chỉnh tồn kho tại Quản lý tồn kho để có lịch sử giao dịch."
+                      : formErrors.stockQuantity
+                  }
+                  disabled={isSubmitting || Boolean(editingVariant)}
                 />
                 <FormControl fullWidth disabled={isSubmitting}>
                   <InputLabel id="variant-status-label">Trạng thái</InputLabel>

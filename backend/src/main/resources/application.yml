@@ -72,6 +72,11 @@ app:
     secret: ${JWT_SECRET:}
     access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:P7D}
+  initial-admin:
+    email: ${INITIAL_ADMIN_EMAIL:}
+    password: ${INITIAL_ADMIN_PASSWORD:}
+    full-name: ${INITIAL_ADMIN_FULL_NAME:Quản trị viên hệ thống}
+    phone: ${INITIAL_ADMIN_PHONE:}
   password-reset:
     token-ttl: ${PASSWORD_RESET_TOKEN_TTL:PT30M}
     frontend-base-url: ${PASSWORD_RESET_FRONTEND_URL:http://localhost:5173}
