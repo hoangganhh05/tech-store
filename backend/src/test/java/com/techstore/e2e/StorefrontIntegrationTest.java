@@ -981,6 +981,22 @@ class StorefrontIntegrationTest {
     }
 
     @Test
+    @DisplayName("US-06.3: API tồn kho lấy số khả dụng từ Inventory thay vì cột biến thể cũ")
+    void getVariantStock_usesInventoryAsSourceOfTruth() throws Exception {
+        setupBaseData();
+
+        Product product = productRepository.save(new Product("Inventory source", "Kiểm tra kho", brandApple, categoryPhone, ProductStatus.ACTIVE));
+        ProductVariant variant = productVariantRepository.save(new ProductVariant(product, "INVENTORY-SOURCE", "Đen", "128GB",
+                BigDecimal.valueOf(10000000), null, 50, VariantStatus.ACTIVE));
+        inventoryRepository.save(new Inventory(variant, 7, 2, 5));
+
+        mockMvc.perform(get("/api/v1/products/" + product.getId() + "/variants/" + variant.getId() + "/stock"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stockQuantity").value(5))
+                .andExpect(jsonPath("$.data.stockStatus").value("LOW_STOCK"));
+    }
+
+    @Test
     @DisplayName("US-06.3: Biến thể không thuộc về sản phẩm trả về 404 VARIANT_NOT_FOUND")
     void getVariantStock_mismatchProduct_shouldReturn404() throws Exception {
         setupBaseData();

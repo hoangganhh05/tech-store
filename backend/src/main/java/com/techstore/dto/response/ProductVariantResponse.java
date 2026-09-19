@@ -22,7 +22,11 @@ public record ProductVariantResponse(
         Instant updatedAt
 ) {
     public static ProductVariantResponse from(ProductVariant variant) {
-        int qty = variant.getStockQuantity() != null ? Math.max(0, variant.getStockQuantity()) : 0;
+        return from(variant, variant.getStockQuantity());
+    }
+
+    public static ProductVariantResponse from(ProductVariant variant, Integer stockQuantity) {
+        int qty = stockQuantity != null ? Math.max(0, stockQuantity) : 0;
         String stockStatus;
         if (qty <= 0) {
             stockStatus = "OUT_OF_STOCK";
@@ -41,7 +45,7 @@ public record ProductVariantResponse(
                 variant.getStorage(),
                 variant.getPrice(),
                 variant.getOriginalPrice(),
-                variant.getStockQuantity(),
+                qty,
                 variant.getStatus(),
                 stockStatus,
                 variant.getCreatedAt(),
@@ -50,7 +54,16 @@ public record ProductVariantResponse(
     }
 
     public static ProductVariantResponse from(ProductVariant variant, BigDecimal price, BigDecimal originalPrice) {
-        ProductVariantResponse base = from(variant);
+        return from(variant, price, originalPrice, variant.getStockQuantity());
+    }
+
+    public static ProductVariantResponse from(
+            ProductVariant variant,
+            BigDecimal price,
+            BigDecimal originalPrice,
+            Integer stockQuantity
+    ) {
+        ProductVariantResponse base = from(variant, stockQuantity);
         return new ProductVariantResponse(base.id(), base.productId(), base.productName(), base.sku(), base.color(),
                 base.storage(), price, originalPrice, base.stockQuantity(), base.status(), base.stockStatus(),
                 base.createdAt(), base.updatedAt());

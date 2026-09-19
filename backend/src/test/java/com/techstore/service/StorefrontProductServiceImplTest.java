@@ -6,6 +6,7 @@ import com.techstore.enums.ProductStatus;
 import com.techstore.repository.BrandRepository;
 import com.techstore.repository.CategoryRepository;
 import com.techstore.repository.InventoryTransactionRepository;
+import com.techstore.repository.InventoryRepository;
 import com.techstore.repository.ProductImageRepository;
 import com.techstore.repository.ProductRepository;
 import com.techstore.repository.ProductSpecificationRepository;
@@ -37,6 +38,7 @@ class StorefrontProductServiceImplTest {
     @Mock ProductSpecificationRepository productSpecificationRepository;
     @Mock CategoryRepository categoryRepository;
     @Mock InventoryTransactionRepository inventoryTransactionRepository;
+    @Mock InventoryRepository inventoryRepository;
     @Mock BrandRepository brandRepository;
     @Mock PromotionService promotionService;
 
@@ -66,6 +68,7 @@ class StorefrontProductServiceImplTest {
                 productSpecificationRepository,
                 categoryRepository,
                 inventoryTransactionRepository,
+                inventoryRepository,
                 brandRepository,
                 promotionService
         );

@@ -109,8 +109,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setUpdatedAt(Instant.now());
         inventory = inventoryRepository.save(inventory);
 
-        variant.setStockQuantity(newQuantity);
-        productVariantRepository.save(variant);
+        syncVariantStockProjection(variant, inventory);
 
         User currentUser = null;
         if (currentUserId != null) {
@@ -166,8 +165,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setUpdatedAt(Instant.now());
         inventory = inventoryRepository.save(inventory);
 
-        variant.setStockQuantity(newQuantity);
-        productVariantRepository.save(variant);
+        syncVariantStockProjection(variant, inventory);
 
         User currentUser = null;
         if (currentUserId != null) {
@@ -257,8 +255,7 @@ public class InventoryServiceImpl implements InventoryService {
             inventory.setUpdatedAt(Instant.now());
             inventoryRepository.save(inventory);
 
-            variant.setStockQuantity(newOnHand);
-            productVariantRepository.save(variant);
+            syncVariantStockProjection(variant, inventory);
 
             InventoryTransaction transaction = new InventoryTransaction();
             transaction.setInventory(inventory);
@@ -320,8 +317,7 @@ public class InventoryServiceImpl implements InventoryService {
 
             ProductVariant variant = inventory.getVariant();
             if (variant != null) {
-                variant.setStockQuantity(newOnHand);
-                productVariantRepository.save(variant);
+                syncVariantStockProjection(variant, inventory);
             }
 
             InventoryTransaction transaction = new InventoryTransaction();
@@ -408,5 +404,14 @@ public class InventoryServiceImpl implements InventoryService {
             Inventory inventory = new Inventory(variant, Math.max(0, initialStock), 0, 5);
             inventoryRepository.save(inventory);
         }
+    }
+
+    /**
+     * ProductVariant.stockQuantity is retained as a compatibility read projection.
+     * All stock decisions and mutations use Inventory as the source of truth.
+     */
+    private void syncVariantStockProjection(ProductVariant variant, Inventory inventory) {
+        variant.setStockQuantity(inventory.getAvailableQuantity());
+        productVariantRepository.save(variant);
     }
 }

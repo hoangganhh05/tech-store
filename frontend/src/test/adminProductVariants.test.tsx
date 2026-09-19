@@ -292,6 +292,9 @@ describe("AdminProductVariantsDialog", () => {
     const priceInput = screen.getByLabelText(/giá bán \(vnđ\) \*/i);
     fireEvent.change(priceInput, { target: { value: "27990000" } });
 
+    const stockInput = screen.getByLabelText(/tồn kho khả dụng/i);
+    expect(stockInput).toBeDisabled();
+
     const submitBtn = screen.getByRole("button", { name: /lưu thay đổi/i });
     fireEvent.click(submitBtn);
 
@@ -302,6 +305,9 @@ describe("AdminProductVariantsDialog", () => {
         expect.objectContaining({
           price: 27990000,
         }),
+      );
+      expect(mockedUpdateProductVariant.mock.calls[0][2]).not.toHaveProperty(
+        "stockQuantity",
       );
     });
   });

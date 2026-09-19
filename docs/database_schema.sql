@@ -1,4 +1,6 @@
 ﻿-- Đăng Tùng Mobile database schema
+-- LEGACY REFERENCE ONLY: do not execute this file to bootstrap the current app.
+-- Flyway migrations in backend/src/main/resources/db/migration are authoritative.
 -- Story: US-00.3 / Tasks: T-00.3.1, T-00.3.2, T-00.3.3
 -- Target database: MySQL 8.0.16+ (validated with MySQL Server 8.4)
 

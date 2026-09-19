@@ -88,35 +88,16 @@ MySQL 8.0.16 or newer is required because this schema relies on enforced
 `CHECK` constraints. MySQL 5.7 accepts much of the syntax but ignores those
 constraints and therefore is not a supported runtime database.
 
-Run the schema from the repository root with PowerShell:
+Flyway is the only schema bootstrap and upgrade mechanism. Create an empty
+`techstore` database, configure the Backend connection, then start the Backend;
+it applies `backend/src/main/resources/db/migration/V1` through the latest
+migration in order and records the result in `flyway_schema_history`.
 
-```powershell
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
-  --default-character-set=utf8mb4 `
-  --user=root --password `
-  --execute="source docs/database_schema.sql"
-```
-
-The script creates the `techstore` database with `utf8mb4`, all InnoDB tables, constraints and indexes, then seeds the `CUSTOMER`/`ADMIN` roles and basic categories/brands. It is intended for a new database.
-
-For an existing database, apply the one-time migrations that are newer than its current schema in version order. The current project does not run migrations automatically. For a database created before US-01.3, run `V20260904_01__add_refresh_tokens.sql`, then `V20260905_02__add_password_reset_tokens.sql`, and finally `V20260905_03__add_user_date_of_birth.sql`:
-
-```powershell
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
-  --default-character-set=utf8mb4 `
-  --user=root --password `
-  --execute="source docs/migrations/V20260904_01__add_refresh_tokens.sql"
-
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
-  --default-character-set=utf8mb4 `
-  --user=root --password `
-  --execute="source docs/migrations/V20260905_02__add_password_reset_tokens.sql"
-
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" `
-  --default-character-set=utf8mb4 `
-  --user=root --password `
-  --execute="source docs/migrations/V20260905_03__add_user_date_of_birth.sql"
-```
+Do **not** run `docs/database_schema.sql` for a normal install. It predates the
+Flyway baseline and remains only as a historical design/reference artifact;
+running it before Flyway would create duplicate tables. Do not edit a migration
+that has been deployed. Add a new, increasing Flyway migration for every schema
+change.
 
 ## 7. Naming conventions
 

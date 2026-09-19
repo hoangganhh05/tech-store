@@ -32,14 +32,19 @@ Tài liệu chính:
 - [Docker production packaging](docs/US-15.1-docker.md)
 - [Production environment configuration](docs/US-15.2-environment.md)
 - [Production deployment and redeploy](docs/US-15.3-deployment.md)
+- [Hướng dẫn sử dụng hệ thống quản trị](docs/US-15.4-admin-user-manual.md)
+- [Tài liệu kỹ thuật bàn giao](docs/US-15.5-technical-handover.md)
+- [Dữ liệu mẫu/demo](docs/US-15.6-demo-seed-data.md)
+- [Biên bản nghiệm thu và bàn giao](docs/US-15.7-final-acceptance.md)
 - [Wireframe](docs/wireframes/README.md)
 
 ## Backend
 
 Yêu cầu: Java 21+ và MySQL 8.0.16+ (khuyến nghị MySQL 8.4).
 
-1. Khởi động MySQL và tạo schema bằng `docs/database_schema.sql` theo hướng dẫn
-   trong `docs/DATABASE_DESIGN.md`.
+1. Khởi động MySQL và tạo database rỗng `techstore` (hoặc để JDBC URL mặc định
+   tạo database). Không chạy `docs/database_schema.sql`: đây chỉ là tài liệu
+   lịch sử, không tương thích với luồng Flyway hiện tại.
 2. Mở PowerShell tại thư mục gốc và cung cấp thông tin kết nối cho phiên terminal
    hiện tại. Thay giá trị mật khẩu bằng mật khẩu MySQL trên máy của bạn:
 
@@ -53,7 +58,7 @@ $env:DB_PASSWORD = "<your-mysql-password>"
 File `.env.example` chỉ là danh sách biến mẫu; Spring Boot không tự động đọc file
 `.env`. Không commit mật khẩu thật vào repository.
 
-3. Chạy ứng dụng:
+3. Chạy ứng dụng. Flyway sẽ tự áp dụng toàn bộ migration để tạo/cập nhật schema:
 
 ```powershell
 cd backend
